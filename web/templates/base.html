@@ -55,6 +55,7 @@
   <main class="wrap">
     {% block content %}{% endblock %}
   </main>
+  <div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
   <script>
     (function () {
       var root = document.documentElement, btn = document.getElementById("theme-toggle");
@@ -81,15 +82,23 @@
       });
     })();
 
-    // Botones "Copiar": copian el texto de un campo y confirman con "Copiado ✓"
+    // Botones "Copiar" (_macros.html): copian el texto de un campo, el icono pasa a ✓ y se anuncia
     function copyFrom(id, btn) {
       navigator.clipboard.writeText(document.getElementById(id).value).then(function () {
-        var label = btn.dataset.label || (btn.dataset.label = btn.textContent);
+        var label = btn.querySelector(".label");
         btn.classList.add("is-copied");
-        btn.innerHTML = 'Copiado<span class="check" aria-hidden="true">✓</span>';
+        label.textContent = "Copiado";
+        announce("Copiado al portapapeles");
         clearTimeout(btn._reset);
-        btn._reset = setTimeout(function () { btn.classList.remove("is-copied"); btn.textContent = label; }, 1600);
+        btn._reset = setTimeout(function () { btn.classList.remove("is-copied"); label.textContent = "Copiar"; }, 1600);
       });
+    }
+
+    // Mensajes para lectores de pantalla (región role="status")
+    function announce(text) {
+      var region = document.getElementById("sr-status");
+      region.textContent = "";
+      setTimeout(function () { region.textContent = text; }, 50);
     }
   </script>
 </body>

@@ -238,10 +238,19 @@ textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-text) 22%, t
 .ts-day, #standup-body { transition: opacity 200ms var(--ease-out); }
 .ts-day.htmx-added, #standup-body.htmx-added { opacity: 0; }
 
-/* "Copiar" → "Copiado" */
+/* "Copiar" (icono de portapapeles) → ✓ "Copiado" */
+.btn-copy { display: inline-flex; align-items: center; gap: 6px; }
+.btn-copy svg { width: 1.05em; height: 1.05em; flex: none; }
+.btn-copy .i-check { display: none; }
 .btn.is-copied { background: var(--text); border-color: var(--text); color: var(--bg); }
-.btn .check { display: inline-block; margin-left: 6px; animation: pop 220ms var(--ease-out); }
+.btn.is-copied .i-copy { display: none; }
+.btn.is-copied .i-check { display: block; animation: pop 220ms var(--ease-out); }
 @keyframes pop { from { transform: scale(0.6); opacity: 0; } }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
 
 /* Bloques del parte de horas: se pueden pulsar para ver el detalle */
 .ts-block[data-title] {
@@ -296,6 +305,6 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   .icon-link:hover svg { transform: none; }
   .task-dialog, .task-dialog[open] { transform: none; }
   .btn.htmx-request::before { animation-duration: 1.5s; }
-  .btn .check { animation: none; }
+  .btn.is-copied .i-check { animation: none; }
   ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 150ms; }
 }

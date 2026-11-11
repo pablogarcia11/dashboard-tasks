@@ -1,3 +1,4 @@
+{% from "_macros.html" import copy_button %}
 <div id="standup-body">
   {% if error %}<p class="notice error">No se pudo generar: {{ error }}</p>{% endif %}
   {% if text %}
@@ -5,7 +6,7 @@
   {% endif %}
   <div class="actions">
     {% if text %}
-    <button type="button" class="btn" aria-live="polite" onclick="copyFrom('standup-text', this)">Copiar</button>
+    {{ copy_button("standup-text") }}
     {% endif %}
     <button type="button" class="btn ghost" hx-post="/standup/{{ day.isoformat() }}?force=true" hx-target="#standup-body"
             hx-swap="outerHTML" hx-indicator="#regen" hx-disabled-elt="this">{% if text %}Regenerar{% else %}Generar stand-up{% endif %}</button>
