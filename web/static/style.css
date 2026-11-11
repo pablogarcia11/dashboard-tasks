@@ -81,7 +81,17 @@ code { font-size: .9em; }
 .appbar-inner { display: flex; align-items: center; justify-content: space-between; padding-top: 12px; padding-bottom: 12px; }
 .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
 .brand img { height: 30px; width: auto; }
-.brand-text { font-weight: 800; font-size: 1.1rem; color: var(--red-text); }
+.brand-text { font-weight: 800; font-size: 1.1rem; color: var(--red-text); white-space: nowrap; }
+.appnav a { white-space: nowrap; }
+/* Móvil: solo el avatar con las iniciales (el nombre sigue en el aria-label del enlace) */
+@media (max-width: 520px) {
+  .brand-text { display: none; }
+  .appnav { gap: 14px; }
+}
+.avatar {
+  display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; flex: none;
+  background: var(--red); color: var(--white); font-size: .8rem; font-weight: 800; letter-spacing: .02em;
+}
 .appnav { display: flex; align-items: center; gap: 22px; }
 .appnav a { text-decoration: none; color: var(--muted); font-weight: 500; padding: 4px 0; border-bottom: 2px solid transparent; }
 .appnav a:hover { color: var(--red-text); }

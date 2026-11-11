@@ -266,6 +266,10 @@ def previous_workday(d):  # d: date
 ### 7.1 Vista "Hoy" (principal)
 Secciones: **Tareas de hoy** (tareas activas del usuario en la base Tareas + pendientes apuntados ayer en I'M BACK), **Reuniones** (Calendar), **Trabajo sin commitear / commits sin subir** (para no perder nada), y más adelante **Pendientes de revisión/menciones**. Cada ítem con su origen y enlace.
 
+### 7.0 Barra superior: nombre del usuario (2026-11-11)
+- En lugar de "Dashboard", la barra muestra el **nombre de quien usa el dashboard** con un avatar de iniciales, deducido de las herramientas conectadas, **nunca fijo en código ni en config** (`core/identity.py`): `git config --global user.name` → usuario de Notion que autorizó la conexión (`owner.user.name` del token OAuth) → parte local del primer email de `git_authors` → "Dashboard". Se calcula al arrancar el servidor.
+- En móvil (≤ 520 px) solo se ve el avatar; el nombre sigue en el `aria-label` del enlace.
+
 ### 7.1 bis Vista Día: cabecera y tarjetas (2026-11-11)
 - Título con la fecha completa, "Miércoles 11 de noviembre 2026", sin subtítulo. Navegación al estilo Google Calendar: botón **Hoy** (relleno en rojo cuando ya estás en hoy) y flechas ‹ › con SVG; la siguiente se desactiva si es futuro. El parte de horas usa el mismo componente con "Esta semana".
 - **Actualizar por tarjeta**: icono de actualizar (flechas en círculo) a la derecha de "Notas en I'M BACK" y de "Commits". `POST /refresh/{día}/{notes|commits}` recoge **solo** su fuente (`run_collect(..., only={"notion"})` o `{"git"}`) para ese día y devuelve la tarjeta, que HTMX sustituye sin recargar la página. Notas ≈ 2,6 s y commits ≈ 2 s, sin pasar por Claude. "Actualizar datos" sigue recogiendo todo.

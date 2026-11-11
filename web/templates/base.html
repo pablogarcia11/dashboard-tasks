@@ -44,9 +44,10 @@
   <a class="skip-link" href="#main">Saltar al contenido</a>
   <header class="appbar">
     <div class="wrap appbar-inner">
-      <a class="brand" href="/">
+      <a class="brand" href="/" aria-label="{{ user_name }}: ir a hoy" title="Ir a hoy">
         {% if has_logo %}<img src="/static/logo.png" alt="1MillionBot" width="120" height="30">{% endif %}
-        <span class="brand-text">Dashboard</span>
+        <span class="avatar" aria-hidden="true">{{ user_initials }}</span>
+        <span class="brand-text">{{ user_name }}</span>
       </a>
       <nav class="appnav">
         <a href="/" {% if section == "day" %}aria-current="page"{% endif %}>Día</a>

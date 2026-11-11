@@ -1,7 +1,7 @@
 # Configuración del dashboard personal. Sin secretos: los tokens van en .env.
 
 user:
-  name: Pablo García
+  # El nombre de la cabecera no se configura: sale de git (user.name global) o de Notion (core/identity.py)
   github: pablogarcia11
   timezone: Europe/Madrid
   # Identidades con las que firmas commits (se filtra por cualquiera de ellas)

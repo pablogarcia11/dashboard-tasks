@@ -16,6 +16,7 @@ from collectors.git_local import GitLocalCollector
 from core import db
 from core.config import ROOT, load_config
 from core.dates import effective_today, is_workday, next_workday, previous_workday
+from core.identity import display_name, initials
 from core.timesheet import as_text, build_blocks, fmt, parse_tasks
 from core.views import day_data, standup_context, timesheet_inputs
 from jobs.collect_all import run_collect
@@ -61,6 +62,9 @@ templates.env.globals["sync_hints"] = {
 }
 templates.env.globals["claude_hint"] = ("Si es un límite de uso de Claude, espera unos minutos y vuelve a intentarlo; "
                                         "si dice que falta iniciar sesión, ejecuta «claude» en una terminal.")
+# Nombre de quien usa el dashboard, deducido de git/Notion (core/identity.py)
+templates.env.globals["user_name"] = display_name()
+templates.env.globals["user_initials"] = initials(display_name())
 # Logo oficial: se muestra si existe web/static/logo.png (no se versiona una copia recreada)
 templates.env.globals["has_logo"] = (ROOT / "web" / "static" / "logo.png").is_file()
 
