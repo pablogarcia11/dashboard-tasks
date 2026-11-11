@@ -26,7 +26,10 @@
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
         </svg>
       </button>
-      <button type="button" class="btn ghost small" id="theme-system" hidden>Seguir al sistema</button>
+      <span class="theme-system" aria-live="polite">
+        <button type="button" class="btn ghost small" id="theme-system">Seguir al sistema</button>
+        <span class="theme-system-done" id="theme-system-done">Siguiendo al sistema</span>
+      </span>
     </div>
   </header>
 </section>
@@ -387,13 +390,15 @@
     }
   }
 
-  // Apariencia: el interruptor refleja el tema actual; «Seguir al sistema» solo aparece si lo has elegido tú
+  // Apariencia: el interruptor refleja el tema actual; si lo has elegido tú, «Seguir al sistema» lo olvida y el mismo hueco pasa a indicar que ya lo sigue
   const themeToggle = document.getElementById("theme-toggle");
   const themeSystem = document.getElementById("theme-system");
   function syncTheme() {
     const dark = document.documentElement.dataset.theme === "dark";
     themeToggle.setAttribute("aria-checked", dark);
-    themeSystem.hidden = !savedTheme();
+    const following = !savedTheme();
+    themeSystem.parentNode.classList.toggle("is-following", following);
+    themeSystem.disabled = following;
   }
   themeToggle.addEventListener("click", () =>
     chooseTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
