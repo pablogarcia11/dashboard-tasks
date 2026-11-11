@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}{{ day | long_date | capitalize }} · Dashboard{% endblock %}
+{% block content %}
+<header class="top">
+  <nav class="daynav">
+    <a class="arrow" href="/day/{{ prev.isoformat() }}" title="Día laborable anterior">←</a>
+    <div>
+      <h1>{{ day | long_date | capitalize }}</h1>
+      <p class="muted">{% if is_today %}Hoy{% else %}{{ day.isoformat() }}{% endif %}</p>
+    </div>
+    {% if next %}<a class="arrow" href="/day/{{ next.isoformat() }}" title="Día laborable siguiente">→</a>
+    {% else %}<span class="arrow disabled">→</span>{% endif %}
+  </nav>
+  <div class="actions">
+    {% if not is_today %}<a class="btn ghost" href="/">Ir a hoy</a>{% endif %}
+    <button class="btn" hx-post="/collect/{{ day.isoformat() }}" hx-swap="none"
+            hx-indicator="#collecting">Actualizar datos</button>
+    <span id="collecting" class="htmx-indicator muted">Recogiendo…</span>
+  </div>
+</header>
+
+{% if weekend %}
+<p class="notice">Hoy no es día laborable: se muestra el último día laborable.</p>
+{% endif %}
+{% for source, s in sync.items() if s.last_error %}
+<p class="notice error">Error en {{ source }}: {{ s.last_error }}</p>
+{% endfor %}
+
+<div class="grid">
+  <div class="col">
+    {% if is_today %}
+    <section class="card">
+      <h2>Qué toca hoy</h2>
+      {% if data.pending_from_prev %}
+      <h3>Pendiente del día anterior <span class="tag">I'M BACK</span></h3>
+      {% for project, items in data.pending_from_prev.items() %}
+      <p class="project">{{ project }}</p>
+      <ul>{% for a in items %}<li><a href="{{ a.url }}" target="_blank">{{ a.title }}</a></li>{% endfor %}</ul>
+      {% endfor %}
+      {% endif %}
+      <h3>Tareas activas <span class="tag">Notion</span></h3>
+      {% if data.tasks %}
+      <ul>{% for t in data.tasks %}
+        <li><a href="{{ t.url }}" target="_blank">{{ t.title }}</a> <span class="status">{{ t.status }}</span></li>
+      {% endfor %}</ul>
+      {% else %}<p class="muted">Sin tareas activas.</p>{% endif %}
+      {% if data.meetings %}
+      <h3>Reuniones <span class="tag">Calendar</span></h3>
+      <ul>{% for m in data.meetings %}<li>{{ m.ts | hhmm }} {{ m.title }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% if data.wip or data.unpushed %}
+      <h3>Para no perder <span class="tag">git</span></h3>
+      <ul>
+        {% for w in data.wip %}<li>{{ w.extra.repo }} <span class="muted">({{ w.extra.branch }})</span>: {{ w.title }}</li>{% endfor %}
+        {% for c in data.unpushed %}<li><span class="badge">solo local</span> {{ c.extra.repo }}: {{ c.title }}</li>{% endfor %}
+      </ul>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    <section class="card">
+      <h2>Notas en I'M BACK</h2>
+      {% for project, notes in data.notes.items() %}
+      <p class="project">{{ project }}</p>
+      <ul>{% for n in notes %}
+        <li>{{ n.title }}{% if n.body %}<pre class="sub">{{ n.body }}</pre>{% endif %}</li>
+      {% endfor %}</ul>
+      {% else %}
+      <p class="muted">Sin notas ese día{% if is_today %} todavía{% endif %}.</p>
+      {% endfor %}
+    </section>
+
+    <section class="card">
+      <h2>Commits</h2>
+      {% for project, commits in data.commits.items() %}
+      <p class="project">{{ project }}</p>
+      <ul class="timeline">{% for c in commits %}
+        <li><span class="time">{{ c.ts | hhmm }}</span>
+          <span class="repo">{{ c.extra.repo }}</span> {{ c.title }}
+          {% if not c.extra.pushed %}<span class="badge">solo local</span>{% endif %}</li>
+      {% endfor %}</ul>
+      {% else %}
+      <p class="muted">Sin commits ese día. Si es un día antiguo, pulsa «Actualizar datos».</p>
+      {% endfor %}
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card" id="standup">
+      <h2>Stand-up</h2>
+      <p class="muted">Para #equipo-tecnologia-stand-up: lo hecho el {{ prev | long_date }} y lo de este día.</p>
+      {% if standup %}
+        {% with text=standup.content_md, error=None, cached=True %}{% include "_standup.html" %}{% endwith %}
+      {% else %}
+      <div id="standup-body">
+        <button class="btn" hx-post="/standup/{{ day.isoformat() }}" hx-target="#standup-body"
+                hx-swap="outerHTML" hx-indicator="#gen">Generar stand-up</button>
+        <span id="gen" class="htmx-indicator muted">Redactando con Claude…</span>
+      </div>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

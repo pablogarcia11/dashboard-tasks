@@ -1,0 +1,21 @@
+<div id="standup-body">
+  {% if error %}<p class="notice error">No se pudo generar: {{ error }}</p>{% endif %}
+  {% if text %}
+  <textarea id="standup-text" rows="18" spellcheck="false">{{ text }}</textarea>
+  {% endif %}
+  <div class="actions">
+    {% if text %}
+    <button class="btn" onclick="copyStandup(this)">Copiar</button>
+    {% endif %}
+    <button class="btn ghost" hx-post="/standup/{{ day.isoformat() }}?force=true" hx-target="#standup-body"
+            hx-swap="outerHTML" hx-indicator="#regen">{% if text %}Regenerar{% else %}Generar stand-up{% endif %}</button>
+    <span id="regen" class="htmx-indicator muted">Redactando con Claude…</span>
+  </div>
+  <script>
+    function copyStandup(btn) {
+      navigator.clipboard.writeText(document.getElementById("standup-text").value).then(() => {
+        btn.textContent = "Copiado"; setTimeout(() => btn.textContent = "Copiar", 1500);
+      });
+    }
+  </script>
+</div>

@@ -156,7 +156,7 @@ Detalles de Windows: usa siempre `git -C <ruta>`; si salta "dubious ownership" n
 CREATE TABLE activity (
   id INTEGER PRIMARY KEY,
   source TEXT NOT NULL,        -- git | notion | gcal | slack | github
-  kind TEXT NOT NULL,          -- commit | wip | task | task_plan | meeting | message | pr | review
+  kind TEXT NOT NULL,          -- commit | wip | note | task | task_plan | meeting | message | pr | review
   external_id TEXT NOT NULL,
   ts TEXT NOT NULL,            -- ISO 8601 con zona
   work_date TEXT NOT NULL,     -- YYYY-MM-DD en zona del usuario
@@ -319,7 +319,7 @@ C:\Users\daxte\Documents\1MillionBot\dashboard\
 ├─ config.yaml            # emails, usuario, tz, repos_root, exclude_repos, fuentes activas, hora stand-up
 ├─ .env / .env.example    # tokens (el .env fuera de git)
 ├─ secrets/               # credentials.json, token.json (fuera de git)
-├─ core/                  # config.py · dates.py (días laborables) · db.py (SQLite)
+├─ core/                  # config.py · dates.py (días laborables) · db.py (SQLite) · views.py (datos por vista y contexto para Claude)
 ├─ collectors/            # base.py · git_local.py · notion_auth.py · notion.py · gcal.py · slack.py · github.py
 ├─ llm/claude_cli.py      # envoltorio de claude -p + caché por hash
 ├─ prompts/               # standup.md · day_summary.md · notion_summary.md
@@ -339,7 +339,10 @@ Inicializa este directorio como repo git propio (`git init`) con `.gitignore` co
 **Fase 1 — MVP con git local (sin credenciales externas)**
 - ✅ (2026-11-11) `config.yaml`, SQLite, colector git local con commits (incluidos no pushed) y WIP: `python -m jobs.collect_all [--date D | --since A --until B] [--show]`. Verificado con datos reales: 16 commits el 10/11 (todos subidos), 5 "solo local" y 2 repos con WIP el 11/11; worktrees deduplicados; `dashboard/`, `Kanvas` y `shannon` excluidos.
 - ✅ Lógica de día laborable con tests (`python -m pytest`: 14 tests, incluidos DST y cambio de año).
-- Web: timeline por día + botón "Generar stand-up" con `claude -p`.
+- ✅ Web (`python -m web.app`, http://127.0.0.1:8765): vista por día con flechas que saltan fines de semana, notas de I'M BACK, commits con marca "solo local", y para hoy "Qué toca hoy" (pendientes del día anterior, tareas activas, WIP y commits sin subir). Botones "Actualizar datos" y "Generar stand-up" / "Regenerar" / "Copiar".
+- ✅ Adelantado de la Fase 2: colector de Notion (`collectors/notion.py`) con notas (`kind=note`) y pendientes (`kind=task_plan`) de I'M BACK y tareas activas (`kind=task`). Las notas de un rango se reemplazan en cada recogida (las ediciones y borrados en Notion se reflejan).
+- ✅ `llm/claude_cli.py`: `claude -p --tools "" --strict-mcp-config` (sin herramientas ni conectores), contexto por stdin, `cwd` fuera de los repos, caché por hash en `summaries`; si falla se muestra el error y se conserva el último resultado.
+- ⏳ Pendiente de validar por el usuario: stand-up generado para el 11/11 comparado con el que publicó.
 - ✅ Aceptación: ejecutar para "ayer laborable" lista commits reales de los repos del usuario, marca los no subidos, **no aparece nada del repo `dashboard/`**, y genera un stand-up coherente que el usuario valida.
 
 **Fase 2 — Notion**
