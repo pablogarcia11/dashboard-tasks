@@ -9,6 +9,7 @@
   <li>
     <span class="page-icon" aria-hidden="true">{{ p.icon or "📄" }}</span>
     <span class="page-title">{{ p.title }}</span>
+    {% if p.kind == "database" %}<span class="tag">Base de datos</span>{% endif %}
     {% if p.id.replace("-", "") == current %}
     <span class="pill ok">En uso</span>
     {% else %}

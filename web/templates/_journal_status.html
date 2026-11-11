@@ -4,9 +4,11 @@
 <p class="journal-ok small">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
        stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
-  Formato correcto: {{ preview.days }} día{% if preview.days != 1 %}s{% endif %},
+  Formato reconocido ({{ preview.format }}): {{ preview.days }} día{% if preview.days != 1 %}s{% endif %},
   del {{ preview.first | title_date }} al {{ preview.last | title_date }}.
 </p>
 {% elif preview %}
-<p class="notice small">No encuentro días en esta página. Cada día debe ser un encabezado 1 con la fecha, p. ej. «Martes 10/11/2026».</p>
+<p class="notice small">No encuentro días en esta página. Cada día debe ser un encabezado o desplegable con la fecha
+  (p. ej. «Martes 10/11/2026» o «10 de noviembre de 2026»), una página hija con la fecha en el título,
+  o una base de datos con una página por día.</p>
 {% endif %}
