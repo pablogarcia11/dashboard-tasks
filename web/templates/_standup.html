@@ -3,7 +3,7 @@
 <div role="tabpanel" class="tab-panel" id="panel-standup" aria-labelledby="tab-standup">
   {% if text %}{{ regen_button("/standup/" ~ day.isoformat() ~ "?force=true", "Regenerar stand-up",
                                target="closest [role=tabpanel]") }}{% endif %}
-  <p class="muted">Para #equipo-tecnologia-stand-up: lo hecho el {{ prev | long_date }} y lo de este día.</p>
+  <p class="muted">Para #{{ standup_channel() }}: lo hecho el {{ prev | long_date }} y lo de este día, con tu formato.</p>
   {% if error %}<p class="notice error">No se pudo generar: {{ error }}<span class="hint">{{ claude_hint }}</span></p>{% endif %}
   {% if text %}
   <div class="copy-wrap">

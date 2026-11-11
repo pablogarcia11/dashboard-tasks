@@ -13,6 +13,8 @@ JOURNAL_PAGE_ID = "notion.journal_page_id"
 JOURNAL_PAGE_TITLE = "notion.journal_page_title"
 REPOS_ROOT = "git.repos_root"
 EXTRA_AUTHORS = "git.extra_authors"   # JSON: emails de autor añadidos a mano (los de git se detectan solos)
+STANDUP_CHANNEL = "standup.channel"    # canal de stand-up de la persona (por defecto, el de config.yaml)
+STANDUP_EXAMPLES = "standup.examples"  # JSON: sus últimos stand-ups del canal, para imitar su formato
 
 
 def extra_authors(con: sqlite3.Connection) -> list[str]:

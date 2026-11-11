@@ -121,6 +121,60 @@
   </details>
 </section>
 
+{# ---------- Stand-up ---------- #}
+{% set learned = standup.stored %}
+<section class="card settings-card" id="standup" aria-labelledby="standup-settings-title">
+  <header class="settings-card-head">
+    <div>
+      <h2 id="standup-settings-title">Stand-up</h2>
+      <p class="muted small">Tu stand-up se redacta con tu propio formato, aprendido de lo que publicas en el canal.</p>
+    </div>
+  </header>
+
+  <div class="setting-row">
+    <div class="setting-label">
+      <h3>Canal</h3>
+      <p class="muted small">Donde publicas tu stand-up cada mañana.</p>
+    </div>
+    <div class="setting-control">
+      <form class="path-form" hx-post="/settings/standup/channel" hx-swap="none">
+        <label class="sr-only" for="standup-channel">Canal de Slack</label>
+        <input type="text" id="standup-channel" name="channel" class="field" value="{{ standup.channel }}"
+               autocomplete="off" spellcheck="false" placeholder="nombre-del-canal…">
+        <button type="submit" class="btn ghost">Guardar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="setting-row">
+    <div class="setting-label">
+      <h3>Tu formato</h3>
+      <p class="muted small">Se aprende de tus últimos stand-ups y se renueva cada semana. Solo se copia la forma, no el contenido.</p>
+    </div>
+    <div class="setting-control">
+      {% if learned.examples %}
+      <div class="current-value">
+        <span class="current-title">Aprendido de tus {{ learned.examples | length }} últimos stand-ups en #{{ learned.channel }}</span>
+        <details class="guide">
+          <summary>Ver el más reciente</summary>
+          <pre class="example">{{ learned.examples[0] }}</pre>
+        </details>
+      </div>
+      {% elif learned.fetched_at %}
+      <p class="notice small">No hay stand-ups tuyos en #{{ learned.channel }}: se usará un formato por defecto hasta que publiques alguno.</p>
+      {% else %}
+      <p class="muted">Aún no se ha leído el canal: se hará la primera vez que generes un stand-up.</p>
+      {% endif %}
+      {% if learned.error %}<p class="notice error small">Última lectura fallida: {{ learned.error }}</p>{% endif %}
+      <div class="actions">
+        <button type="button" class="btn ghost" hx-post="/settings/standup/learn" hx-swap="none"
+                hx-disabled-elt="this" hx-indicator="#learning">Volver a aprender</button>
+        <span id="learning" class="htmx-indicator muted small">Leyendo el canal…</span>
+      </div>
+    </div>
+  </div>
+</section>
+
 {# ---------- Repositorios ---------- #}
 <section class="card settings-card" id="repos" aria-labelledby="repos-title">
   <header class="settings-card-head">
@@ -229,8 +283,16 @@
 </div>
 
 <script>
-  // El aviso (?msg=…) se muestra una vez: se quita de la URL para que no reaparezca al recargar
-  if (location.search.includes("msg=")) history.replaceState(null, "", location.pathname + location.hash);
+  // El aviso (?msg=…) se muestra una vez: se quita de la URL para que no reaparezca al recargar.
+  // Se espera a que acabe la transición entre páginas: cambiar la URL durante ella la aborta.
+  if (location.search.includes("msg=")) {
+    const clean = () => history.replaceState(null, "", location.pathname + location.hash);
+    if ("onpagereveal" in window) {
+      addEventListener("pagereveal", e => e.viewTransition ? e.viewTransition.finished.finally(clean) : clean(), { once: true });
+    } else {
+      clean();
+    }
+  }
 
   // Confirmación breve al guardar; si falla, el interruptor vuelve a su posición y se avisa
   const saveStatus = document.getElementById("save-status");

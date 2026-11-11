@@ -27,6 +27,8 @@ from core.identity import avatar_path, display_name, initials, notion_owner
 from core.settings import effective_config
 from collectors import notion_auth
 from collectors.notion import NotionClient, journal_candidates, journal_preview
+from collectors.claude_connector import ConnectorError
+from collectors.slack import fetch_channel_messages, own_standups
 from core.timesheet import as_text, build_blocks, fmt, parse_tasks
 from core.views import day_data, journal_notes_context, standup_context, timesheet_inputs
 from jobs.collect_all import run_collect
@@ -80,6 +82,40 @@ def load_identity() -> None:
     templates.env.globals["has_avatar"] = avatar_path() is not None
 
 
+def standup_channel() -> str:
+    """Canal de stand-up de la persona (Ajustes) o el del equipo (config.yaml)."""
+    return settings.get_all(db.connect()).get(settings.STANDUP_CHANNEL) or cfg["standup"]["channel"]
+
+
+def user_emails(con) -> set[str]:
+    """Emails con los que se reconoce a la persona en Slack: los de git y el de su cuenta de Notion."""
+    emails = set(settings.extra_authors(con)) | {identity.git_global_email() or ""}
+    emails.add(((notion_owner().get("person") or {}).get("email") or ""))
+    return {e.lower() for e in emails if e}
+
+
+def standup_examples(con, force: bool = False) -> dict:
+    """Últimos stand-ups de la persona en su canal, para imitar su formato. Se renuevan cada
+    `relearn_days` días (o al cambiar de canal); si Slack falla, se conservan los anteriores."""
+    try:
+        stored = json.loads(settings.get_all(con).get(settings.STANDUP_EXAMPLES) or "{}")
+    except ValueError:
+        stored = {}
+    channel, scfg = standup_channel(), cfg["standup"]
+    age = (datetime.now().astimezone() - datetime.fromisoformat(stored["fetched_at"])).days \
+        if stored.get("fetched_at") else None
+    if not force and stored.get("channel") == channel and age is not None and age < scfg.get("relearn_days", 7):
+        return stored
+    try:
+        msgs = fetch_channel_messages(channel, cfg["claude"])
+        stored = {"channel": channel, "examples": own_standups(msgs, user_emails(con), scfg.get("examples", 3)),
+                  "fetched_at": datetime.now().astimezone().isoformat(timespec="seconds"), "error": None}
+    except ConnectorError as e:
+        stored = {**stored, "error": str(e)}
+    settings.set_value(con, settings.STANDUP_EXAMPLES, json.dumps(stored, ensure_ascii=False))
+    return stored
+
+
 def journal_title() -> str:
     """Título de la página diario elegida en Ajustes (sustituye a un nombre fijo como "I'M BACK")."""
     return settings.get_all(db.connect()).get(settings.JOURNAL_PAGE_TITLE) or "el diario"
@@ -87,6 +123,7 @@ def journal_title() -> str:
 
 load_identity()
 templates.env.globals["journal_title"] = journal_title
+templates.env.globals["standup_channel"] = standup_channel
 # Logo oficial: se muestra si existe web/static/logo.png (no se versiona una copia recreada)
 templates.env.globals["has_logo"] = (ROOT / "web" / "static" / "logo.png").is_file()
 
@@ -163,6 +200,8 @@ def settings_view(request: Request, msg: str = ""):
     return templates.TemplateResponse(request, "settings.html", {
         "rows": rows, "msg": SETTINGS_MESSAGES.get(msg), "repos_root": saved.get(settings.REPOS_ROOT),
         "steps": setup_steps(con), "path_example": PATH_EXAMPLE,
+        "standup": {"channel": standup_channel(),
+                    "stored": json.loads(saved.get(settings.STANDUP_EXAMPLES) or "{}")},
         "authors": {"detected": sorted(git.detected_authors), "extra": [e for e in extra if e not in git.detected_authors]},
         "notion": {
             "has_credentials": all(notion_auth.client_credentials()),
@@ -179,6 +218,9 @@ SETTINGS_MESSAGES = {
     "notion-error": ("error", "No se pudo conectar con Notion. Vuelve a intentarlo; si se repite, revisa "
                               "NOTION_CLIENT_ID y NOTION_CLIENT_SECRET en .env."),
     "repos-saved": ("ok", "Carpeta de repositorios guardada."),
+    "standup-learned": ("ok", "Formato del stand-up actualizado con tus últimos mensajes del canal."),
+    "standup-error": ("error", "No se pudo leer el canal de Slack. Comprueba que el conector de Slack está "
+                               "conectado en claude.ai y que el nombre del canal es correcto."),
 }
 
 
@@ -341,6 +383,24 @@ def save_repos_root(path: str) -> Response:
     return Response(headers={"HX-Redirect": "/settings?msg=repos-saved#repos"})
 
 
+@app.post("/settings/standup/channel")
+async def standup_set_channel(request: Request):
+    form = await request.form()
+    channel = form.get("channel", "").strip().lstrip("#")
+    if not channel:
+        return Response("Escribe el nombre del canal.", status_code=422)
+    settings.set_value(db.connect(), settings.STANDUP_CHANNEL, channel)
+    return Response(headers={"HX-Redirect": "/settings#standup"})
+
+
+@app.post("/settings/standup/learn")
+def standup_learn():
+    """Vuelve a leer sus últimos stand-ups del canal (conector de Slack)."""
+    stored = standup_examples(db.connect(), force=True)
+    msg = "standup-error" if stored.get("error") else "standup-learned"
+    return Response(headers={"HX-Redirect": f"/settings?msg={msg}#standup"})
+
+
 @app.post("/settings/git-authors")
 async def git_authors(request: Request):
     """Añade o quita un email de autor manual (los de git config se detectan solos)."""
@@ -480,8 +540,10 @@ def standup(request: Request, d: str, force: bool = False):
     day = date.fromisoformat(d)
     con = db.connect()
     error, cached = None, False
+    context = standup_context(con, day, HOLIDAYS)
+    context["ejemplos_formato"] = standup_examples(con).get("examples") or []   # su formato, no uno fijo
     try:
-        text, cached = generate(con, cfg, "standup", d, standup_context(con, day, HOLIDAYS), force=force)
+        text, cached = generate(con, cfg, "standup", d, context, force=force)
     except ClaudeError as e:
         error = str(e)
         last = db.get_summary(con, d, "standup")  # conserva el último resultado

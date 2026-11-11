@@ -55,6 +55,13 @@ meeting_keywords:
   AI Risk: [ai risk, airisk, oia]
   Kit migración: [migración, migracion, kit]
 
+# Stand-up: canal del equipo (cada persona puede cambiarlo en Ajustes). El formato se aprende de sus
+# últimos stand-ups en el canal (conector de Slack de Claude, solo lectura).
+standup:
+  channel: equipo-tecnologia-stand-up
+  examples: 3          # cuántos stand-ups suyos se usan como ejemplo
+  relearn_days: 7      # cada cuánto se vuelven a leer
+
 claude:
   command: claude   # ruta absoluta si el programador de tareas no lo encuentra en el PATH
   model: sonnet
@@ -64,7 +71,6 @@ sources:
   git: { enabled: true }
   notion: { enabled: true }
   gcal: { enabled: true, via: claude_connector }
-  slack: { enabled: true, via: claude_connector, standup_channel_id: C056VQM4E74 }
   github: { enabled: false }
 
 server:

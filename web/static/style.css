@@ -323,6 +323,11 @@ textarea:focus { border-color: var(--red-text); outline: 2px solid transparent; 
 .path-form .field { flex: 1 1 280px; width: auto; }
 #picking, #repos-error { margin: 8px 0 0; }
 
+pre.example {
+  margin: 8px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line);
+  font: 12.5px/1.55 Consolas, ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+
 /* Primeros pasos */
 .steps { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
 .steps li { display: flex; align-items: flex-start; gap: 14px; margin: 0; padding: 12px 0; border-bottom: 1px solid var(--line); }

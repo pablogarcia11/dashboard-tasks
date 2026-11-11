@@ -4,13 +4,10 @@
 del stream (JSON tal cual lo devuelve Google), nunca de la respuesta redactada por Claude.
 """
 import json
-import os
-import shutil
-import subprocess
-import tempfile
-from datetime import date, datetime
+from datetime import date
 
 from collectors.base import Activity
+from collectors.claude_connector import ConnectorError, result_text, run_connector, tool_results
 from core.dates import day_bounds, to_work_date
 
 LIST_EVENTS = "mcp__claude_ai_Google_Calendar__list_events"
@@ -19,29 +16,6 @@ SKIP_TYPES = {"workingLocation", "outOfOffice", "birthday"}
 
 class GcalError(RuntimeError):
     pass
-
-
-def tool_results(stream: str) -> list[dict]:
-    """tool_result de un stream-json de `claude -p`."""
-    out = []
-    for line in stream.splitlines():
-        try:
-            msg = json.loads(line)
-        except json.JSONDecodeError:
-            continue
-        if msg.get("type") != "user":
-            continue
-        for c in msg.get("message", {}).get("content", []):
-            if isinstance(c, dict) and c.get("type") == "tool_result":
-                out.append(c)
-    return out
-
-
-def result_text(result: dict) -> str:
-    content = result.get("content")
-    if isinstance(content, str):
-        return content
-    return "".join(c.get("text", "") for c in content or [] if isinstance(c, dict))
 
 
 def events_from_stream(stream: str) -> list[dict]:
@@ -95,18 +69,11 @@ class GcalCollector:
                   f"y timeMax={until.isoformat()} (zona {self.tz}), con el máximo de resultados por página. "
                   "Si la respuesta trae nextPageToken, vuelve a llamar con él hasta tenerlos todos. "
                   "No hagas nada más y responde solo 'hecho'.")
-        exe = shutil.which(self.claude.get("command", "claude")) or self.claude.get("command", "claude")
-        env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
         try:
-            p = subprocess.run(
-                [exe, "-p", prompt, "--model", "haiku", "--allowedTools", LIST_EVENTS,
-                 "--output-format", "stream-json", "--verbose"],
-                capture_output=True, text=True, encoding="utf-8", errors="replace", env=env,
-                timeout=self.claude.get("timeout_seconds", 300), cwd=tempfile.gettempdir(),
-            )
-        except subprocess.TimeoutExpired:
-            raise GcalError("Calendar: Claude no respondió a tiempo")
-        return events_from_stream(p.stdout)
+            stream = run_connector(prompt, [LIST_EVENTS], self.claude)
+        except ConnectorError as e:
+            raise GcalError(f"Calendar: {e}")
+        return events_from_stream(stream)
 
     def collect(self, start: date, end: date) -> list[Activity]:
         items = []
