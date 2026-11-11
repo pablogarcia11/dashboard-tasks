@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS activity (
   id INTEGER PRIMARY KEY,
   source TEXT NOT NULL,        -- git | notion | gcal | slack | github
-  kind TEXT NOT NULL,          -- commit | wip | task | task_plan | meeting | message | pr | review
+  kind TEXT NOT NULL,          -- commit | wip | note | task | task_plan | meeting | message | pr | review
   external_id TEXT NOT NULL,
   ts TEXT NOT NULL,            -- ISO 8601 con zona
   work_date TEXT NOT NULL,     -- YYYY-MM-DD en zona del usuario

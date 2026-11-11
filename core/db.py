@@ -44,6 +44,14 @@ def replace_kind(con: sqlite3.Connection, source: str, kind: str, items: list[Ac
     upsert_activities(con, items)
 
 
+def replace_range(con: sqlite3.Connection, source: str, kinds: list[str], start: str, end: str,
+                  items: list[Activity]) -> None:
+    """Sustituye las entradas de esos tipos en el rango (p. ej. notas de Notion editadas o borradas)."""
+    con.execute(f"DELETE FROM activity WHERE source = ? AND kind IN ({','.join('?' * len(kinds))})"
+                " AND work_date BETWEEN ? AND ?", (source, *kinds, start, end))
+    upsert_activities(con, items)
+
+
 def activities(con: sqlite3.Connection, start: str, end: str, sources=None) -> list[dict]:
     """Actividad entre dos work_date (incluidas), ordenada por hora."""
     q = "SELECT * FROM activity WHERE work_date BETWEEN ? AND ?"
@@ -57,6 +65,24 @@ def activities(con: sqlite3.Connection, start: str, end: str, sources=None) -> l
         d["extra"] = json.loads(d.pop("extra_json") or "{}")
         out.append(d)
     return out
+
+
+def get_summary(con: sqlite3.Connection, work_date: str, kind: str) -> dict | None:
+    r = con.execute("SELECT * FROM summaries WHERE work_date = ? AND kind = ?", (work_date, kind)).fetchone()
+    return dict(r) if r else None
+
+
+def save_summary(con: sqlite3.Connection, work_date: str, kind: str, content: str, input_hash: str) -> None:
+    now = datetime.now().astimezone().isoformat(timespec="seconds")
+    con.execute("""INSERT INTO summaries (work_date, kind, content_md, input_hash, created_at) VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(work_date, kind) DO UPDATE SET content_md=excluded.content_md,
+                   input_hash=excluded.input_hash, created_at=excluded.created_at""",
+                (work_date, kind, content, input_hash, now))
+    con.commit()
+
+
+def sync_states(con: sqlite3.Connection) -> dict:
+    return {r["source"]: dict(r) for r in con.execute("SELECT * FROM sync_state")}
 
 
 def set_sync_state(con: sqlite3.Connection, source: str, error: str | None = None) -> None:
