@@ -46,7 +46,10 @@
     <div class="wrap appbar-inner">
       <a class="brand" href="/" aria-label="{{ user_name }}: ir a hoy" title="Ir a hoy">
         {% if has_logo %}<img src="/static/logo.png" alt="1MillionBot" width="120" height="30">{% endif %}
-        <span class="avatar" aria-hidden="true">{{ user_initials }}</span>
+        {# Foto de perfil de Notion; si no carga, se ven las iniciales que hay debajo #}
+        <span class="avatar" aria-hidden="true">{{ user_initials }}
+          {%- if has_avatar %}<img src="/avatar" alt="" width="32" height="32" onerror="this.remove()">{% endif -%}
+        </span>
         <span class="brand-text">{{ user_name }}</span>
       </a>
       <nav class="appnav">

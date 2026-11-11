@@ -89,9 +89,11 @@ code { font-size: .9em; }
   .appnav { gap: 14px; }
 }
 .avatar {
-  display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; flex: none;
-  background: var(--red); color: var(--white); font-size: .8rem; font-weight: 800; letter-spacing: .02em;
+  position: relative; display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%;
+  flex: none; overflow: hidden; background: var(--red); color: var(--white); font-size: .8rem; font-weight: 800;
+  letter-spacing: .02em;
 }
+.avatar img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .appnav { display: flex; align-items: center; gap: 22px; }
 .appnav a { text-decoration: none; color: var(--muted); font-weight: 500; }
 .appnav a:hover { color: var(--red-text); }

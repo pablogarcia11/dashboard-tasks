@@ -8,7 +8,7 @@ from datetime import date, datetime, timedelta
 
 import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -16,7 +16,7 @@ from collectors.git_local import GitLocalCollector
 from core import db
 from core.config import ROOT, load_config
 from core.dates import effective_today, is_workday, next_workday, previous_workday
-from core.identity import display_name, initials
+from core.identity import avatar_path, display_name, initials
 from core.timesheet import as_text, build_blocks, fmt, parse_tasks
 from core.views import day_data, standup_context, timesheet_inputs
 from jobs.collect_all import run_collect
@@ -62,11 +62,21 @@ templates.env.globals["sync_hints"] = {
 }
 templates.env.globals["claude_hint"] = ("Si es un límite de uso de Claude, espera unos minutos y vuelve a intentarlo; "
                                         "si dice que falta iniciar sesión, ejecuta «claude» en una terminal.")
-# Nombre de quien usa el dashboard, deducido de git/Notion (core/identity.py)
+# Nombre y foto de quien usa el dashboard, deducidos de Notion/git (core/identity.py)
 templates.env.globals["user_name"] = display_name()
 templates.env.globals["user_initials"] = initials(display_name())
+templates.env.globals["has_avatar"] = avatar_path() is not None
 # Logo oficial: se muestra si existe web/static/logo.png (no se versiona una copia recreada)
 templates.env.globals["has_logo"] = (ROOT / "web" / "static" / "logo.png").is_file()
+
+
+@app.get("/avatar")
+def avatar():
+    """Foto de perfil (copia local de la de Notion); el navegador la guarda un día."""
+    path = avatar_path()
+    if not path:
+        return Response(status_code=404)
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "max-age=86400"})
 
 
 @app.get("/")
