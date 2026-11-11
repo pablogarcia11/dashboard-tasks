@@ -38,6 +38,17 @@ def test_project_for_no_confunde_prefijos(tmp_path):
     assert project_for(tmp_path / "airisk-api-roles", tmp_path, PROJECTS) == "airisk-api-roles"
 
 
+def test_project_for_por_nombre_de_repo_o_carpeta_en_cualquier_sitio(tmp_path):
+    company = {"AI Risk": ["airisk*"], "Millie": ["millie", "apiREST"], "IBH": ["ibh", "ibh-*"]}
+    p = lambda rel: project_for(tmp_path / rel, tmp_path, company)
+    assert p("airiskmanagement") == "AI Risk"
+    assert p("trabajo/clientes/airisk-api") == "AI Risk"           # da igual dónde esté
+    assert p("millie/dashboard") == "Millie"                       # por la carpeta que lo contiene
+    assert p("apiREST") == "Millie"                                # por el nombre del repo, sin carpeta millie
+    assert p("ibh/bff-user-control-panel") == "IBH"
+    assert p("Kanvas") == "Kanvas"                                 # sin patrón: su carpeta de primer nivel
+
+
 def test_parse_log():
     out = (
         f"{RS}abc123{US}Pablo García{US}pablogarcia@1millionbot.com{US}2026-11-10T10:15:00+01:00"

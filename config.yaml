@@ -38,15 +38,17 @@ git:
   scan_depth: 3
   # Qué repos se muestran se decide en Ajustes (interruptor "Visible"). El propio dashboard nunca se recoge.
 
-# Proyecto = encabezado 3 del diario. Rutas relativas a la carpeta de repos; una carpeta incluye sus repos anidados.
-# Un repo sin mapear toma como proyecto el nombre de su carpeta de primer nivel.
+# Proyectos de la empresa (= encabezados del diario) según el nombre de los repos. Cada patrón se compara
+# con el nombre del repo y con el de las carpetas que lo contienen, así que no depende de dónde tenga cada
+# persona sus repos; admite comodines (airisk*). Los worktrees heredan el proyecto de su repo principal.
+# Un repo que no encaje toma como proyecto el nombre de su carpeta de primer nivel.
 projects:
-  AI Risk: [airisk-api, airisk-api-cdu, airisk-api-roles, airiskmanagement, airiskmanagement-roles]
+  AI Risk: ["airisk*"]                                 # airisk-api, airiskmanagement…
   Kit migración: [boilerplate-api, migration-boilerplate-api]
-  Aurea: [aurea]
-  IBH: [ibh]
-  Millie: [millie]
-  Rec Aéreas: [rec-aereas]
+  Aurea: ["aurea*"]                                    # aurea-1mb, aurea-api
+  IBH: [ibh, "ibh-*"]                                  # todo lo que esté en una carpeta ibh
+  Millie: [millie, apiREST]                            # apiREST, dashboard… dentro de millie
+  Rec Aéreas: [rec-aereas, "juridocraft*"]
   # Reuniones de empresa (Sprint Review, Monthly Review...) sin proyecto concreto
   1MB: []
 company_meetings_project: 1MB

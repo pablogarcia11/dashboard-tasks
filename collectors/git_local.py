@@ -2,6 +2,7 @@
 
 No usa autenticación: llama a `git -C <repo>` por subprocess.
 """
+import fnmatch
 import os
 import subprocess
 from dataclasses import dataclass
@@ -49,12 +50,18 @@ def _norm(p: Path | str) -> str:
 
 
 def project_for(path: Path, root: Path, projects: dict) -> str:
-    rel = path.relative_to(root).as_posix()
-    for name, entries in projects.items():
-        for e in entries or []:
-            if rel == e or rel.startswith(e.rstrip("/") + "/"):
+    """Proyecto de un repo según la nomenclatura de la empresa (config.yaml, `projects`).
+
+    Cada patrón (admite comodines: `airisk*`) se compara con el nombre del repo y luego con el de cada
+    carpeta que lo contiene, de dentro afuera; así no depende de dónde tenga cada uno sus repos.
+    Sin coincidencia: el nombre de la carpeta de primer nivel.
+    """
+    parts = path.relative_to(root).parts
+    for component in reversed(parts):
+        for name, patterns in projects.items():
+            if any(fnmatch.fnmatch(component.lower(), p.lower()) for p in patterns or []):
                 return name
-    return rel.split("/")[0]
+    return parts[0]
 
 
 def discover_repos(root: Path, depth: int, exclude: list, projects: dict) -> list[Repo]:
@@ -167,6 +174,11 @@ class GitLocalCollector:
             except RuntimeError as e:
                 self.errors.append(str(e))
         repos = [r for r in repos if r.common_dir]
+        # Un worktree es el mismo repo: hereda el proyecto del repo principal
+        mains = {r.common_dir: r.project for r in repos if not r.is_worktree}
+        for r in repos:
+            if r.is_worktree and r.common_dir in mains:
+                r.project = mains[r.common_dir]
         self.detected_authors = detect_author_emails(repos)
         self.authors = self.manual_authors | self.detected_authors
         return repos
