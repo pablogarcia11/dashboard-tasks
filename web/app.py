@@ -52,6 +52,14 @@ app.mount("/static", StaticFiles(directory=ROOT / "web" / "static"), name="stati
 templates = Jinja2Templates(directory=ROOT / "web" / "templates")
 templates.env.filters["long_date"] = lambda d: f"{WEEKDAYS[d.weekday()]} {d.day} de {MONTHS[d.month - 1]}"
 templates.env.filters["hhmm"] = lambda ts: ts[11:16]
+# Qué hacer cuando falla cada fuente (se muestra junto al error)
+templates.env.globals["sync_hints"] = {
+    "git": "Comprueba que el repo existe y que git funciona en él; si el aviso habla de «dubious ownership», revisa la configuración de git del repo.",
+    "notion": "Si el permiso caducó o se revocó, vuelve a autorizar con: python -m collectors.notion_auth",
+    "gcal": "Reconecta Google Calendar en claude.ai → Configuración → Conectores, marcando todos los permisos, y pulsa «Actualizar datos».",
+}
+templates.env.globals["claude_hint"] = ("Si es un límite de uso de Claude, espera unos minutos y vuelve a intentarlo; "
+                                        "si dice que falta iniciar sesión, ejecuta «claude» en una terminal.")
 # Logo oficial: se muestra si existe web/static/logo.png (no se versiona una copia recreada)
 templates.env.globals["has_logo"] = (ROOT / "web" / "static" / "logo.png").is_file()
 

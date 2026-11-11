@@ -124,6 +124,7 @@ code { font-size: .9em; }
 
 .notice { background: var(--red-tint); border-left: 3px solid var(--red); padding: 10px 14px; border-radius: 0 8px 8px 0; }
 .notice.error { color: var(--red-text); font-weight: 700; }
+.notice .hint { display: block; margin-top: 4px; color: var(--text); font-weight: 500; }
 
 /* Rejilla y tarjetas, separadas por gris claro */
 .grid { display: grid; grid-template-columns: 1fr; gap: 18px; }

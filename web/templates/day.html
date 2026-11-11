@@ -24,7 +24,8 @@
 <p class="notice">Hoy no es día laborable: se muestra el último día laborable.</p>
 {% endif %}
 {% for source, s in sync.items() if s.last_error %}
-<p class="notice error">Error en {{ source }}: {{ s.last_error }}</p>
+<p class="notice error">Error en {{ source }}: {{ s.last_error }}
+  {% if sync_hints[source] %}<span class="hint">{{ sync_hints[source] }}</span>{% endif %}</p>
 {% endfor %}
 
 <div class="grid">
