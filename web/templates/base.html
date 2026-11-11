@@ -134,15 +134,17 @@
       if (e.target.matches("textarea[data-guard]")) e.target.dataset.dirty = "1";
     });
     document.body.addEventListener("htmx:beforeRequest", function (e) {
-      var scope = e.target.closest("#standup-body, .ts-day");
+      var scope = e.target.closest("#panel-standup, #panel-notes, .ts-day");
       if (scope && scope.querySelector("textarea[data-dirty]")
           && !confirm("Has editado el texto y se perderá al regenerarlo. ¿Continuar?")) e.preventDefault();
     });
     // Anuncia el indicador de carga ("Recogiendo…", "Redactando con Claude…") a lectores de pantalla
     document.body.addEventListener("htmx:beforeRequest", function (e) {
-      var sel = e.target.getAttribute && e.target.getAttribute("hx-indicator");
+      if (e.defaultPrevented || !e.target.getAttribute) return;
+      var sel = e.target.getAttribute("hx-indicator");
       var ind = sel && document.querySelector(sel);
-      if (ind && !e.defaultPrevented) announce(ind.textContent.trim());
+      var text = e.target.dataset.busy || (ind && ind.textContent.trim());   // iconos: data-busy
+      if (text) announce(text);
     });
     window.addEventListener("beforeunload", function (e) {
       if (document.querySelector("textarea[data-dirty]")) { e.preventDefault(); e.returnValue = ""; }

@@ -302,7 +302,7 @@ textarea:focus { border-color: var(--red-text); outline: 2px solid transparent; 
 /* Textos de ayuda en peso medio: en pequeño, el peso fino (300) se lee mal */
 .setting-label p, .settings-card-head p { font-weight: 500; }
 
-/* Móvil: sin la columna Proyecto y con la cabecera corta, para que quepan los dos interruptores */
+/* Móvil: textos cortos (tabla de repos sin la columna Proyecto, pestaña "Notas"); el largo queda para lectores */
 .label-short { display: none; }
 @media (max-width: 600px) {
   table.settings .col-project { display: none; }
@@ -415,8 +415,31 @@ textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-text) 22%, t
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Contenido que llega por HTMX: aparece con un fundido corto */
-.ts-day, #standup-body { transition: opacity 200ms var(--ease-out); }
-.ts-day.htmx-added, #standup-body.htmx-added { opacity: 0; }
+.ts-day, .col > .card, .tab-panel { transition: opacity 200ms var(--ease-out); }
+.ts-day.htmx-added, .col > .card.htmx-added, .tab-panel.htmx-added { opacity: 0; }
+
+/* Tarjeta de textos (stand-up / notas para el diario) con pestañas; el icono de regenerar de la
+   pestaña visible queda en la esquina superior derecha de la tarjeta */
+.writer { position: relative; }
+.tabs { position: relative; display: flex; gap: 22px; margin: -2px 44px 14px 0; border-bottom: 1px solid var(--line); }
+.tabs [role="tab"] {
+  position: relative; padding: 4px 0 10px; border: 0; background: none; cursor: pointer;
+  font: 700 1.05rem var(--font); color: var(--muted); white-space: nowrap; transition: color var(--fast) ease;
+}
+.tabs [role="tab"]:hover { color: var(--text); }
+.tabs [role="tab"][aria-selected="true"] { color: var(--red-text); }
+/* Barra de la pestaña activa: mismo movimiento que la de la barra superior (280 ms, ease-in-out).
+   Mide 100 px y se escala al ancho de la pestaña: solo se anima transform */
+.tab-indicator {
+  position: absolute; left: 0; bottom: -1px; width: 100px; height: 2px; border-radius: 2px;
+  background: var(--red-text); transform-origin: left center; pointer-events: none;
+}
+.tab-indicator.is-ready { transition: transform 280ms var(--ease-in-out); }
+.tab-panel > .regen { position: absolute; top: 14px; right: 16px; }
+.tab-panel:not([hidden]) { animation: fade 150ms ease; }
+.tab-panel > .muted:first-of-type { margin-top: 0; }
+/* Parte de horas: el icono de regenerar va al pie de cada día, con borde para que se vea como botón */
+.ts-foot .regen { border: 1px solid var(--line); margin-top: 6px; }
 
 /* "Copiar": botón cuadrado solo con icono → ✓ al copiar */
 .btn-copy { display: inline-grid; place-items: center; width: 38px; height: 38px; padding: 0; }
@@ -507,6 +530,7 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   .icon-link:hover svg { transform: none; }
   .skip-link { transition: none; }
   ::view-transition-group(nav-indicator) { animation-duration: 0s; }
+  .tab-indicator.is-ready { transition: none; }
   .task-dialog, .task-dialog[open] { transform: none; }
   .btn.htmx-request::before { animation-duration: 1.5s; }
   .btn.is-copied .i-check { animation: none; }

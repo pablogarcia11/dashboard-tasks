@@ -1,15 +1,18 @@
-{% from "_macros.html" import copy_button %}
-<div id="standup-body">
+{% from "_macros.html" import copy_button, regen_button %}
+{# Pestaña "Stand-up" de la tarjeta de textos (day.html). Se sustituye entera al generar o regenerar. #}
+<div role="tabpanel" class="tab-panel" id="panel-standup" aria-labelledby="tab-standup">
+  {% if text %}{{ regen_button("/standup/" ~ day.isoformat() ~ "?force=true", "Regenerar stand-up",
+                               target="closest [role=tabpanel]") }}{% endif %}
+  <p class="muted">Para #equipo-tecnologia-stand-up: lo hecho el {{ prev | long_date }} y lo de este día.</p>
   {% if error %}<p class="notice error">No se pudo generar: {{ error }}<span class="hint">{{ claude_hint }}</span></p>{% endif %}
   {% if text %}
   <textarea id="standup-text" rows="18" spellcheck="false" aria-label="Texto del stand-up" data-guard>{{ text }}</textarea>
-  {% endif %}
+  <div class="actions">{{ copy_button("standup-text") }}</div>
+  {% else %}
   <div class="actions">
-    {% if text %}
-    {{ copy_button("standup-text") }}
-    {% endif %}
-    <button type="button" class="btn ghost" hx-post="/standup/{{ day.isoformat() }}?force=true" hx-target="#standup-body"
-            hx-swap="outerHTML" hx-indicator="#regen" hx-disabled-elt="this">{% if text %}Regenerar{% else %}Generar stand-up{% endif %}</button>
-    <span id="regen" class="htmx-indicator muted">Redactando con Claude…</span>
+    <button type="button" class="btn" hx-post="/standup/{{ day.isoformat() }}" hx-target="closest [role=tabpanel]"
+            hx-swap="outerHTML" hx-indicator="#gen-standup" hx-disabled-elt="this">Generar stand-up</button>
+    <span id="gen-standup" class="htmx-indicator muted">Redactando con Claude…</span>
   </div>
+  {% endif %}
 </div>

@@ -12,6 +12,18 @@
 </button>
 {%- endmacro %}
 
+{# Botón con icono de reinicio (una flecha en círculo) en la esquina de una tarjeta: vuelve a generar con Claude #}
+{% macro regen_button(url, label, target="closest section", trigger="click") -%}
+<button type="button" class="icon-btn regen" hx-post="{{ url }}" hx-target="{{ target }}" hx-swap="outerHTML"
+        hx-trigger="{{ trigger }}" hx-disabled-elt="this" data-busy="{{ label }}…"
+        aria-label="{{ label }}" title="{{ label }}">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+       stroke-linejoin="round" aria-hidden="true">
+    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
+  </svg>
+</button>
+{%- endmacro %}
+
 {# Navegación de fechas al estilo Google Calendar: [Hoy] ‹ › #}
 {% macro date_nav(current_href, current_label, is_current, prev_href, prev_label, next_href, next_label) -%}
 <div class="date-nav" role="group" aria-label="Cambiar de fecha">

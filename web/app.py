@@ -25,7 +25,7 @@ from core.settings import effective_config
 from collectors import notion_auth
 from collectors.notion import NotionClient, journal_candidates, journal_preview
 from core.timesheet import as_text, build_blocks, fmt, parse_tasks
-from core.views import day_data, standup_context, timesheet_inputs
+from core.views import day_data, journal_notes_context, standup_context, timesheet_inputs
 from jobs.collect_all import run_collect
 from llm.claude_cli import ClaudeError, generate, input_hash
 
@@ -116,6 +116,7 @@ def day_view(request: Request, d: str):
         "prev": previous_workday(shown, HOLIDAYS), "next": nxt if nxt <= today() else None,
         "data": day_data(con, shown, HOLIDAYS), "sync": db.sync_states(con),
         "standup": db.get_summary(con, shown.isoformat(), "standup"),
+        "journal_notes": journal_notes_state(con, shown),
     })
 
 
@@ -425,8 +426,33 @@ def standup(request: Request, d: str, force: bool = False):
         error = str(e)
         last = db.get_summary(con, d, "standup")  # conserva el último resultado
         text = last["content_md"] if last else ""
-    return templates.TemplateResponse(request, "_standup.html",
-                                      {"day": day, "text": text, "error": error, "cached": cached})
+    return templates.TemplateResponse(request, "_standup.html", {
+        "day": day, "prev": previous_workday(day, HOLIDAYS), "text": text, "error": error})
+
+
+def journal_notes_state(con, day: date) -> dict:
+    """Borrador guardado de las notas del diario y si hay commits nuevos desde que se generó."""
+    ctx = journal_notes_context(con, day, cfg["user"]["timezone"])
+    saved = db.get_summary(con, day.isoformat(), "journal_notes")
+    return {"context": ctx, "has_commits": bool(ctx["commits"]), "text": saved["content_md"] if saved else None,
+            "stale": bool(saved) and saved["input_hash"] != input_hash(cfg, "journal_notes", ctx)}
+
+
+@app.post("/journal-notes/{d}", response_class=HTMLResponse)
+def journal_notes(request: Request, d: str, force: bool = False):
+    """Redacta (o devuelve guardadas) las notas del día para el diario a partir de los commits."""
+    day = date.fromisoformat(d)
+    con = db.connect()
+    state, error = journal_notes_state(con, day), None
+    if state["has_commits"]:
+        try:
+            state["text"], _ = generate(con, cfg, "journal_notes", d, state["context"], force=force)
+            state["stale"] = False
+        except ClaudeError as e:
+            error = str(e)   # se conserva el último borrador guardado
+    return templates.TemplateResponse(request, "_card_journal_notes.html", {
+        "day": day, "text": state["text"], "stale": state["stale"], "has_commits": state["has_commits"],
+        "error": error})
 
 
 def main():

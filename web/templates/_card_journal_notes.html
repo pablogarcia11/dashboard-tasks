@@ -1,0 +1,23 @@
+{% from "_macros.html" import copy_button, regen_button %}
+{# Pestaña "Notas para el diario" de la tarjeta de textos (day.html). Se sustituye entera al generar o regenerar. #}
+{% set journal = journal_title() %}
+<div role="tabpanel" class="tab-panel" id="panel-notes" aria-labelledby="tab-notes" {% if hidden %}hidden{% endif %}>
+  {% if text %}{{ regen_button("/journal-notes/" ~ day.isoformat() ~ "?force=true", "Regenerar notas",
+                               target="closest [role=tabpanel]") }}{% endif %}
+  <p class="muted">Borrador del día a partir de tus commits, con el formato de tu diario. Cópialo y pégalo en Notion:
+    los encabezados y las viñetas se convierten solos.</p>
+  {% if error %}<p class="notice error">No se pudo generar: {{ error }}<span class="hint">{{ claude_hint }}</span></p>{% endif %}
+  {% if not has_commits %}
+  <p class="muted small">Sin commits ese día: no hay nada que redactar.</p>
+  {% elif text %}
+  {% if stale %}<p class="notice small">Hay commits nuevos desde que se generó: pulsa el icono de regenerar para incluirlos.</p>{% endif %}
+  <textarea id="journal-notes-text" rows="18" spellcheck="false" aria-label="Notas para {{ journal }}" data-guard>{{ text }}</textarea>
+  <div class="actions">{{ copy_button("journal-notes-text") }}</div>
+  {% else %}
+  <div class="actions">
+    <button type="button" class="btn" hx-post="/journal-notes/{{ day.isoformat() }}" hx-target="closest [role=tabpanel]"
+            hx-swap="outerHTML" hx-indicator="#gen-notes" hx-disabled-elt="this">Generar notas</button>
+    <span id="gen-notes" class="htmx-indicator muted">Redactando con Claude…</span>
+  </div>
+  {% endif %}
+</div>

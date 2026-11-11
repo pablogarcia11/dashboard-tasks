@@ -73,19 +73,54 @@
   </div>
 
   <div class="col">
-    <section class="card" id="standup">
-      <h2>Stand-up</h2>
-      <p class="muted">Para #equipo-tecnologia-stand-up: lo hecho el {{ prev | long_date }} y lo de este día.</p>
-      {% if standup %}
-        {% with text=standup.content_md, error=None, cached=True %}{% include "_standup.html" %}{% endwith %}
-      {% else %}
-      <div id="standup-body">
-        <button type="button" class="btn" hx-post="/standup/{{ day.isoformat() }}" hx-target="#standup-body"
-                hx-swap="outerHTML" hx-indicator="#gen" hx-disabled-elt="this">Generar stand-up</button>
-        <span id="gen" class="htmx-indicator muted">Redactando con Claude…</span>
+    {# Textos para copiar: stand-up y notas para el diario, en pestañas dentro de la misma tarjeta #}
+    <section class="card writer" id="card-writer" aria-label="Textos para copiar">
+      <div class="tabs" role="tablist" aria-label="Textos para copiar">
+        <button type="button" role="tab" id="tab-standup" aria-controls="panel-standup" aria-selected="true">Stand-up</button>
+        <button type="button" role="tab" id="tab-notes" aria-controls="panel-notes" aria-selected="false" tabindex="-1">
+          <span class="label-long">Notas para {{ journal_title() }}</span><span class="label-short" aria-hidden="true">Notas</span></button>
+        <span class="tab-indicator" aria-hidden="true"></span>
       </div>
-      {% endif %}
+      {% with text=standup.content_md if standup else None, error=None %}{% include "_standup.html" %}{% endwith %}
+      {% with text=journal_notes.text, stale=journal_notes.stale, has_commits=journal_notes.has_commits,
+              error=None, hidden=True %}{% include "_card_journal_notes.html" %}{% endwith %}
     </section>
   </div>
 </div>
+<script>
+  // Pestañas de la tarjeta de textos (patrón WAI-ARIA: clic o flechas ← →; se recuerda la última)
+  (function () {
+    const tabs = [...document.querySelectorAll("#card-writer [role=tab]")];
+    const bar = document.querySelector("#card-writer .tab-indicator");
+    // Una sola barra que se desliza hasta la pestaña activa (como la de Día / Parte de horas)
+    function moveBar(tab) {
+      bar.style.transform = `translateX(${tab.offsetLeft}px) scaleX(${tab.offsetWidth / 100})`;
+    }
+    function select(tab, focus) {
+      tabs.forEach(t => {
+        const on = t === tab;
+        t.setAttribute("aria-selected", on);
+        t.tabIndex = on ? 0 : -1;
+        document.getElementById(t.getAttribute("aria-controls")).hidden = !on;
+      });
+      moveBar(tab);
+      if (focus) tab.focus();
+      try { localStorage.setItem("writer-tab", tab.id); } catch (e) {}
+    }
+    tabs.forEach((tab, i) => {
+      tab.addEventListener("click", () => select(tab));
+      tab.addEventListener("keydown", e => {
+        const step = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+        if (step) { e.preventDefault(); select(tabs[(i + step + tabs.length) % tabs.length], true); }
+      });
+    });
+    let saved = null;
+    try { saved = localStorage.getItem("writer-tab"); } catch (e) {}
+    // Al cargar, la barra se coloca sin animación; a partir de ahí se desliza
+    select(tabs.find(t => t.id === saved) || tabs[0]);
+    requestAnimationFrame(() => requestAnimationFrame(() => bar.classList.add("is-ready")));
+    // Si cambia el ancho (fuente cargada, móvil ↔ escritorio), se recoloca
+    new ResizeObserver(() => moveBar(tabs.find(t => t.getAttribute("aria-selected") === "true"))).observe(bar.parentElement);
+  })();
+</script>
 {% endblock %}

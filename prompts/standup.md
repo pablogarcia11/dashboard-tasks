@@ -1,7 +1,7 @@
-Redacta el stand-up diario de Pablo para el canal de Slack #equipo-tecnologia-stand-up.
+Redacta el stand-up diario de la persona usuaria para el canal de Slack #equipo-tecnologia-stand-up.
 
 Recibirás por la entrada estándar un JSON con:
-- `ayer`: el día laborable anterior. `notas_im_back` es lo que Pablo apuntó en su diario de Notion (FUENTE PRINCIPAL), agrupado por proyecto. `commits` y `reuniones` son apoyo.
+- `ayer`: el día laborable anterior. `notas_im_back` es lo que la persona apuntó en su diario de Notion (FUENTE PRINCIPAL), agrupado por proyecto. `commits` y `reuniones` son apoyo.
 - `hoy`: `pendientes_de_ayer` (lo que dejó apuntado como pendiente), `tareas_activas` de Notion, `reuniones` y `trabajo_sin_terminar` (cambios sin commitear o sin subir).
 
 Reglas:

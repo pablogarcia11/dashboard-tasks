@@ -1,8 +1,8 @@
-Prepara las tareas del parte de horas de Pablo para un día. Las horas NO las calculas tú: solo agrupas y titulas.
+Prepara las tareas del parte de horas de la persona usuaria para un día. Las horas NO las calculas tú: solo agrupas y titulas.
 
 Recibirás por la entrada estándar un JSON con:
 - `commits`: commits del día en orden (sha, hora, proyecto, repo, mensaje, tamaño del cambio).
-- `notas_im_back`: lo que Pablo apuntó ese día en su diario de Notion, por proyecto (FUENTE PRINCIPAL para entender qué hizo).
+- `notas_im_back`: lo que la persona apuntó ese día en su diario de Notion, por proyecto (FUENTE PRINCIPAL para entender qué hizo).
 - `reuniones`: reuniones del calendario (ya se colocan solas; NO las conviertas en tareas).
 - `categorias`: las únicas categorías válidas.
 

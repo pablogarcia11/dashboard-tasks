@@ -315,6 +315,12 @@ Buenos días! :saluting_face:
 - Cada tarea: frase corta en infinitivo, poco técnica, ~4–10 palabras ("Corregir…", "Revisar…", "Subir a producción"). Condensa las notas largas de I'M BACK en 5–9 puntos por proyecto como máximo; los "Pasado a production" se agrupan en un único "Subir cambios a producción".
 - Reuniones de hoy van en "hoy" bajo su proyecto como "Reunión <tema>".
 
+### 7.4 bis Notas para el diario (2026-11-11)
+- En la vista Día, la tarjeta de textos tiene dos **pestañas**: **Stand-up** y **Notas para <diario>** (se recuerda la última; flechas ← → con el teclado; la barra roja se desliza entre pestañas igual que la de Día / Parte de horas: 280 ms, ease-in-out, solo `transform`).
+- "Notas para <diario>" redacta con `claude -p` (**Sonnet**, el alias resuelve a `claude-sonnet-5-5`; ≈ 9 s) un borrador del día **a partir de los commits** de los repos visibles, con el formato del diario: `# Martes 10/11/2026`, `### Proyecto`, viñetas en primera persona y pasado, poco técnicas, agrupadas por tema con subviñetas (`prompts/journal_notes.md`). Markdown que Notion convierte al pegar. Se cachea por día (`kind=journal_notes`) y avisa si hay commits nuevos desde que se generó.
+- **Regenerar** es un icono de reinicio (↻): en la vista Día, en la esquina superior derecha de la tarjeta (actúa sobre la pestaña visible); en el parte de horas, al pie de cada día, donde estaba el botón.
+- Los prompts ya no nombran a una persona concreta ("la persona usuaria").
+
 ### 7.5 Parte de horas (calendario para 1million hub)
 
 En la plataforma interna **1million hub** (Trabajo → Tareas → Mis tareas) cada empleado apunta en un calendario semanal (L–V) las tareas realizadas cada día con su franja horaria y categoría; se contabilizan las horas diarias y la semana se envía a aprobación. El hub ya importa las reuniones de Google Calendar por su cuenta (y tiene un botón "Notion" por día que **no funciona bien: ignóralo**). **El dashboard no tiene acceso al hub**: solo genera la propuesta para que el usuario la copie a mano.

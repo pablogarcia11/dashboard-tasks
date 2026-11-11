@@ -1,4 +1,4 @@
-{% from "_macros.html" import copy_button %}
+{% from "_macros.html" import copy_button, regen_button %}
 {% set id = "ts-" ~ day.isoformat() %}
 <div id="{{ id }}" class="ts-day" {% if state in ("ok", "empty") %}data-minutes="{{ total }}"{% endif %}>
   <div class="ts-grid" style="height: {{ grid_height }}px; --hour: {{ 60 * ppm }}px">
@@ -43,10 +43,8 @@
         <textarea id="{{ id }}-text" rows="8" spellcheck="false" aria-label="Texto del parte del {{ day.isoformat() }}" data-guard>{{ text }}</textarea>
         {{ copy_button(id ~ "-text", small=True) }}
       </details>
-      <button type="button" class="btn ghost small" hx-post="/timesheet/day/{{ day.isoformat() }}?force=true" hx-target="#{{ id }}"
-              hx-swap="outerHTML" {% if stale %}hx-trigger="click, generate-week from:body"{% endif %}
-              hx-indicator="#{{ id }}-regen" hx-disabled-elt="this">Regenerar</button>
-      <span id="{{ id }}-regen" class="htmx-indicator muted small">Agrupando…</span>
+      {{ regen_button("/timesheet/day/" ~ day.isoformat() ~ "?force=true", "Regenerar el parte del " ~ (day | long_date),
+                      target="#" ~ id, trigger="click, generate-week from:body" if stale else "click") }}
     {% endif %}
   </div>
   <script>setTimeout(() => window.onColumnLoaded && onColumnLoaded());</script>
