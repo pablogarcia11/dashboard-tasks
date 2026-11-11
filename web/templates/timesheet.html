@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% set section = "timesheet" %}
+{% block title %}Parte de horas · Dashboard{% endblock %}
+{% block content %}
+<header class="top">
+  <nav class="daynav">
+    <a class="arrow" href="/timesheet/week/{{ prev.isoformat() }}" title="Semana anterior">←</a>
+    <div>
+      <h1>Parte de horas</h1>
+      <p class="muted">Semana del {{ days[0] | long_date }} · Total <strong id="week-total">—</strong></p>
+    </div>
+    {% if next %}<a class="arrow" href="/timesheet/week/{{ next.isoformat() }}" title="Semana siguiente">→</a>
+    {% else %}<span class="arrow disabled">→</span>{% endif %}
+  </nav>
+  <div class="actions">
+    <button class="btn ghost" hx-post="/collect-range/{{ days[0].isoformat() }}/{{ collect_end.isoformat() }}"
+            hx-swap="none" hx-indicator="#collecting">Actualizar datos de la semana</button>
+    <button class="btn" onclick="htmx.trigger(document.body, 'generate-week')">Generar semana</button>
+    <span id="collecting" class="htmx-indicator muted">Recogiendo…</span>
+  </div>
+</header>
+
+<p class="muted small">Propuesta aproximada para copiar a mano en 1million hub: reuniones de Calendar a su hora,
+  tareas de I'M BACK y duración estimada por los huecos entre commits. Revísala antes de apuntarla.</p>
+{% for source, s in sync.items() if s.last_error %}
+<p class="notice error">Error en {{ source }}: {{ s.last_error }}</p>
+{% endfor %}
+
+<div class="ts-scroll">
+  <div class="ts-week">
+    <div class="ts-head"></div>
+    {% for d in days %}
+    <div class="ts-head {% if d == today %}is-today{% endif %}">
+      <span class="muted small">{{ (d | long_date).split(" ")[0] | capitalize }}</span>
+      <strong>{{ d.day }}</strong>
+    </div>
+    {% endfor %}
+
+    <div class="ts-axis" style="height: {{ grid_height }}px">
+      {% for h in hours %}<span style="top: {{ (h * 60 - grid_start) * ppm }}px">{{ "%d:00" | format(h) }}</span>{% endfor %}
+    </div>
+    {% for d in days %}
+    <div id="ts-{{ d.isoformat() }}" hx-get="/timesheet/day/{{ d.isoformat() }}" hx-trigger="load" hx-swap="outerHTML">
+      <div class="ts-grid" style="height: {{ grid_height }}px; --hour: {{ 60 * ppm }}px"></div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="legend">
+  {% for c, cls in [("Desarrollo de negocio", "dev"), ("Reunión", "meet"), ("Documentación", "doc"),
+                    ("Tareas administrativas", "admin"), ("Formación", "learn")] %}
+  <span><i class="ts-block cat-{{ cls }}"></i>{{ c }}</span>
+  {% endfor %}
+</div>
+
+<script>
+  function updateWeekTotal() {
+    let total = 0;
+    document.querySelectorAll(".ts-day[data-minutes]").forEach(el => total += Number(el.dataset.minutes));
+    const h = Math.floor(total / 60), m = total % 60;
+    document.getElementById("week-total").textContent = total ? `${h} h ${String(m).padStart(2, "0")} min` : "—";
+  }
+  document.body.addEventListener("htmx:afterSwap", updateWeekTotal);
+  function copyText(id, btn) {
+    navigator.clipboard.writeText(document.getElementById(id).value).then(() => {
+      btn.textContent = "Copiado"; setTimeout(() => btn.textContent = "Copiar", 1500);
+    });
+  }
+</script>
+{% endblock %}

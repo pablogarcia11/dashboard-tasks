@@ -4,7 +4,7 @@ Uso:  python -m web.app
 """
 import threading
 from contextlib import asynccontextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -16,9 +16,10 @@ from collectors.git_local import GitLocalCollector
 from core import db
 from core.config import ROOT, load_config
 from core.dates import effective_today, is_workday, next_workday, previous_workday
-from core.views import day_data, standup_context
+from core.timesheet import as_text, build_blocks, fmt, parse_tasks
+from core.views import day_data, standup_context, timesheet_inputs
 from jobs.collect_all import run_collect
-from llm.claude_cli import ClaudeError, generate
+from llm.claude_cli import ClaudeError, generate, input_hash
 
 WEEKDAYS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"]
 MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre",
@@ -104,6 +105,85 @@ def collect_day(d: str):
     day = date.fromisoformat(d)
     collect(previous_workday(day, HOLIDAYS), day)
     return Response(headers={"HX-Refresh": "true"})
+
+
+@app.post("/collect-range/{start}/{end}")
+def collect_range(start: str, end: str):
+    collect(date.fromisoformat(start), min(date.fromisoformat(end), today()))
+    return Response(headers={"HX-Refresh": "true"})
+
+
+# --- Parte de horas -------------------------------------------------------------------------
+
+GRID_START, GRID_END, PPM = 7 * 60, 20 * 60, 1.1  # rejilla 07:00–20:00, píxeles por minuto
+CATEGORY_CLASS = {"Desarrollo de negocio": "dev", "Reunión": "meet", "Documentación": "doc",
+                  "Tareas administrativas": "admin", "Formación": "learn"}
+templates.env.filters["fmt"] = fmt
+templates.env.filters["cat_class"] = lambda c: CATEGORY_CLASS.get(c, "dev")
+
+
+@app.get("/timesheet")
+def timesheet_index():
+    shown, _ = effective_today(today(), HOLIDAYS)
+    return RedirectResponse(f"/timesheet/week/{shown.isoformat()}")
+
+
+@app.get("/timesheet/week/{d}", response_class=HTMLResponse)
+def timesheet_week(request: Request, d: str):
+    monday = date.fromisoformat(d) - timedelta(days=date.fromisoformat(d).weekday())
+    days = [monday + timedelta(days=i) for i in range(5)]
+    return templates.TemplateResponse(request, "timesheet.html", {
+        "days": days, "today": today(), "prev": monday - timedelta(days=7),
+        "next": monday + timedelta(days=7) if monday + timedelta(days=7) <= today() else None,
+        "hours": range(GRID_START // 60, GRID_END // 60), "ppm": PPM, "grid_start": GRID_START,
+        "grid_height": (GRID_END - GRID_START) * PPM, "sync": db.sync_states(db.connect()),
+        "collect_end": min(days[-1], today()),
+    })
+
+
+def timesheet_column(request: Request, d: str, generate_now: bool = False, force: bool = False):
+    day = date.fromisoformat(d)
+    ctx = {"day": day, "ppm": PPM, "grid_start": GRID_START, "grid_height": (GRID_END - GRID_START) * PPM,
+           "blocks": [], "warnings": [], "state": "ok", "error": None, "total": 0}
+    if day > today() or not is_workday(day, HOLIDAYS):
+        ctx["state"] = "future" if day > today() else "holiday"
+        return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
+
+    con = db.connect()
+    inputs = timesheet_inputs(con, day, cfg)
+    commits, cats = inputs["commits"], cfg["timesheet"]["categories"]
+    text = None
+    if not inputs["has_work"]:
+        ctx["state"] = "empty"
+    elif generate_now:
+        try:
+            text, _ = generate(con, cfg, "timesheet", d, inputs["context"], force=force,
+                               validate=lambda t: parse_tasks(t, commits, cats))
+        except ClaudeError as e:
+            ctx["error"] = str(e)
+    cached = db.get_summary(con, d, "timesheet")
+    if inputs["has_work"] and text is None:
+        if cached:
+            text = cached["content_md"]
+            ctx["stale"] = cached["input_hash"] != input_hash(cfg, "timesheet", inputs["context"])
+        else:
+            ctx["state"] = "pending"
+    tasks = parse_tasks(text, commits, cats) if text else []
+    if ctx["state"] in ("ok", "empty"):
+        ctx["blocks"], ctx["warnings"] = build_blocks(cfg["timesheet"], inputs["meetings"], commits, tasks)
+        ctx["total"] = sum(b.minutes for b in ctx["blocks"] if b.title != "Por definir")
+        ctx["text"] = as_text([b for b in ctx["blocks"] if b.title != "Por definir"])
+    return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
+
+
+@app.get("/timesheet/day/{d}", response_class=HTMLResponse)
+def timesheet_day(request: Request, d: str):
+    return timesheet_column(request, d)
+
+
+@app.post("/timesheet/day/{d}", response_class=HTMLResponse)
+def timesheet_day_generate(request: Request, d: str, force: bool = False):
+    return timesheet_column(request, d, generate_now=True, force=force)
 
 
 @app.post("/standup/{d}", response_class=HTMLResponse)

@@ -289,12 +289,6 @@ Buenos días! :saluting_face:
 - Cada tarea: frase corta en infinitivo, poco técnica, ~4–10 palabras ("Corregir…", "Revisar…", "Subir a producción"). Condensa las notas largas de I'M BACK en 5–9 puntos por proyecto como máximo; los "Pasado a production" se agrupan en un único "Subir cambios a producción".
 - Reuniones de hoy van en "hoy" bajo su proyecto como "Reunión <tema>".
 
-### 7.6 Ajustes (icono ⚙ en la barra superior, `/settings`)
-- Tabla con todos los repos descubiertos (proyecto, si es worktree) y dos interruptores por repo: **Visible** (oculta commits, WIP y commits sin subir de ese repo) y **Cambios sin commitear** (oculta solo el WIP).
-- Se guarda en SQLite (`repo_settings`), no en `config.yaml`. El filtro se aplica al preparar los datos de las vistas (`core/views.py`), así que **lo oculto tampoco se envía a Claude**. Los datos se siguen recogiendo: al reactivar aparece al momento.
-- Distinto de `exclude_repos` (config): lo excluido allí no se recoge nunca (este repo, Kanvas, shannon).
-- Los worktrees comparten commits con su repo principal: ocultar un worktree solo oculta su WIP.
-
 ### 7.5 Parte de horas (calendario para 1million hub)
 
 En la plataforma interna **1million hub** (Trabajo → Tareas → Mis tareas) cada empleado apunta en un calendario semanal (L–V) las tareas realizadas cada día con su franja horaria y categoría; se contabilizan las horas diarias y la semana se envía a aprobación. El hub ya importa las reuniones de Google Calendar por su cuenta (y tiene un botón "Notion" por día que **no funciona bien: ignóralo**). **El dashboard no tiene acceso al hub**: solo genera la propuesta para que el usuario la copie a mano.
@@ -311,6 +305,18 @@ En la plataforma interna **1million hub** (Trabajo → Tareas → Mis tareas) ca
   3. Preprocesado **determinista** en Python (orden de commits, huecos, reuniones fijas, comida) y Claude solo **agrupa y titula** (`claude -p`, prompt `prompts/timesheet.md`): sin solapes, bloques ≥ 10 min, total ≥ 8 h, sin inventar tareas que no estén en los datos.
 - Cada bloque es **editable** en pantalla (mover, cambiar duración, categoría o título) antes de copiar. Muestra el total de horas por día y aviso si baja de 8 h.
 - Salida de `claude -p` en JSON estructurado (`[{date, start, end, project, title, category}]`) para pintar la rejilla; validar el JSON (sin solapes, bloques ≥ 10 min, total ≥ 8 h, categoría válida) antes de mostrarlo. Se guarda en `summaries` con `kind=timesheet`.
+
+**Implementado (2026-11-11)** — `/timesheet` (enlace "Parte de horas" en la barra):
+- Vista semanal tipo hub: columnas L–V sobre rejilla 07:00–20:00, bloques coloreados por categoría, total por día y de la semana. Cada día se genera por separado (botón "Generar" o "Generar semana", en paralelo) y se cachea; si los datos cambian se avisa y se puede "Regenerar". "Texto para copiar" por día (editable) con "Copiar". "Actualizar datos de la semana" recoge git + Notion + Calendar del rango.
+- `core/timesheet.py` (determinista, con tests): comida de 60 min en el hueco sin commits ni reuniones más cercano a las 14:00 (entre 13:00 y 16:00); la jornada se alarga si hay commits o reuniones fuera de 08:30–17:30; cada tarea va del final de la anterior a su último commit; huecos entre dos tramos de la misma tarea (p. ej. cortada por una reunión) son de esa tarea; los demás huecos, para tareas de I'M BACK sin commits según su peso estimado; si no hay, se alarga la tarea anterior; redondeo a 5 min, bloques contiguos con el mismo título fusionados, bloques < 10 min absorbidos; aviso si el día baja de 8 h.
+- `prompts/timesheet.md`: Claude solo devuelve JSON con tareas (título, proyecto, categoría, commits o minutos estimados). `parse_tasks` valida: commits inventados o repetidos fuera, categoría inválida → "Desarrollo de negocio", commits sin asignar → tarea propia. Una respuesta inválida no se guarda.
+- Limitación conocida: como los commits ocupan casi toda la jornada, las tareas sin commits (documentación, informes) suelen quedar con poco tiempo al final del día. Revisarlo con el usuario; mejora futura: edición de bloques en la rejilla.
+
+### 7.6 Ajustes (icono ⚙ en la barra superior, `/settings`)
+- Tabla con todos los repos descubiertos (proyecto, si es worktree) y dos interruptores por repo: **Visible** (oculta commits, WIP y commits sin subir de ese repo) y **Cambios sin commitear** (oculta solo el WIP).
+- Se guarda en SQLite (`repo_settings`), no en `config.yaml`. El filtro se aplica al preparar los datos de las vistas (`core/views.py`), así que **lo oculto tampoco se envía a Claude**. Los datos se siguen recogiendo: al reactivar aparece al momento.
+- Distinto de `exclude_repos` (config): lo excluido allí no se recoge nunca (este repo, Kanvas, shannon).
+- Los worktrees comparten commits con su repo principal: ocultar un worktree solo oculta su WIP.
 
 Los prompts (`standup.md`, `day_summary.md`, `notion_summary.md`, `timesheet.md`) viven en ficheros para que el usuario los ajuste sin tocar código. Regla común en todos: *"Usa solo la información proporcionada. Si algo no está claro, dilo en vez de inventarlo."*
 

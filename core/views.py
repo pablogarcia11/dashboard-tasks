@@ -5,6 +5,7 @@ from datetime import date
 
 from core import db
 from core.dates import previous_workday
+from core.timesheet import minute_of
 
 
 def group_by_project(items: list[dict]) -> dict[str, list[dict]]:
@@ -45,6 +46,32 @@ def day_data(con: sqlite3.Connection, day: date, holidays=()) -> dict:
                             if a["kind"] == "wip"], settings),
         "unpushed": [a for a in git_now if a["kind"] == "commit" and not a["extra"].get("pushed", True)],
     }
+
+
+def timesheet_inputs(con: sqlite3.Connection, day: date, cfg: dict) -> dict:
+    """Datos del parte de horas de un día: contexto para Claude y datos para el cálculo horario."""
+    tz = cfg["user"]["timezone"]
+    d = day.isoformat()
+    acts = visible_git(db.activities(con, d, d), db.repo_settings(con))
+    commits = [{"sha": a["extra"]["sha"], "minute": minute_of(a["ts"], tz), "project": a["project"],
+                "subject": a["title"], "repo": a["extra"].get("repo", ""),
+                "size": f"+{a['extra'].get('insertions', 0)} -{a['extra'].get('deletions', 0)}"}
+               for a in acts if a["kind"] == "commit"]
+    meetings = [{"start": minute_of(a["extra"]["start"], tz), "end": minute_of(a["extra"]["end"], tz),
+                 "title": a["title"], "project": a["project"]} for a in acts if a["kind"] == "meeting"]
+    notes = group_by_project([a for a in acts if a["kind"] == "note"])
+    context = {
+        "fecha": d,
+        "commits": [{"sha": c["sha"], "hora": f"{c['minute'] // 60:02d}:{c['minute'] % 60:02d}",
+                     "proyecto": c["project"], "repo": c["repo"], "mensaje": c["subject"], "tamaño": c["size"]}
+                    for c in sorted(commits, key=lambda c: c["minute"])],
+        "notas_im_back": {p: [{"tarea": n["title"], "detalle": n["body"][:400]} for n in ns]
+                          for p, ns in notes.items()},
+        "reuniones": [f"{m['title']} ({m['project']})" for m in meetings],
+        "categorias": cfg["timesheet"]["categories"],
+    }
+    return {"context": context, "commits": commits, "meetings": meetings,
+            "has_work": bool(commits or notes)}
 
 
 def standup_context(con: sqlite3.Connection, today: date, holidays=()) -> dict:

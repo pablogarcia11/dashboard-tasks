@@ -43,19 +43,29 @@ def run_claude(prompt: str, context: dict, cfg: dict) -> str:
     return out["result"].strip()
 
 
-def generate(con: sqlite3.Connection, cfg: dict, kind: str, work_date: str, context: dict,
-             force: bool = False) -> tuple[str, bool]:
-    """Genera (o devuelve de caché) el texto `kind` para `work_date`. Devuelve (texto, venía_de_caché).
-
-    Si Claude falla (p. ej. límite de cuota) lanza ClaudeError; el último resultado guardado se conserva.
-    """
+def input_hash(cfg: dict, kind: str, context: dict) -> str:
     prompt = (PROMPTS / f"{kind}.md").read_text(encoding="utf-8")
     payload = json.dumps({"prompt": prompt, "context": context, "model": cfg["claude"].get("model")},
                          ensure_ascii=False, sort_keys=True)
-    input_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def generate(con: sqlite3.Connection, cfg: dict, kind: str, work_date: str, context: dict,
+             force: bool = False, validate=None) -> tuple[str, bool]:
+    """Genera (o devuelve de caché) el texto `kind` para `work_date`. Devuelve (texto, venía_de_caché).
+
+    `validate(texto)` puede lanzar una excepción para no guardar una respuesta inválida.
+    Si Claude falla (p. ej. límite de cuota) lanza ClaudeError; el último resultado guardado se conserva.
+    """
+    h = input_hash(cfg, kind, context)
     cached = db.get_summary(con, work_date, kind)
-    if cached and cached["input_hash"] == input_hash and not force:
+    if cached and cached["input_hash"] == h and not force:
         return cached["content_md"], True
-    text = run_claude(prompt, context, cfg)
-    db.save_summary(con, work_date, kind, text, input_hash)
+    text = run_claude((PROMPTS / f"{kind}.md").read_text(encoding="utf-8"), context, cfg)
+    if validate:
+        try:
+            validate(text)
+        except Exception as e:
+            raise ClaudeError(f"respuesta no válida de Claude ({e}); prueba a regenerar")
+    db.save_summary(con, work_date, kind, text, h)
     return text, False

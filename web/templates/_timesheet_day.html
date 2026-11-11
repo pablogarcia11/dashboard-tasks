@@ -1,0 +1,43 @@
+{% set id = "ts-" ~ day.isoformat() %}
+<div id="{{ id }}" class="ts-day" {% if state in ("ok", "empty") %}data-minutes="{{ total }}"{% endif %}>
+  <div class="ts-grid" style="height: {{ grid_height }}px; --hour: {{ 60 * ppm }}px">
+    {% for b in blocks %}
+    <div class="ts-block cat-{{ b.category | cat_class }}{% if b.title == 'Por definir' %} is-empty{% endif %}"
+         style="top: {{ (b.start - grid_start) * ppm }}px; height: {{ b.minutes * ppm }}px"
+         title="{{ b.start | fmt }}–{{ b.end | fmt }} · {{ b.title }} · {{ b.category }}">
+      <span class="ts-title">{{ b.title }}</span>
+      <span class="ts-meta">{{ b.start | fmt }}–{{ b.end | fmt }} · {{ b.category }}</span>
+    </div>
+    {% endfor %}
+    {% if state == "pending" %}
+    <div class="ts-center">
+      <button class="btn" hx-post="/timesheet/day/{{ day.isoformat() }}" hx-target="#{{ id }}" hx-swap="outerHTML"
+              hx-trigger="click, generate-week from:body" hx-indicator="#{{ id }}-gen">Generar</button>
+      <span id="{{ id }}-gen" class="htmx-indicator muted small">Agrupando con Claude…</span>
+    </div>
+    {% elif state == "future" %}<div class="ts-center muted small">Aún no</div>
+    {% elif state == "holiday" %}<div class="ts-center muted small">Festivo</div>
+    {% endif %}
+  </div>
+
+  <div class="ts-foot">
+    {% if state in ("ok", "empty") %}
+      <p><strong>{{ total // 60 }} h {{ "%02d" | format(total % 60) }} min</strong></p>
+      {% if state == "empty" %}<p class="muted small">Sin commits ni notas ese día: completa a mano.</p>{% endif %}
+      {% if stale %}<p class="notice small">Los datos han cambiado desde que se generó.</p>{% endif %}
+      {% for w in warnings %}<p class="notice small">{{ w }}</p>{% endfor %}
+    {% endif %}
+    {% if error %}<p class="notice error small">{{ error }}</p>{% endif %}
+    {% if state == "ok" %}
+      <details>
+        <summary>Texto para copiar</summary>
+        <textarea id="{{ id }}-text" rows="8" spellcheck="false">{{ text }}</textarea>
+        <button class="btn small" onclick="copyText('{{ id }}-text', this)">Copiar</button>
+      </details>
+      <button class="btn ghost small" hx-post="/timesheet/day/{{ day.isoformat() }}?force=true" hx-target="#{{ id }}"
+              hx-swap="outerHTML" {% if stale %}hx-trigger="click, generate-week from:body"{% endif %}
+              hx-indicator="#{{ id }}-regen">Regenerar</button>
+      <span id="{{ id }}-regen" class="htmx-indicator muted small">Agrupando…</span>
+    {% endif %}
+  </div>
+</div>

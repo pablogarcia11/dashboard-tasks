@@ -13,7 +13,7 @@
       <a class="brand" href="/">Dashboard</a>
       <nav class="appnav">
         <a href="/" {% if section == "day" %}aria-current="page"{% endif %}>Día</a>
-        {% block extra_nav %}{% endblock %}
+        <a href="/timesheet" {% if section == "timesheet" %}aria-current="page"{% endif %}>Parte de horas</a>
         <a class="icon-link" href="/settings" title="Ajustes" aria-label="Ajustes"
            {% if section == "settings" %}aria-current="page"{% endif %}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
