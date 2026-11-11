@@ -315,6 +315,7 @@ Los prompts (`standup.md`, `day_summary.md`, `notion_summary.md`, `timesheet.md`
 C:\Users\daxte\Documents\1MillionBot\dashboard\
 ├─ PLAN_TECNICO.md
 ├─ README.md
+├─ CONTRIBUTING.md        # convención de commits (Conventional Commits, en inglés)
 ├─ config.yaml            # emails, usuario, tz, repos_root, exclude_repos, fuentes activas, hora stand-up
 ├─ .env / .env.example    # tokens (el .env fuera de git)
 ├─ secrets/               # credentials.json, token.json (fuera de git)
@@ -368,5 +369,5 @@ Inicializa este directorio como repo git propio (`git init`) con `.gitignore` co
   2. Festivos.
 - **GitHub remoto** (PRs/reviews): aplazado por decisión del usuario (2026-11-11); queda en Fase 4.
 - **Resueltas (2026-11-11):** autor git `pablogarcia@1millionbot.com`; GitHub `pablogarcia11`; stand-up 08:30 L–V, zona `Europe/Madrid`; en fin de semana "Hoy" muestra el último viernes con aviso; I'M BACK es el diario de trabajo y destino del resumen (estructura en 5.1); fuentes de "Hoy" (7.1); stand-up basado en I'M BACK para `#equipo-tecnologia-stand-up`; pendientes en I'M BACK = subapartado "Pendiente:" dentro del proyecto; parte de horas para 1million hub (7.5); mapeo repo → proyecto y proyecto "1MB" (4.1); Kanvas y shannon excluidos; Calendar y Slack vía conectores de Claude (sección 2); Notion vía OAuth propio.
-- Commits del propio dashboard: mensajes claros, sin secretos, y recuerda que la actividad de este repo nunca debe aparecer en sus resúmenes.
+- Commits del propio dashboard: **en inglés y con Conventional Commits** (`feat: …`, `fix(git): …`), igual que el resto de repos de la empresa; norma completa en `CONTRIBUTING.md`. Sin secretos, y recuerda que la actividad de este repo nunca debe aparecer en sus resúmenes.
 - Si algo requiere permisos de administrador de la empresa (Slack, Workspace, Notion), no insistas: marca la fuente como pendiente y avanza con las demás.
