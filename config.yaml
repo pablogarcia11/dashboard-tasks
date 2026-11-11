@@ -18,7 +18,8 @@ timesheet:                  # parte de horas para 1million hub (aproximado)
   day_end: "17:30"
   lunch_start: "14:00"
   lunch_end: "15:00"
-  min_block_minutes: 10     # sin franjas fijas; duración estimada por los commits
+  min_block_minutes: 15     # duración estimada por los commits; tarea mínima 15 min
+  block_step_minutes: 15    # duraciones en múltiplos de 15 (15, 30, 45, 1 h, 1 h 15…)
   min_daily_hours: 8
   categories:
     - Desarrollo de negocio

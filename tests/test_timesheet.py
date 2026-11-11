@@ -38,11 +38,20 @@ def test_bloques_por_huecos_entre_commits():
     tasks = [task("t1", ["a", "b"]), task("t2", ["c", "d"]), task("t3", ["e", "f"])]
     blocks, warnings = build_blocks(CFG, [], commits, tasks)
     assert spans(blocks) == [
-        ("08:30", "10:10", "AI Risk - t1"),
-        ("10:10", "14:00", "AI Risk - t2"),
+        ("08:30", "10:15", "AI Risk - t1"),   # último commit 10:10 → cuarto de hora más cercano
+        ("10:15", "14:00", "AI Risk - t2"),
         ("15:00", "17:30", "AI Risk - t3"),
     ]
     assert warnings == []
+
+
+def test_duraciones_en_multiplos_de_quince():
+    commits = [commit(str(i), t) for i, t in enumerate(["08:52", "09:07", "09:31", "10:58", "11:04", "12:41",
+                                                         "13:12", "15:38", "16:02", "16:49", "17:11"])]
+    tasks = [task(f"t{i}", [c["sha"]]) for i, c in enumerate(commits)]
+    blocks, _ = build_blocks(CFG, [], commits, tasks)
+    assert all(b.minutes >= 15 and b.minutes % 15 == 0 for b in blocks)
+    assert all(b.start % 15 == 0 for b in blocks)
 
 
 def test_reuniones_fijas_y_tareas_sin_commits_en_huecos():
@@ -62,11 +71,11 @@ def test_reuniones_fijas_y_tareas_sin_commits_en_huecos():
     assert sum(b.minutes for b in blocks) == 8 * 60
 
 
-def test_minimo_diez_minutos_y_total_ocho_horas():
+def test_minimo_quince_minutos_y_total_ocho_horas():
     commits = [commit("a", "09:00"), commit("b", "09:05"), commit("c", "12:00")]
     tasks = [task("t1", ["a"]), task("t2", ["b"]), task("t3", ["c"])]
     blocks, _ = build_blocks(CFG, [], commits, tasks)
-    assert all(b.minutes >= 10 for b in blocks)
+    assert all(b.minutes >= 15 for b in blocks)
     assert sum(b.minutes for b in blocks) >= 8 * 60
 
 
@@ -80,7 +89,7 @@ def test_tareas_contiguas_con_el_mismo_titulo_se_fusionan():
 
 def test_trabajo_fuera_de_jornada_alarga_el_dia():
     blocks, warnings = build_blocks(CFG, [], [commit("a", "18:40")], [task("t1", ["a"])])
-    assert blocks[-1].end == hm("18:40")
+    assert blocks[-1].end == hm("18:45")
     assert sum(b.minutes for b in blocks) > 8 * 60
 
 

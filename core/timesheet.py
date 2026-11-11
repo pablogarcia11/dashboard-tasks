@@ -2,7 +2,8 @@
 
 Claude solo agrupa commits en tareas, las titula y les pone categoría. Todo lo horario es determinista:
 reuniones fijas, comida en el hueco sin commits más cercano a su hora, duración de cada tarea según
-los huecos entre commits, tareas sin commits (de I'M BACK) en los huecos restantes, bloques >= 10 min.
+los huecos entre commits, tareas sin commits (de I'M BACK) en los huecos restantes, bloques de
+15 min como mínimo y en múltiplos de 15 (configurable en config.yaml, `timesheet`).
 """
 import json
 import re
@@ -37,8 +38,9 @@ def fmt(m: int) -> str:
     return f"{m // 60:02d}:{m % 60:02d}"
 
 
-def round5(m: float) -> int:
-    return int(5 * round(m / 5))
+def snap(m: float, step: int) -> int:
+    """Redondea al múltiplo de `step` más cercano (p. ej. cuartos de hora)."""
+    return int(step * round(m / step))
 
 
 def minute_of(ts: str, tz: str) -> int:
@@ -47,12 +49,12 @@ def minute_of(ts: str, tz: str) -> int:
 
 
 def place_lunch(commits: list[int], busy: list[tuple[int, int]], default: int, length: int,
-                lo: int = 13 * 60, hi: int = 16 * 60) -> tuple[int, int]:
+                lo: int = 13 * 60, hi: int = 16 * 60, step: int = 15) -> tuple[int, int]:
     """Hueco de `length` min entre lo y hi sin commits ni reuniones, el más cercano a `default`."""
     def free(s):
         return (not any(s < c < s + length for c in commits)
                 and not any(s < be and bs < s + length for bs, be in busy))
-    valid = [s for s in range(lo, hi - length + 1, 5) if free(s)]
+    valid = [s for s in range(lo, hi - length + 1, step) if free(s)]
     s = min(valid, key=lambda s: abs(s - default)) if valid else default
     return s, s + length
 
@@ -97,18 +99,20 @@ def build_blocks(ts_cfg: dict, meetings: list[dict], commits: list[dict], tasks:
                  ) -> tuple[list[Block], list[str]]:
     """meetings: {start, end (min), title, project}; commits: {sha, minute}; tasks: de parse_tasks."""
     warnings = []
+    step = ts_cfg.get("block_step_minutes", 15)       # duraciones en múltiplos de esto
+    min_block = ts_cfg.get("min_block_minutes", 15)
     day_start, day_end = hm(ts_cfg["day_start"]), hm(ts_cfg["day_end"])
     lunch_len = hm(ts_cfg["lunch_end"]) - hm(ts_cfg["lunch_start"])
     cmins = sorted(c["minute"] for c in commits)
     if cmins:  # trabajo antes o después de la jornada habitual
-        day_start = min(day_start, round5(cmins[0] - 15))
-        day_end = max(day_end, round5(cmins[-1] + 2))
+        day_start = min(day_start, (cmins[0] - 15) // step * step)
+        day_end = max(day_end, -(-cmins[-1] // step) * step)
     busy = []
     for m in meetings:
         if 7 * 60 <= m["start"] and m["end"] <= 21 * 60:
             day_start, day_end = min(day_start, m["start"]), max(day_end, m["end"])
         busy.append((m["start"], m["end"]))
-    lunch = place_lunch(cmins, busy, hm(ts_cfg["lunch_start"]), lunch_len)
+    lunch = place_lunch(cmins, busy, hm(ts_cfg["lunch_start"]), lunch_len, step=step)
     intervals = free_intervals(day_start, day_end, busy + [lunch])
 
     task_of = {sha: t["id"] for t in tasks for sha in t["commits"]}
@@ -150,13 +154,13 @@ def build_blocks(ts_cfg: dict, meetings: list[dict], commits: list[dict], tasks:
     gaps = [p for p in pieces if p[2] is None]
     gap_total = sum(e - s for s, e, _ in gaps)
     queue = []
-    if note_tasks and gap_total >= 10:
-        weights = [max(t["minutes"] or 30, 10) for t in note_tasks]
-        fit = note_tasks[: max(1, gap_total // 10)]
+    if note_tasks and gap_total >= min_block:
+        weights = [max(t["minutes"] or 30, min_block) for t in note_tasks]
+        fit = note_tasks[: max(1, gap_total // min_block)]
         if len(fit) < len(note_tasks):
             warnings.append(f"{len(note_tasks) - len(fit)} tareas sin commits no caben en los huecos")
         total_w = sum(weights[: len(fit)])
-        queue = [[t["id"], max(10, gap_total * w / total_w)] for t, w in zip(fit, weights)]
+        queue = [[t["id"], max(min_block, gap_total * w / total_w)] for t, w in zip(fit, weights)]
     filled = []
     for i, (s, e, tid) in enumerate(pieces):
         if tid is not None:
@@ -175,10 +179,13 @@ def build_blocks(ts_cfg: dict, meetings: list[dict], commits: list[dict], tasks:
             nxt = next((p[2] for p in pieces[i + 1:] if p[2] is not None), None)
             filled.append((cursor, e, prev or nxt))
 
-    # 3) Bloques: redondeo a 5 min, fusión de contiguos de la misma tarea, mínimo 10 min
+    # 3) Bloques: bordes en múltiplos de `step` (salvo los fijos de reuniones y comida),
+    #    fusión de contiguos de la misma tarea, mínimo `min_block`
+    fixed = {x for iv in intervals for x in iv}
     blocks: list[Block] = []
     for s, e, tid in filled:
-        s, e = round5(s), round5(e)
+        s = int(s) if s in fixed else snap(s, step)
+        e = int(e) if e in fixed else snap(e, step)
         if e <= s:
             continue
         if tid is None:
@@ -191,14 +198,14 @@ def build_blocks(ts_cfg: dict, meetings: list[dict], commits: list[dict], tasks:
             blocks.append(Block(s, e, t["title"], t["project"], t["category"], task_id=tid))
     merged: list[Block] = []
     for b in blocks:
-        if b.minutes < 10 and merged and merged[-1].end == b.start:
+        if b.minutes < min_block and merged and merged[-1].end == b.start:
             merged[-1].end = b.end
-        elif merged and merged[-1].minutes < 10 and merged[-1].end == b.start:
+        elif merged and merged[-1].minutes < min_block and merged[-1].end == b.start:
             b.start = merged.pop().start
             merged.append(b)
         else:
             merged.append(b)
-    merged = [b for b in merged if b.minutes >= 10]
+    merged = [b for b in merged if b.minutes >= min_block]
     if any(b.title == "Por definir" for b in merged):
         warnings.append("Hay huecos sin tareas: complétalos a mano")
 
