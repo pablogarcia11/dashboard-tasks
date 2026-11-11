@@ -95,6 +95,41 @@ class NotionClient:
             cursor = d["next_cursor"]
 
 
+def page_title(page: dict) -> str:
+    for prop in page.get("properties", {}).values():
+        if prop.get("type") == "title":
+            return "".join(t.get("plain_text", "") for t in prop["title"]).strip() or "Sin título"
+    return "Sin título"
+
+
+def journal_candidates(client: NotionClient, query: str = "", limit: int = 20) -> list[dict]:
+    """Páginas compartidas con la conexión que pueden ser un diario (no filas de bases de datos)."""
+    found, cursor = [], None
+    for _ in range(5):  # la búsqueda mezcla filas de bases de datos: se piden varias tandas
+        body = {"filter": {"property": "object", "value": "page"}, "page_size": 100,
+                "sort": {"direction": "descending", "timestamp": "last_edited_time"}}
+        if query:
+            body["query"] = query
+        if cursor:
+            body["start_cursor"] = cursor
+        d = client.request("POST", "/search", json=body)
+        for p in d["results"]:
+            if p.get("parent", {}).get("type") != "database_id" and not p.get("archived"):
+                icon = (p.get("icon") or {}).get("emoji", "")
+                found.append({"id": p["id"], "title": page_title(p), "url": p.get("url", ""), "icon": icon})
+        if len(found) >= limit or not d.get("has_more"):
+            break
+        cursor = d["next_cursor"]
+    return found[:limit]
+
+
+def journal_preview(client: NotionClient, page_id: str) -> dict:
+    """Cuántos días con el formato esperado (encabezado 1 con dd/mm/aaaa) tiene la página."""
+    days = sorted(d for d in (parse_day(plain(b)) for b in client.children(page_id)
+                              if b["type"] == "heading_1") if d)
+    return {"days": len(days), "first": days[0] if days else None, "last": days[-1] if days else None}
+
+
 def subtree_text(client: NotionClient, block: dict, depth: int = 0) -> list[str]:
     """Texto de los hijos de un bloque como lista con sangría."""
     lines = []

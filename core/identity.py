@@ -76,6 +76,12 @@ def avatar_path(token_file: Path = NOTION_TOKEN, cache: Path = AVATAR_CACHE) -> 
     return cache
 
 
+def reset() -> None:
+    """Tras conectar o desconectar otra cuenta de Notion: olvida el nombre y la foto calculados."""
+    display_name.cache_clear()
+    AVATAR_CACHE.unlink(missing_ok=True)
+
+
 def initials(name: str) -> str:
     parts = [p for p in name.split() if p[:1].isalpha()]
     return "".join(p[0] for p in parts[:2]).upper() or name[:1].upper()

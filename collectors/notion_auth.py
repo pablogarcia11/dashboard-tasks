@@ -1,9 +1,12 @@
-"""Autorización OAuth de Notion (se ejecuta una vez).
+"""Autorización OAuth de Notion.
+
+Lo normal es conectar desde la web (Ajustes → Notion → "Conectar con Notion"), que usa estas mismas
+funciones. Este script es la alternativa por terminal:
 
 Uso:  python -m collectors.notion_auth
 
-Abre el navegador para que el usuario autorice la conexión "dashboard-personal",
-recibe el código en el redirect local y guarda el token en secrets/notion_token.json.
+Abre el navegador para que el usuario autorice la conexión, recibe el código en el redirect local
+y guarda el token en secrets/notion_token.json.
 """
 import json
 import os
@@ -12,30 +15,55 @@ import sys
 import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, HTTPServer
-from pathlib import Path
 from urllib.parse import parse_qs, urlencode, urlparse
 
 import httpx
-import yaml
 from dotenv import load_dotenv
 
-ROOT = Path(__file__).resolve().parent.parent
+from core.config import ROOT, load_config
+
 TOKEN_FILE = ROOT / "secrets" / "notion_token.json"
 AUTHORIZE_URL = "https://api.notion.com/v1/oauth/authorize"
 TOKEN_URL = "https://api.notion.com/v1/oauth/token"
 
 
-def main() -> int:
+def client_credentials() -> tuple[str | None, str | None]:
+    """Credenciales de la conexión OAuth de Notion (en .env, no en el código)."""
     load_dotenv(ROOT / ".env")
-    client_id = os.getenv("NOTION_CLIENT_ID")
-    client_secret = os.getenv("NOTION_CLIENT_SECRET")
-    if not client_id or not client_secret:
+    return os.getenv("NOTION_CLIENT_ID"), os.getenv("NOTION_CLIENT_SECRET")
+
+
+def redirect_uri() -> str:
+    return load_config()["notion"]["redirect_uri"]
+
+
+def authorize_url(state: str) -> str:
+    client_id, _ = client_credentials()
+    return AUTHORIZE_URL + "?" + urlencode({
+        "client_id": client_id, "response_type": "code", "owner": "user",
+        "redirect_uri": redirect_uri(), "state": state,
+    })
+
+
+def exchange_code(code: str) -> dict:
+    """Canjea el código de autorización por el token y lo guarda. Lanza RuntimeError si falla."""
+    client_id, client_secret = client_credentials()
+    resp = httpx.post(TOKEN_URL, auth=(client_id, client_secret), timeout=30,
+                      json={"grant_type": "authorization_code", "code": code, "redirect_uri": redirect_uri()})
+    if resp.status_code != 200:
+        raise RuntimeError(f"Notion respondió {resp.status_code}: {resp.text[:200]}")
+    data = resp.json()
+    TOKEN_FILE.parent.mkdir(exist_ok=True)
+    TOKEN_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+    return data
+
+
+def main() -> int:
+    if not all(client_credentials()):
         print("Faltan NOTION_CLIENT_ID o NOTION_CLIENT_SECRET en .env")
         return 1
 
-    config = yaml.safe_load((ROOT / "config.yaml").read_text(encoding="utf-8"))
-    redirect_uri = config["notion"]["redirect_uri"]
-    redirect = urlparse(redirect_uri)
+    redirect = urlparse(redirect_uri())
     state = secrets.token_urlsafe(16)
     result: dict = {}
 
@@ -64,15 +92,9 @@ def main() -> int:
         def log_message(self, *args):
             pass
 
-    # Solo escucha en local
+    # Solo escucha en local (el dashboard tiene que estar parado: usa el mismo puerto)
     server = HTTPServer(("127.0.0.1", redirect.port), Handler)
-    auth_url = AUTHORIZE_URL + "?" + urlencode({
-        "client_id": client_id,
-        "response_type": "code",
-        "owner": "user",
-        "redirect_uri": redirect_uri,
-        "state": state,
-    })
+    auth_url = authorize_url(state)
     print("Abriendo el navegador para autorizar en Notion...")
     print("Si no se abre, visita:", auth_url)
     webbrowser.open(auth_url)
@@ -81,20 +103,11 @@ def main() -> int:
     if "code" not in result:
         print("No se pudo autorizar:", result.get("error"))
         return 1
-
-    resp = httpx.post(
-        TOKEN_URL,
-        auth=(client_id, client_secret),
-        json={"grant_type": "authorization_code", "code": result["code"], "redirect_uri": redirect_uri},
-        timeout=30,
-    )
-    if resp.status_code != 200:
-        print("Error al obtener el token:", resp.status_code, resp.text)
+    try:
+        data = exchange_code(result["code"])
+    except RuntimeError as e:
+        print("Error al obtener el token:", e)
         return 1
-
-    TOKEN_FILE.parent.mkdir(exist_ok=True)
-    TOKEN_FILE.write_text(json.dumps(resp.json(), indent=2), encoding="utf-8")
-    data = resp.json()
     print(f"Token guardado en {TOKEN_FILE}")
     print("Workspace:", data.get("workspace_name"))
     return 0

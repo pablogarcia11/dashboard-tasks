@@ -266,6 +266,14 @@ def previous_workday(d):  # d: date
 ### 7.1 Vista "Hoy" (principal)
 Secciones: **Tareas de hoy** (tareas activas del usuario en la base Tareas + pendientes apuntados ayer en I'M BACK), **Reuniones** (Calendar), **Trabajo sin commitear / commits sin subir** (para no perder nada), y más adelante **Pendientes de revisión/menciones**. Cada ítem con su origen y enlace.
 
+### 7.0 bis Dashboard genérico: configuración por usuario desde Ajustes (2026-11-11)
+Objetivo del usuario: que un compañero pueda usar el dashboard sin tocar código. Lo propio de cada persona se elige en **Ajustes** y se guarda en su base de datos local (`app_settings`, `core/settings.py`), no en `config.yaml`:
+- **Notion**: botón "Conectar con Notion" que hace el OAuth desde la propia web (`/settings/notion/connect` → Notion → `/oauth/notion/callback`, que es el redirect registrado; `state` contra CSRF). "Desconectar" borra el token, la página diario y las tareas de esa cuenta. Credenciales de la conexión OAuth en `.env` (compartibles en el equipo; cada uno autoriza con su cuenta). El usuario de Notion (`user_id`) sale del token.
+- **Página diario** (antes fija: "I'M BACK"): buscador de páginas compartidas (búsqueda de Notion sin filas de bases de datos) → "Usar como diario". Vista previa del formato (nº de días con encabezado 1 + fecha, primer y último día). Los textos de la web usan el título de la página elegida. Guía desplegable con los pasos y el formato esperado.
+- **Carpeta de repositorios**: botón "Elegir carpeta…" que abre el **selector de carpetas nativo** (tkinter en el servidor local, siempre encima) y alternativa de escribir la ruta a mano (validada). Al guardar se recogen los commits de nuevo en segundo plano.
+- Sin configurar, los colectores avisan ("elige la página diario / la carpeta en Ajustes") en vez de fallar.
+- Pendiente para más adelante (sigue en `config.yaml` y es de la empresa o de esta persona): base de tareas de Notion y su propiedad de persona, autores de git, mapeo repo → proyecto, palabras clave de reuniones, jornada del parte de horas.
+
 ### 7.0 Barra superior: nombre del usuario (2026-11-11)
 - En lugar de "Dashboard", la barra muestra el **nombre y la foto de quien usa el dashboard**, deducidos de las herramientas conectadas, **nunca fijos en código ni en config** (`core/identity.py`). Nombre: usuario de Notion que autorizó la conexión (`owner.user.name` del token OAuth) → `git config --global user.name` → parte local del primer email de `git_authors` → "Dashboard". Foto: `owner.user.avatar_url` de Notion, descargada una vez a `db/avatar.img` (fuera de git) y servida en `/avatar`; si no hay o falla, se ven las iniciales. Se calcula al arrancar el servidor.
 - Google no sirve para esto (decisión del usuario 2026-11-11: usar Notion): el conector de Google Calendar solo expone el email (id del calendario), sin nombre ni foto.

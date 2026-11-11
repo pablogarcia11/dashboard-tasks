@@ -2,9 +2,12 @@
 
 Uso:  python -m web.app
 """
+import json
+import secrets
 import threading
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -16,8 +19,11 @@ from collectors.git_local import GitLocalCollector
 from core import db
 from core.config import ROOT, load_config
 from core.dates import effective_today, is_workday, next_workday, previous_workday
-from core.identity import avatar_path, display_name, initials
+from core import identity, settings
+from core.identity import avatar_path, display_name, initials, notion_owner
 from core.settings import effective_config
+from collectors import notion_auth
+from collectors.notion import NotionClient, journal_candidates, journal_preview
 from core.timesheet import as_text, build_blocks, fmt, parse_tasks
 from core.views import day_data, standup_context, timesheet_inputs
 from jobs.collect_all import run_collect
@@ -59,15 +65,25 @@ templates.env.filters["hhmm"] = lambda ts: ts[11:16]
 # Qué hacer cuando falla cada fuente (se muestra junto al error)
 templates.env.globals["sync_hints"] = {
     "git": "Comprueba que el repo existe y que git funciona en él; si el aviso habla de «dubious ownership», revisa la configuración de git del repo.",
-    "notion": "Si el permiso caducó o se revocó, vuelve a autorizar con: python -m collectors.notion_auth",
+    "notion": "Si el permiso caducó o se revocó, vuelve a conectar Notion en Ajustes.",
     "gcal": "Reconecta Google Calendar en claude.ai → Configuración → Conectores, marcando todos los permisos, y pulsa «Actualizar datos».",
 }
 templates.env.globals["claude_hint"] = ("Si es un límite de uso de Claude, espera unos minutos y vuelve a intentarlo; "
                                         "si dice que falta iniciar sesión, ejecuta «claude» en una terminal.")
-# Nombre y foto de quien usa el dashboard, deducidos de Notion/git (core/identity.py)
-templates.env.globals["user_name"] = display_name()
-templates.env.globals["user_initials"] = initials(display_name())
-templates.env.globals["has_avatar"] = avatar_path() is not None
+def load_identity() -> None:
+    """Nombre y foto de quien usa el dashboard, deducidos de Notion/git (core/identity.py)."""
+    templates.env.globals["user_name"] = display_name()
+    templates.env.globals["user_initials"] = initials(display_name())
+    templates.env.globals["has_avatar"] = avatar_path() is not None
+
+
+def journal_title() -> str:
+    """Título de la página diario elegida en Ajustes (sustituye a un nombre fijo como "I'M BACK")."""
+    return settings.get_all(db.connect()).get(settings.JOURNAL_PAGE_TITLE) or "el diario"
+
+
+load_identity()
+templates.env.globals["journal_title"] = journal_title
 # Logo oficial: se muestra si existe web/static/logo.png (no se versiona una copia recreada)
 templates.env.globals["has_logo"] = (ROOT / "web" / "static" / "logo.png").is_file()
 
@@ -124,18 +140,172 @@ def refresh_card(request: Request, d: str, card: str):
 
 
 @app.get("/settings", response_class=HTMLResponse)
-def settings_view(request: Request):
-    git = GitLocalCollector(effective_config(cfg, db.connect()))
+def settings_view(request: Request, msg: str = ""):
+    con = db.connect()
+    saved = settings.get_all(con)
+    git = GitLocalCollector(effective_config(cfg, con))
     repos = sorted(git.repos(), key=lambda r: (r.project.lower(), str(r.path).lower()))
     mains = {r.common_dir: r for r in repos if not r.is_worktree}
-    settings = db.repo_settings(db.connect())
+    prefs = db.repo_settings(con)
     rows = []
     for r in repos:
         rel = r.path.relative_to(git.root).as_posix()
         main = mains.get(r.common_dir)
-        rows.append({"repo": rel, "project": r.project, **settings.get(rel, {"visible": True, "show_wip": True}),
+        rows.append({"repo": rel, "project": r.project, **prefs.get(rel, {"visible": True, "show_wip": True}),
                      "worktree_of": main.path.relative_to(git.root).as_posix() if r.is_worktree and main else None})
-    return templates.TemplateResponse(request, "settings.html", {"rows": rows})
+    owner = notion_owner()
+    return templates.TemplateResponse(request, "settings.html", {
+        "rows": rows, "msg": SETTINGS_MESSAGES.get(msg), "repos_root": saved.get(settings.REPOS_ROOT),
+        "notion": {
+            "has_credentials": all(notion_auth.client_credentials()),
+            "connected": notion_auth.TOKEN_FILE.is_file(), "user": owner.get("name"),
+            "workspace": notion_workspace(),
+            "journal_id": saved.get(settings.JOURNAL_PAGE_ID), "journal_title": saved.get(settings.JOURNAL_PAGE_TITLE),
+        },
+    })
+
+
+SETTINGS_MESSAGES = {
+    "notion-connected": ("ok", "Notion conectado. Ahora elige tu página diario."),
+    "notion-disconnected": ("ok", "Notion desconectado."),
+    "notion-error": ("error", "No se pudo conectar con Notion. Vuelve a intentarlo; si se repite, revisa "
+                              "NOTION_CLIENT_ID y NOTION_CLIENT_SECRET en .env."),
+    "repos-saved": ("ok", "Carpeta de repositorios guardada."),
+}
+
+
+def notion_workspace() -> str | None:
+    try:
+        return json.loads(notion_auth.TOKEN_FILE.read_text(encoding="utf-8")).get("workspace_name")
+    except (OSError, ValueError):
+        return None
+
+
+def refresh_in_background(only: set) -> None:
+    t = today()
+    threading.Thread(target=collect, args=(previous_workday(t, HOLIDAYS), t, only), daemon=True).start()
+
+
+# --- Notion: conectar, desconectar y elegir la página diario --------------------------------------
+
+oauth_states: set[str] = set()
+
+
+@app.get("/settings/notion/connect")
+def notion_connect():
+    if not all(notion_auth.client_credentials()):
+        return RedirectResponse("/settings?msg=notion-error")
+    state = secrets.token_urlsafe(16)
+    oauth_states.add(state)
+    return RedirectResponse(notion_auth.authorize_url(state))
+
+
+@app.get("/oauth/notion/callback")
+def notion_callback(state: str = "", code: str = "", error: str = ""):
+    """Notion vuelve aquí tras autorizar (es el redirect registrado en la conexión OAuth)."""
+    if error or not code or state not in oauth_states:
+        return RedirectResponse("/settings?msg=notion-error#notion")
+    oauth_states.discard(state)
+    try:
+        notion_auth.exchange_code(code)
+    except RuntimeError:
+        return RedirectResponse("/settings?msg=notion-error#notion")
+    identity.reset()
+    load_identity()
+    return RedirectResponse("/settings?msg=notion-connected#notion")
+
+
+@app.post("/settings/notion/disconnect")
+def notion_disconnect():
+    con = db.connect()
+    notion_auth.TOKEN_FILE.unlink(missing_ok=True)
+    settings.set_value(con, settings.JOURNAL_PAGE_ID, None)
+    settings.set_value(con, settings.JOURNAL_PAGE_TITLE, None)
+    db.replace_kind(con, "notion", "task", [])   # las tareas eran de esa cuenta
+    identity.reset()
+    load_identity()
+    return Response(headers={"HX-Redirect": "/settings?msg=notion-disconnected#notion"})
+
+
+@app.get("/settings/notion/pages", response_class=HTMLResponse)
+def notion_pages(request: Request, q: str = ""):
+    """Páginas compartidas con la conexión que pueden ser el diario (búsqueda por título)."""
+    try:
+        pages, error = journal_candidates(NotionClient(), q.strip()), None
+    except Exception as e:  # sin conexión, token caducado...
+        pages, error = [], str(e)
+    current = settings.get_all(db.connect()).get(settings.JOURNAL_PAGE_ID, "")
+    return templates.TemplateResponse(request, "_notion_pages.html", {
+        "pages": pages, "error": error, "query": q, "current": current.replace("-", "")})
+
+
+@app.post("/settings/notion/journal", response_class=HTMLResponse)
+async def notion_set_journal(request: Request):
+    form = await request.form()
+    con = db.connect()
+    settings.set_value(con, settings.JOURNAL_PAGE_ID, form["page_id"])
+    settings.set_value(con, settings.JOURNAL_PAGE_TITLE, form["title"])
+    refresh_in_background({"notion"})
+    return Response(headers={"HX-Redirect": "/settings#notion"})
+
+
+@app.get("/settings/notion/journal-status", response_class=HTMLResponse)
+def notion_journal_status(request: Request):
+    """Comprueba que la página diario tiene el formato esperado (días como encabezado 1 con fecha)."""
+    page_id = settings.get_all(db.connect()).get(settings.JOURNAL_PAGE_ID)
+    try:
+        preview, error = (journal_preview(NotionClient(), page_id), None) if page_id else (None, None)
+    except Exception as e:
+        preview, error = None, str(e)
+    return templates.TemplateResponse(request, "_journal_status.html", {"preview": preview, "error": error})
+
+
+# --- Carpeta de repositorios ------------------------------------------------------------------------
+
+picker_lock = threading.Lock()
+
+
+def pick_directory(initial: str | None) -> str | None:
+    """Abre el selector de carpetas nativo del sistema (el servidor corre en el mismo ordenador)."""
+    import tkinter as tk
+    from tkinter import filedialog
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)   # que no quede detrás del navegador
+    try:
+        path = filedialog.askdirectory(parent=root, initialdir=initial or str(Path.home()), mustexist=True,
+                                       title="Elige la carpeta donde tienes tus repositorios")
+    finally:
+        root.destroy()
+    return path or None
+
+
+def save_repos_root(path: str) -> Response:
+    folder = Path(path.strip().strip('"')).expanduser()
+    if not folder.is_dir():
+        return Response(f"No existe la carpeta «{path}».", status_code=422)
+    settings.set_value(db.connect(), settings.REPOS_ROOT, str(folder.resolve()))
+    refresh_in_background({"git"})
+    return Response(headers={"HX-Redirect": "/settings?msg=repos-saved#repos"})
+
+
+@app.post("/settings/repos-root/pick")
+def repos_root_pick():
+    if not picker_lock.acquire(blocking=False):
+        return Response("Ya hay un selector de carpetas abierto.", status_code=409)
+    try:
+        path = pick_directory(settings.get_all(db.connect()).get(settings.REPOS_ROOT))
+    finally:
+        picker_lock.release()
+    if not path:
+        return Response(status_code=204)   # cancelado
+    return save_repos_root(path)
+
+
+@app.post("/settings/repos-root")
+async def repos_root_manual(request: Request):
+    form = await request.form()
+    return save_repos_root(form.get("path", ""))
 
 
 @app.post("/settings/repo")

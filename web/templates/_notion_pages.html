@@ -1,0 +1,22 @@
+{% if error %}
+<p class="notice error small">No se pudo buscar en Notion: {{ error }}<span class="hint">{{ sync_hints["notion"] }}</span></p>
+{% elif not pages %}
+<p class="muted small">{% if query %}Ninguna página coincide con «{{ query }}».{% else %}No hay páginas compartidas con el dashboard.{% endif %}
+  Si no la ves, compártela desde Notion (menú ⋯ → Conexiones).</p>
+{% else %}
+<ul class="page-list">
+  {% for p in pages %}
+  <li>
+    <span class="page-icon" aria-hidden="true">{{ p.icon or "📄" }}</span>
+    <span class="page-title">{{ p.title }}</span>
+    {% if p.id.replace("-", "") == current %}
+    <span class="pill ok">En uso</span>
+    {% else %}
+    <button type="button" class="btn ghost small" hx-post="/settings/notion/journal" hx-swap="none" hx-disabled-elt="this"
+            hx-vals='{"page_id": {{ p.id | tojson }}, "title": {{ p.title | tojson }}}'
+            aria-label="Usar «{{ p.title }}» como diario">Usar como diario</button>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}

@@ -7,9 +7,16 @@ Dashboard local (solo `127.0.0.1`) que une la actividad de trabajo en 1MillionBo
 ```powershell
 uv venv .venv --python 3.14
 uv pip install --python .venv\Scripts\python.exe -r requirements.txt
-copy .env.example .env          # y rellena NOTION_CLIENT_ID / NOTION_CLIENT_SECRET
-.venv\Scripts\python.exe -m collectors.notion_auth   # una vez: autoriza Notion en el navegador
+copy .env.example .env          # y rellena NOTION_CLIENT_ID / NOTION_CLIENT_SECRET (credenciales de la conexión OAuth del equipo)
+.venv\Scripts\python.exe -m web.app
 ```
+
+Después, en http://127.0.0.1:8765 → **Ajustes** (⚙):
+1. **Notion → Conectar con Notion**: inicia sesión y comparte tu página diario (y la base de tareas).
+2. **Página diario**: búscala por su título y pulsa «Usar como diario». La vista previa confirma que el formato es correcto.
+3. **Repositorios → Elegir carpeta…**: la carpeta donde guardas tus proyectos; aparecerán todos sus repos.
+
+Google Calendar se lee con el conector de la cuenta de Claude (claude.ai → Configuración → Conectores).
 
 ## Uso
 

@@ -22,7 +22,7 @@
 </header>
 
 <p class="muted small">Propuesta aproximada para copiar a mano en 1million hub: reuniones de Calendar a su hora,
-  tareas de I'M BACK y duración estimada por los huecos entre commits. Revísala antes de apuntarla.</p>
+  tareas de {{ journal_title() }} y duración estimada por los huecos entre commits. Revísala antes de apuntarla.</p>
 {% for source, s in sync.items() if s.last_error %}
 <p class="notice error">Error en {{ source }}: {{ s.last_error }}
   {% if sync_hints[source] %}<span class="hint">{{ sync_hints[source] }}</span>{% endif %}</p>

@@ -3,22 +3,100 @@
 {% block title %}Ajustes · Dashboard{% endblock %}
 {% block content %}
 <h1>Ajustes</h1>
+{% if msg %}<p class="notice{% if msg[0] == 'error' %} error{% else %} ok{% endif %}" role="status">{{ msg[1] }}</p>{% endif %}
 
-<section class="card">
+<section class="card" id="notion" aria-labelledby="notion-title">
   <div class="card-head">
-    <h2>Repositorios</h2>
+    <h2 id="notion-title">Notion</h2>
+    {% if notion.connected %}<span class="pill ok">Conectado</span>{% endif %}
+  </div>
+
+  {% if not notion.has_credentials %}
+  <p class="notice error">Faltan las credenciales de la conexión con Notion.
+    <span class="hint">Añade <code>NOTION_CLIENT_ID</code> y <code>NOTION_CLIENT_SECRET</code> al fichero <code>.env</code>
+    del dashboard (pídelos a quien administre la conexión OAuth del equipo) y reinicia el dashboard.</span></p>
+  {% elif not notion.connected %}
+  <p class="muted">Conecta tu cuenta para leer tu página diario y tus tareas. Solo lectura: el dashboard nunca escribe en Notion.</p>
+  <a class="btn" href="/settings/notion/connect">Conectar con Notion</a>
+  {% else %}
+  <div class="connected-row">
+    <p>Conectado como <strong>{{ notion.user or "tu cuenta" }}</strong>{% if notion.workspace %} en <strong translate="no">{{ notion.workspace }}</strong>{% endif %}.</p>
+    <button type="button" class="btn ghost small" hx-post="/settings/notion/disconnect" hx-swap="none"
+            hx-confirm="¿Desconectar Notion? Dejarás de ver tu diario y tus tareas hasta que vuelvas a conectarlo."
+            hx-disabled-elt="this">Desconectar</button>
+  </div>
+
+  <h3>Página diario</h3>
+  {% if notion.journal_id %}
+  <p>Usando <strong>{{ notion.journal_title }}</strong>.</p>
+  <div hx-get="/settings/notion/journal-status" hx-trigger="load" hx-swap="outerHTML">
+    <p class="muted small">Comprobando el formato…</p>
+  </div>
+  {% else %}
+  <p class="notice">Todavía no has elegido tu página diario: búscala y pulsa «Usar como diario».</p>
+  {% endif %}
+
+  <label class="field-label" for="journal-search">{% if notion.journal_id %}Cambiar de página{% else %}Busca tu página diario{% endif %}</label>
+  <input type="search" id="journal-search" name="q" class="field" placeholder="Título de la página…"
+         autocomplete="off" spellcheck="false"
+         hx-get="/settings/notion/pages" hx-trigger="input changed delay:300ms, search, load"
+         hx-target="#journal-results" hx-indicator="#journal-searching">
+  <span id="journal-searching" class="htmx-indicator muted small">Buscando…</span>
+  <div id="journal-results" aria-live="polite"></div>
+  {% endif %}
+
+  <details class="guide">
+    <summary>Cómo conectar tu diario</summary>
+    <ol>
+      <li>Pulsa <strong>Conectar con Notion</strong> e inicia sesión con tu cuenta.</li>
+      <li>Elige tu espacio de trabajo y, cuando Notion pregunte qué páginas compartir, marca tu <strong>página diario</strong>
+        (y la base de tareas si quieres ver tus tareas en «Qué toca hoy»).</li>
+      <li>De vuelta aquí, busca la página por su título y pulsa <strong>Usar como diario</strong>.</li>
+      <li>¿No aparece? Compártela desde Notion: menú <strong>⋯</strong> de la página → <strong>Conexiones</strong> → la conexión del dashboard.</li>
+    </ol>
+    <p><strong>Formato que entiende el dashboard:</strong> un <em>encabezado 1</em> por día con la fecha
+      (p. ej. «Martes 10/11/2026»); dentro, un <em>encabezado 3</em> por proyecto con la lista de lo que hiciste debajo.
+      Lo que quede para el día siguiente va bajo un apartado «Pendiente:» dentro del proyecto.</p>
+  </details>
+</section>
+
+<section class="card" id="repos" aria-labelledby="repos-title">
+  <div class="card-head">
+    <h2 id="repos-title">Repositorios</h2>
     <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
   </div>
-  <p class="muted">Elige qué repos se muestran. Lo oculto tampoco se envía a Claude (stand-up, parte de horas).
-    Se sigue recogiendo, así que al volver a activarlo aparece al momento.</p>
+
+  <div class="folder-row">
+    <div class="folder-path">
+      <span class="field-label">Carpeta donde están tus repositorios</span>
+      {% if repos_root %}<code translate="no">{{ repos_root }}</code>{% else %}<span class="muted">Sin elegir</span>{% endif %}
+    </div>
+    <button type="button" class="btn" hx-post="/settings/repos-root/pick" hx-swap="none"
+            hx-disabled-elt="this" hx-indicator="#picking">Elegir carpeta…</button>
+  </div>
+  <span id="picking" class="htmx-indicator muted small">Se ha abierto el selector de carpetas: búscalo si queda detrás del navegador…</span>
+  <details class="guide">
+    <summary>Escribir la ruta a mano</summary>
+    <form class="path-form" hx-post="/settings/repos-root" hx-swap="none">
+      <label class="field-label" for="repos-path">Ruta de la carpeta</label>
+      <input type="text" id="repos-path" name="path" class="field" value="{{ repos_root or '' }}"
+             placeholder="C:\Users\tu-usuario\Documents\repos…" autocomplete="off" spellcheck="false">
+      <button type="submit" class="btn ghost">Guardar</button>
+    </form>
+  </details>
+  <p id="repos-error" class="notice error" role="alert" hidden></p>
+
+  {% if rows %}
+  <p class="muted">Se buscan repositorios hasta 3 niveles por debajo de la carpeta. Elige cuáles se muestran: lo oculto tampoco
+    se envía a Claude (stand-up, parte de horas). Se sigue recogiendo, así que al volver a activarlo aparece al momento.</p>
   <div class="table-scroll">
   <table class="settings">
-    <thead><tr><th>Repo</th><th>Proyecto</th><th>Visible</th><th>Cambios sin commitear</th></tr></thead>
+    <thead><tr><th>Repo</th><th class="col-project">Proyecto</th><th>Visible</th><th>Cambios sin commitear</th></tr></thead>
     <tbody>
     {% for r in rows %}
       <tr>
         <td translate="no">{{ r.repo }}{% if r.worktree_of %}<br><span class="muted small">worktree de {{ r.worktree_of }}: sus commits se muestran con ese repo</span>{% endif %}</td>
-        <td>{{ r.project }}</td>
+        <td class="col-project">{{ r.project }}</td>
         <td><label class="switch"><input type="checkbox" name="value" {% if r.visible %}checked{% endif %}
               hx-post="/settings/repo" hx-trigger="change" hx-swap="none"
               hx-vals='{"repo": "{{ r.repo }}", "field": "visible"}'
@@ -34,9 +112,17 @@
     </tbody>
   </table>
   </div>
+  {% elif repos_root %}
+  <p class="muted">No hay repositorios git en esa carpeta (se busca hasta 3 niveles por debajo). Elige otra carpeta.</p>
+  {% else %}
+  <p class="muted">Elige la carpeta donde guardas tus proyectos y aquí aparecerán todos sus repositorios.</p>
+  {% endif %}
 </section>
 
 <script>
+  // El aviso (?msg=…) se muestra una vez: se quita de la URL para que no reaparezca al recargar
+  if (location.search.includes("msg=")) history.replaceState(null, "", location.pathname + location.hash);
+
   // Confirmación breve al guardar; si falla, el interruptor vuelve a su posición y se avisa
   const saveStatus = document.getElementById("save-status");
   function showStatus(text, isError) {
@@ -56,6 +142,17 @@
       input.checked = !input.checked;
       showStatus(`No se pudo guardar ${repo}. Comprueba que el dashboard sigue en marcha y vuelve a intentarlo.`, true);
     }
+  });
+
+  // Errores al elegir la carpeta (ruta inexistente, selector ya abierto): el servidor explica el motivo
+  const reposError = document.getElementById("repos-error");
+  document.body.addEventListener("htmx:responseError", event => {
+    if (!event.detail.elt.closest("#repos")) return;
+    reposError.textContent = event.detail.xhr.responseText || "No se pudo guardar la carpeta.";
+    reposError.hidden = false;
+  });
+  document.body.addEventListener("htmx:beforeRequest", event => {
+    if (event.detail.elt.closest && event.detail.elt.closest("#repos")) reposError.hidden = true;
   });
 </script>
 {% endblock %}

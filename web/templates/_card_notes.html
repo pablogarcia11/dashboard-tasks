@@ -1,8 +1,9 @@
 {% from "_macros.html" import refresh_button, project_group %}
+{% set journal = journal_title() %}
 <section class="card" id="card-notes" aria-labelledby="card-notes-title">
   <div class="card-head">
-    <h2 id="card-notes-title">Notas en I'M BACK</h2>
-    {{ refresh_button(day, "notes", "Actualizar notas de I'M BACK") }}
+    <h2 id="card-notes-title">Notas en {{ journal }}</h2>
+    {{ refresh_button(day, "notes", "Actualizar notas de " ~ journal) }}
   </div>
   {% if refresh_error %}
   <p class="notice error small">No se pudo actualizar: {{ refresh_error }}<span class="hint">{{ sync_hints["notion"] }}</span></p>
@@ -16,5 +17,5 @@
   {% else %}
   <p class="muted">Sin notas ese día{% if is_today %} todavía{% endif %}.</p>
   {% endfor %}
-  <script>restoreCollapsed("card-notes");{% if refreshed %} announce("Notas de I'M BACK actualizadas");{% endif %}</script>
+  <script>restoreCollapsed("card-notes");{% if refreshed %} announce({{ ("Notas de " ~ journal ~ " actualizadas") | tojson }});{% endif %}</script>
 </section>

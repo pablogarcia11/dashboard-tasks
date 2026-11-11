@@ -31,7 +31,7 @@
     <section class="card">
       <h2>Qué toca hoy</h2>
       {% if data.pending_from_prev %}
-      <h3>Pendiente del día anterior <span class="tag">I'M BACK</span></h3>
+      <h3>Pendiente del día anterior <span class="tag">{{ journal_title() }}</span></h3>
       {% for project, items in data.pending_from_prev.items() %}
       <p class="project">{{ project }}</p>
       <ul>{% for a in items %}<li><a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.title }}<span class="ext" aria-hidden="true">↗</span><span class="sr-only"> (se abre en otra pestaña)</span></a></li>{% endfor %}</ul>
