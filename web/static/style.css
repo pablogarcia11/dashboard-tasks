@@ -244,8 +244,8 @@ li::marker { color: var(--red-text); }
 :root[data-theme="dark"] .notion-red     { --n-bg: #6E3630; --n-fg: #FBE1DE; --n-dot: #E16259; }
 
 /* Logo en lugar del nombre de la herramienta, del tamaño de la etiqueta */
-.tag-logo { display: inline-flex; align-items: center; padding: 2px 6px; color: var(--text); }
-.tag-logo svg { width: 12px; height: 12px; }
+.tag-logo { display: inline-flex; align-items: center; padding: 0; border: 0; background: none; color: var(--text); vertical-align: -2px; }
+.tag-logo svg { width: 15px; height: 15px; }
 
 /* Acento puntual: lo que aún no está subido */
 .badge { font-size: .72em; background: var(--coral); color: var(--black); border-radius: 999px; padding: 1px 8px; font-weight: 700; }
