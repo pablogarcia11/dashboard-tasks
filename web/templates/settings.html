@@ -10,21 +10,12 @@
 {% if msg %}<p class="notice{% if msg[0] == 'error' %} error{% else %} ok{% endif %}" role="status">{{ msg[1] }}</p>{% endif %}
 
 {# ---------- Apariencia ---------- #}
-<section class="card settings-card" id="appearance" aria-labelledby="appearance-title">
+<section class="card settings-card appearance-card" id="appearance" aria-labelledby="appearance-title">
   <header class="settings-card-head">
-    <div>
-      <h2 id="appearance-title">Apariencia</h2>
-      <p class="muted small">Cómo se ve el dashboard en este navegador.</p>
-    </div>
-  </header>
-  <div class="setting-row">
-    <div class="setting-label">
-      <h3 id="theme-label">Modo oscuro</h3>
-      <p class="muted small">Mientras no lo cambies, sigue al de tu sistema.</p>
-    </div>
-    <div class="setting-control theme-setting">
+    <h2 id="appearance-title">Apariencia</h2>
+    <div class="theme-setting">
       <button type="button" class="theme-toggle" role="switch" id="theme-toggle" aria-checked="false"
-              aria-labelledby="theme-label" aria-describedby="theme-state">
+              aria-label="Modo oscuro">
         <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
              stroke-linecap="round" aria-hidden="true">
           <circle cx="12" cy="12" r="4"/>
@@ -35,10 +26,9 @@
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
         </svg>
       </button>
-      <span id="theme-state" class="theme-state"></span>
       <button type="button" class="btn ghost small" id="theme-system" hidden>Seguir al sistema</button>
     </div>
-  </div>
+  </header>
 </section>
 
 {% set pending = steps | rejectattr("done") | list %}
@@ -397,14 +387,12 @@
     }
   }
 
-  // Apariencia: el interruptor refleja el tema actual y dice si viene de tu elección o del sistema
+  // Apariencia: el interruptor refleja el tema actual; «Seguir al sistema» solo aparece si lo has elegido tú
   const themeToggle = document.getElementById("theme-toggle");
-  const themeState = document.getElementById("theme-state");
   const themeSystem = document.getElementById("theme-system");
   function syncTheme() {
     const dark = document.documentElement.dataset.theme === "dark";
     themeToggle.setAttribute("aria-checked", dark);
-    themeState.textContent = (dark ? "Oscuro" : "Claro") + (savedTheme() ? "" : " · como tu sistema");
     themeSystem.hidden = !savedTheme();
   }
   themeToggle.addEventListener("click", () =>

@@ -120,9 +120,10 @@ html:active-view-transition-type(section-nav)::view-transition-new(root) { anima
 ::view-transition-group(nav-indicator) { animation-duration: 280ms; animation-timing-function: var(--ease-in-out); }
 .icon-link { display: inline-flex; }
 
-/* Interruptor de tema (Ajustes › Apariencia): sol y luna en una píldora, con el estado al lado */
-.theme-setting { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
-.theme-state { font-weight: 500; font-size: .9em; }
+/* Interruptor de tema (Ajustes › Apariencia): una sola línea, título a la izquierda y sol/luna a la derecha */
+.appearance-card .settings-card-head { align-items: center; padding-bottom: 0; }
+.appearance-card h2 { margin: 0; }
+.theme-setting { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 14px; }
 .theme-toggle {
   display: inline-flex; align-items: center; gap: 6px; padding: 3px; border: 1px solid var(--line);
   border-radius: 999px; background: var(--bg); cursor: pointer; color: var(--muted);
