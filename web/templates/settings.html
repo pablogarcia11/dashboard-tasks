@@ -181,6 +181,43 @@
   </div>
 </section>
 
+{# ---------- Parte de horas ---------- #}
+<section class="card settings-card" id="timesheet" aria-labelledby="timesheet-settings-title">
+  <header class="settings-card-head">
+    <div>
+      <h2 id="timesheet-settings-title">Parte de horas</h2>
+      <p class="muted small">{% if schedule.custom %}Usas tu propio horario.{% else %}Usas el horario de la empresa.{% endif %}
+        Cámbialo si tienes jornada parcial, intensiva u otro horario.</p>
+    </div>
+    {% if schedule.custom %}<span class="pill ok">Personalizado</span>{% endif %}
+  </header>
+  <form class="setting-row" hx-post="/settings/timesheet" hx-swap="none">
+    <div class="setting-label">
+      <h3>Tu jornada</h3>
+      <p class="muted small">El parte se reparte entre estas horas, sin tocar la comida.
+        Empresa: {{ schedule.company.day_start }}–{{ schedule.company.day_end }}, comida {{ schedule.company.lunch_start }}–{{ schedule.company.lunch_end }}.</p>
+    </div>
+    <div class="setting-control">
+      <div class="time-grid">
+        <label>Entrada <input type="time" class="field" name="day_start" value="{{ schedule.current.day_start }}" required></label>
+        <label>Salida <input type="time" class="field" name="day_end" value="{{ schedule.current.day_end }}" required></label>
+        <label>Comida desde <input type="time" class="field" name="lunch_start" value="{{ schedule.current.lunch_start }}" required></label>
+        <label>Comida hasta <input type="time" class="field" name="lunch_end" value="{{ schedule.current.lunch_end }}" required></label>
+        <label>Horas mínimas al día <input type="number" class="field" name="min_daily_hours" min="1" max="24" step="0.5"
+               value="{{ '%g' % (schedule.current.min_daily_hours | float) }}" required></label>
+      </div>
+      <p class="notice error small form-error" role="alert" hidden></p>
+      <div class="actions">
+        <button type="submit" class="btn">Guardar horario</button>
+        {% if schedule.custom %}
+        <button type="button" class="btn ghost" hx-post="/settings/timesheet" hx-vals='{"action": "reset"}'
+                hx-swap="none">Volver al de la empresa</button>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+</section>
+
 {# ---------- Repositorios ---------- #}
 <section class="card settings-card" id="repos" aria-labelledby="repos-title">
   <header class="settings-card-head">
@@ -203,7 +240,7 @@
                 hx-disabled-elt="this" hx-indicator="#picking">Elegir carpeta…</button>
       </div>
       <p id="picking" class="htmx-indicator muted small">Se ha abierto el selector de carpetas; si no lo ves, puede estar detrás del navegador.</p>
-      <p id="repos-error" class="notice error small" role="alert" hidden></p>
+      <p id="repos-error" class="notice error small form-error" role="alert" hidden></p>
       <details class="guide">
         <summary>Escribir la ruta a mano</summary>
         <form class="path-form" hx-post="/settings/repos-root" hx-swap="none">
@@ -321,15 +358,18 @@
     }
   });
 
-  // Errores al elegir la carpeta (ruta inexistente, selector ya abierto): el servidor explica el motivo
-  const reposError = document.getElementById("repos-error");
+  // Errores de los formularios (ruta inexistente, horas incoherentes…): el servidor explica el motivo
+  // y se muestra en el aviso de error de esa misma tarjeta
+  const errorBox = elt => elt.closest && elt.closest("section")?.querySelector(".form-error");
   document.body.addEventListener("htmx:responseError", event => {
-    if (!event.detail.elt.closest("#repos")) return;
-    reposError.textContent = event.detail.xhr.responseText || "No se pudo guardar la carpeta.";
-    reposError.hidden = false;
+    const box = errorBox(event.detail.elt);
+    if (!box) return;
+    box.textContent = event.detail.xhr.responseText || "No se pudo guardar.";
+    box.hidden = false;
   });
   document.body.addEventListener("htmx:beforeRequest", event => {
-    if (event.detail.elt.closest && event.detail.elt.closest("#repos")) reposError.hidden = true;
+    const box = errorBox(event.detail.elt);
+    if (box) box.hidden = true;
   });
 </script>
 {% endblock %}

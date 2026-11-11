@@ -14,6 +14,8 @@ JOURNAL_PAGE_TITLE = "notion.journal_page_title"
 REPOS_ROOT = "git.repos_root"
 EXTRA_AUTHORS = "git.extra_authors"   # JSON: emails de autor añadidos a mano (los de git se detectan solos)
 STANDUP_CHANNEL = "standup.channel"    # canal de stand-up de la persona (por defecto, el de config.yaml)
+# Horario del parte de horas de la persona (por defecto, el de la empresa en config.yaml)
+TIMESHEET_KEYS = ("day_start", "day_end", "lunch_start", "lunch_end", "min_daily_hours")
 STANDUP_EXAMPLES = "standup.examples"  # JSON: sus últimos stand-ups del canal, para imitar su formato
 
 
@@ -56,6 +58,10 @@ def effective_config(cfg: dict, con: sqlite3.Connection) -> dict:
     if saved.get(JOURNAL_PAGE_ID):
         out["notion"]["journal_page_id"] = saved[JOURNAL_PAGE_ID]
         out["notion"]["journal_page_title"] = saved.get(JOURNAL_PAGE_TITLE) or "Diario"
+    for k in TIMESHEET_KEYS:
+        if saved.get(f"timesheet.{k}"):
+            v = saved[f"timesheet.{k}"]
+            out.setdefault("timesheet", {})[k] = float(v) if k == "min_daily_hours" else v
     owner_id = notion_owner().get("id")
     if owner_id:
         out["notion"]["user_id"] = owner_id

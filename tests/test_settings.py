@@ -50,6 +50,16 @@ def test_delete_kinds_borra_solo_esas_notas(tmp_path):
     assert left == [("git", "commit"), ("notion", "task")]
 
 
+def test_horario_propio_del_parte_de_horas(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "notion_owner", lambda: {})
+    con = connect(tmp_path)
+    company = {"timesheet": {"day_start": "08:30", "day_end": "17:30", "min_daily_hours": 8, "categories": ["X"]}}
+    settings.set_value(con, "timesheet.day_end", "15:00")
+    settings.set_value(con, "timesheet.min_daily_hours", "6")
+    ts = settings.effective_config(company, con)["timesheet"]
+    assert ts == {"day_start": "08:30", "day_end": "15:00", "min_daily_hours": 6.0, "categories": ["X"]}
+
+
 def test_borrar_un_ajuste(tmp_path):
     con = connect(tmp_path)
     settings.set_value(con, settings.REPOS_ROOT, "X")

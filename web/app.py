@@ -3,6 +3,7 @@
 Uso:  python -m web.app
 """
 import json
+import re
 import secrets
 import shutil
 import subprocess
@@ -200,6 +201,9 @@ def settings_view(request: Request, msg: str = ""):
     return templates.TemplateResponse(request, "settings.html", {
         "rows": rows, "msg": SETTINGS_MESSAGES.get(msg), "repos_root": saved.get(settings.REPOS_ROOT),
         "steps": setup_steps(con), "path_example": PATH_EXAMPLE,
+        "schedule": {"current": effective_config(cfg, con)["timesheet"],
+                     "custom": any(saved.get(f"timesheet.{k}") for k in settings.TIMESHEET_KEYS),
+                     "company": cfg["timesheet"]},
         "standup": {"channel": standup_channel(),
                     "stored": json.loads(saved.get(settings.STANDUP_EXAMPLES) or "{}")},
         "authors": {"detected": sorted(git.detected_authors), "extra": [e for e in extra if e not in git.detected_authors]},
@@ -219,6 +223,8 @@ SETTINGS_MESSAGES = {
                               "NOTION_CLIENT_ID y NOTION_CLIENT_SECRET en .env."),
     "repos-saved": ("ok", "Carpeta de repositorios guardada."),
     "standup-learned": ("ok", "Formato del stand-up actualizado con tus últimos mensajes del canal."),
+    "timesheet-saved": ("ok", "Horario guardado. Regenera los días del parte de horas que quieras recalcular."),
+    "timesheet-reset": ("ok", "Vuelves a usar el horario de la empresa."),
     "standup-error": ("error", "No se pudo leer el canal de Slack. Comprueba que el conector de Slack está "
                                "conectado en claude.ai y que el nombre del canal es correcto."),
 }
@@ -401,6 +407,31 @@ def standup_learn():
     return Response(headers={"HX-Redirect": f"/settings?msg={msg}#standup"})
 
 
+@app.post("/settings/timesheet")
+async def timesheet_schedule(request: Request):
+    """Guarda el horario de la persona para el parte de horas (o vuelve al de la empresa)."""
+    form = await request.form()
+    con = db.connect()
+    if form.get("action") == "reset":
+        for k in settings.TIMESHEET_KEYS:
+            settings.set_value(con, f"timesheet.{k}", None)
+        return Response(headers={"HX-Redirect": "/settings?msg=timesheet-reset#timesheet"})
+    values = {k: (form.get(k) or "").strip() for k in settings.TIMESHEET_KEYS}
+    times = [values[k] for k in ("day_start", "lunch_start", "lunch_end", "day_end")]
+    if not all(re.fullmatch(r"\d{2}:\d{2}", t) for t in times) or times != sorted(times) or len(set(times)) < 4:
+        return Response("Revisa las horas: la comida tiene que quedar dentro de la jornada.", status_code=422)
+    try:
+        hours = float(values["min_daily_hours"].replace(",", "."))
+    except ValueError:
+        hours = -1
+    if not 0 < hours <= 24:
+        return Response("Las horas mínimas al día tienen que estar entre 0 y 24.", status_code=422)
+    values["min_daily_hours"] = str(hours)
+    for k, v in values.items():
+        settings.set_value(con, f"timesheet.{k}", v)
+    return Response(headers={"HX-Redirect": "/settings?msg=timesheet-saved#timesheet"})
+
+
 @app.post("/settings/git-authors")
 async def git_authors(request: Request):
     """Añade o quita un email de autor manual (los de git config se detectan solos)."""
@@ -499,8 +530,9 @@ def timesheet_column(request: Request, d: str, generate_now: bool = False, force
         return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
 
     con = db.connect()
+    ts_cfg = effective_config(cfg, con)["timesheet"]   # con el horario de la persona si lo ha cambiado
     inputs = timesheet_inputs(con, day, cfg)
-    commits, cats = inputs["commits"], cfg["timesheet"]["categories"]
+    commits, cats = inputs["commits"], ts_cfg["categories"]
     text = None
     if not inputs["has_work"]:
         ctx["state"] = "empty"
@@ -519,7 +551,7 @@ def timesheet_column(request: Request, d: str, generate_now: bool = False, force
             ctx["state"] = "pending"
     tasks = parse_tasks(text, commits, cats) if text else []
     if ctx["state"] in ("ok", "empty"):
-        ctx["blocks"], ctx["warnings"] = build_blocks(cfg["timesheet"], inputs["meetings"], commits, tasks)
+        ctx["blocks"], ctx["warnings"] = build_blocks(ts_cfg, inputs["meetings"], commits, tasks)
         ctx["total"] = sum(b.minutes for b in ctx["blocks"] if b.title != "Por definir")
         ctx["text"] = as_text([b for b in ctx["blocks"] if b.title != "Por definir"])
     return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
