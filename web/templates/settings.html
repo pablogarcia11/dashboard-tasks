@@ -9,6 +9,38 @@
 </header>
 {% if msg %}<p class="notice{% if msg[0] == 'error' %} error{% else %} ok{% endif %}" role="status">{{ msg[1] }}</p>{% endif %}
 
+{# ---------- Apariencia ---------- #}
+<section class="card settings-card" id="appearance" aria-labelledby="appearance-title">
+  <header class="settings-card-head">
+    <div>
+      <h2 id="appearance-title">Apariencia</h2>
+      <p class="muted small">Cómo se ve el dashboard en este navegador.</p>
+    </div>
+  </header>
+  <div class="setting-row">
+    <div class="setting-label">
+      <h3 id="theme-label">Modo oscuro</h3>
+      <p class="muted small">Mientras no lo cambies, sigue al de tu sistema.</p>
+    </div>
+    <div class="setting-control theme-setting">
+      <button type="button" class="theme-toggle" role="switch" id="theme-toggle" aria-checked="false"
+              aria-labelledby="theme-label" aria-describedby="theme-state">
+        <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+        <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <span id="theme-state" class="theme-state"></span>
+      <button type="button" class="btn ghost small" id="theme-system" hidden>Seguir al sistema</button>
+    </div>
+  </div>
+</section>
+
 {% set pending = steps | rejectattr("done") | list %}
 {% if pending %}
 <section class="card settings-card" id="setup" aria-labelledby="setup-title">
@@ -364,6 +396,22 @@
       clean();
     }
   }
+
+  // Apariencia: el interruptor refleja el tema actual y dice si viene de tu elección o del sistema
+  const themeToggle = document.getElementById("theme-toggle");
+  const themeState = document.getElementById("theme-state");
+  const themeSystem = document.getElementById("theme-system");
+  function syncTheme() {
+    const dark = document.documentElement.dataset.theme === "dark";
+    themeToggle.setAttribute("aria-checked", dark);
+    themeState.textContent = (dark ? "Oscuro" : "Claro") + (savedTheme() ? "" : " · como tu sistema");
+    themeSystem.hidden = !savedTheme();
+  }
+  themeToggle.addEventListener("click", () =>
+    chooseTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+  themeSystem.addEventListener("click", () => { chooseTheme(null); themeToggle.focus(); });
+  document.addEventListener("themechange", syncTheme);
+  syncTheme();
 
   // Confirmación breve al guardar; si falla, el interruptor vuelve a su posición y se avisa
   const saveStatus = document.getElementById("save-status");

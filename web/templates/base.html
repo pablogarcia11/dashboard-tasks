@@ -8,13 +8,40 @@
   <script>
     // Tema antes de pintar (sin parpadeo): elección guardada o, si no hay, la del sistema
     var THEME_COLORS = { light: "#FFFFFF", dark: "#2C2C2C" };  // color de la barra superior
+    function savedTheme() {
+      try { return localStorage.getItem("theme"); } catch (e) { return null; }
+    }
+    function systemTheme() { return matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"; }
     (function () {
-      var saved = null;
-      try { saved = localStorage.getItem("theme"); } catch (e) {}
-      var dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-      document.documentElement.dataset.theme = dark ? "dark" : "light";
-      document.querySelector('meta[name="theme-color"]').content = THEME_COLORS[dark ? "dark" : "light"];
+      var theme = savedTheme() || systemTheme();
+      document.documentElement.dataset.theme = theme;
+      document.querySelector('meta[name="theme-color"]').content = THEME_COLORS[theme];
     })();
+
+    // Tema claro/oscuro: el interruptor está en Ajustes › Apariencia. Sin elección guardada se sigue al
+    // sistema, también en caliente. Cada cambio avisa con el evento "themechange" para que Ajustes se actualice.
+    // Cambio con fundido suave: View Transitions si existe; si no, transición de colores
+    function setTheme(theme) {
+      var root = document.documentElement;
+      var apply = function () {
+        root.dataset.theme = theme;
+        document.querySelector('meta[name="theme-color"]').content = THEME_COLORS[theme];
+        document.dispatchEvent(new CustomEvent("themechange"));
+      };
+      if (root.dataset.theme === theme) return apply();
+      if (document.startViewTransition) { document.startViewTransition(apply); return; }
+      root.classList.add("theme-fading");
+      apply();
+      setTimeout(function () { root.classList.remove("theme-fading"); }, 400);
+    }
+    // theme: "light" | "dark" lo guarda; null vuelve a seguir al sistema
+    function chooseTheme(theme) {
+      try { theme ? localStorage.setItem("theme", theme) : localStorage.removeItem("theme"); } catch (e) {}
+      setTheme(theme || systemTheme());
+    }
+    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
+      if (!savedTheme()) setTheme(systemTheme());
+    });
 
     // Proyectos plegables (details[data-key]): se recuerda cuáles has plegado
     function collapsedKeys() {
@@ -60,18 +87,6 @@
           {% if section == key %}<span class="nav-indicator" aria-hidden="true"></span>{% endif %}
         </a>
         {% endfor %}
-        <button type="button" class="theme-toggle" role="switch" id="theme-toggle"
-                aria-label="Modo oscuro" title="Cambiar entre modo claro y oscuro">
-          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="4"/>
-            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
-          </svg>
-          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-          </svg>
-        </button>
         <a class="icon-link" href="/settings" title="Ajustes" aria-label="Ajustes"
            {% if section == "settings" %}aria-current="page"{% endif %}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -88,34 +103,6 @@
   </main>
   <div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
   <script>
-    (function () {
-      var root = document.documentElement, btn = document.getElementById("theme-toggle");
-      var sync = function () { btn.setAttribute("aria-checked", root.dataset.theme === "dark"); };
-      // Cambio de tema con fundido suave: View Transitions si existe; si no, transición de colores
-      var setTheme = function (theme) {
-        var apply = function () {
-          root.dataset.theme = theme;
-          document.querySelector('meta[name="theme-color"]').content = THEME_COLORS[theme];
-          sync();
-        };
-        if (document.startViewTransition) { document.startViewTransition(apply); return; }
-        root.classList.add("theme-fading");
-        apply();
-        setTimeout(function () { root.classList.remove("theme-fading"); }, 400);
-      };
-      sync();
-      btn.addEventListener("click", function () {
-        var theme = root.dataset.theme === "dark" ? "light" : "dark";
-        try { localStorage.setItem("theme", theme); } catch (e) {}
-        setTheme(theme);
-      });
-      // Sin elección guardada, sigue al sistema también en caliente
-      matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
-        var saved = null;
-        try { saved = localStorage.getItem("theme"); } catch (err) {}
-        if (!saved) setTheme(e.matches ? "dark" : "light");
-      });
-    })();
 
     // Botones "Copiar" (_macros.html, solo icono): copian el texto de un campo, el icono pasa a ✓ y se anuncia
     function copyFrom(id, btn) {
