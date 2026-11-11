@@ -7,3 +7,4 @@ python-dotenv
 pyyaml
 pytest
 tzdata
+python-multipart

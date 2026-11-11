@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% set section = "settings" %}
+{% block title %}Ajustes · Dashboard{% endblock %}
+{% block content %}
+<h1>Ajustes</h1>
+
+<section class="card">
+  <h2>Repositorios</h2>
+  <p class="muted">Elige qué repos se muestran. Lo oculto tampoco se envía a Claude (stand-up, parte de horas).
+    Se sigue recogiendo, así que al volver a activarlo aparece al momento.</p>
+  <div class="table-scroll">
+  <table class="settings">
+    <thead><tr><th>Repo</th><th>Proyecto</th><th>Visible</th><th>Cambios sin commitear</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td>{{ r.repo }}{% if r.worktree_of %}<br><span class="muted small">worktree de {{ r.worktree_of }}: sus commits se muestran con ese repo</span>{% endif %}</td>
+        <td>{{ r.project }}</td>
+        <td><label class="switch"><input type="checkbox" name="value" {% if r.visible %}checked{% endif %}
+              hx-post="/settings/repo" hx-trigger="change" hx-swap="none"
+              hx-vals='{"repo": "{{ r.repo }}", "field": "visible"}'
+              aria-label="Mostrar {{ r.repo }}"><span></span></label></td>
+        <td><label class="switch"><input type="checkbox" name="value" {% if r.show_wip %}checked{% endif %}
+              hx-post="/settings/repo" hx-trigger="change" hx-swap="none"
+              hx-vals='{"repo": "{{ r.repo }}", "field": "show_wip"}'
+              aria-label="Mostrar cambios sin commitear de {{ r.repo }}"><span></span></label></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <p class="muted small">Excluidos siempre (en <code>config.yaml</code>, no se recogen):
+    {% for e in excluded %}<code>{{ e | replace(root ~ "\\", "") }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
+</section>
+{% endblock %}

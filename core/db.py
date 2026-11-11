@@ -81,6 +81,19 @@ def save_summary(con: sqlite3.Connection, work_date: str, kind: str, content: st
     con.commit()
 
 
+def repo_settings(con: sqlite3.Connection) -> dict[str, dict]:
+    return {r["repo"]: {"visible": bool(r["visible"]), "show_wip": bool(r["show_wip"])}
+            for r in con.execute("SELECT * FROM repo_settings")}
+
+
+def set_repo_setting(con: sqlite3.Connection, repo: str, field: str, value: bool) -> None:
+    if field not in ("visible", "show_wip"):
+        raise ValueError(field)
+    con.execute(f"""INSERT INTO repo_settings (repo, {field}) VALUES (?, ?)
+                    ON CONFLICT(repo) DO UPDATE SET {field}=excluded.{field}""", (repo, int(value)))
+    con.commit()
+
+
 def sync_states(con: sqlite3.Connection) -> dict:
     return {r["source"]: dict(r) for r in con.execute("SELECT * FROM sync_state")}
 

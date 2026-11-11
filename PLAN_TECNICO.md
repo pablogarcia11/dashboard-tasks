@@ -288,6 +288,12 @@ Buenos días! :saluting_face:
 - Cada tarea: frase corta en infinitivo, poco técnica, ~4–10 palabras ("Corregir…", "Revisar…", "Subir a producción"). Condensa las notas largas de I'M BACK en 5–9 puntos por proyecto como máximo; los "Pasado a production" se agrupan en un único "Subir cambios a producción".
 - Reuniones de hoy van en "hoy" bajo su proyecto como "Reunión <tema>".
 
+### 7.6 Ajustes (icono ⚙ en la barra superior, `/settings`)
+- Tabla con todos los repos descubiertos (proyecto, si es worktree) y dos interruptores por repo: **Visible** (oculta commits, WIP y commits sin subir de ese repo) y **Cambios sin commitear** (oculta solo el WIP).
+- Se guarda en SQLite (`repo_settings`), no en `config.yaml`. El filtro se aplica al preparar los datos de las vistas (`core/views.py`), así que **lo oculto tampoco se envía a Claude**. Los datos se siguen recogiendo: al reactivar aparece al momento.
+- Distinto de `exclude_repos` (config): lo excluido allí no se recoge nunca (este repo, Kanvas, shannon).
+- Los worktrees comparten commits con su repo principal: ocultar un worktree solo oculta su WIP.
+
 ### 7.5 Parte de horas (calendario para 1million hub)
 
 En la plataforma interna **1million hub** (Trabajo → Tareas → Mis tareas) cada empleado apunta en un calendario semanal (L–V) las tareas realizadas cada día con su franja horaria y categoría; se contabilizan las horas diarias y la semana se envía a aprobación. El hub ya importa las reuniones de Google Calendar por su cuenta (y tiene un botón "Notion" por día que **no funciona bien: ignóralo**). **El dashboard no tiene acceso al hub**: solo genera la propuesta para que el usuario la copie a mano.

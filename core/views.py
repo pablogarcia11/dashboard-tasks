@@ -14,11 +14,25 @@ def group_by_project(items: list[dict]) -> dict[str, list[dict]]:
     return dict(groups)
 
 
+def visible_git(items: list[dict], settings: dict) -> list[dict]:
+    """Quita la actividad de git de los repos ocultos en Ajustes (y el WIP si se ocultó solo eso)."""
+    out = []
+    for a in items:
+        s = settings.get(a["extra"].get("repo", ""), {})
+        if a["source"] == "git" and (not s.get("visible", True)
+                                     or (a["kind"] == "wip" and not s.get("show_wip", True))):
+            continue
+        out.append(a)
+    return out
+
+
 def day_data(con: sqlite3.Connection, day: date, holidays=()) -> dict:
     """Todo lo de un día laborable: notas, commits, pendientes del día anterior, tareas y WIP."""
     d = day.isoformat()
-    acts = db.activities(con, d, d)
+    settings = db.repo_settings(con)
+    acts = visible_git(db.activities(con, d, d), settings)
     prev = previous_workday(day, holidays).isoformat()
+    git_now = visible_git(db.activities(con, prev, d, ["git"]), settings)
     return {
         "notes": group_by_project([a for a in acts if a["kind"] == "note"]),
         "commits": group_by_project([a for a in acts if a["kind"] == "commit"]),
@@ -27,9 +41,9 @@ def day_data(con: sqlite3.Connection, day: date, holidays=()) -> dict:
             [a for a in db.activities(con, prev, prev, ["notion"]) if a["kind"] == "task_plan"]),
         # Instantáneas del estado actual (solo tienen sentido para hoy)
         "tasks": [a for a in db.activities(con, "0000-00-00", "9999-99-99", ["notion"]) if a["kind"] == "task"],
-        "wip": [a for a in db.activities(con, "0000-00-00", "9999-99-99", ["git"]) if a["kind"] == "wip"],
-        "unpushed": [a for a in db.activities(con, prev, d, ["git"])
-                     if a["kind"] == "commit" and not a["extra"].get("pushed", True)],
+        "wip": visible_git([a for a in db.activities(con, "0000-00-00", "9999-99-99", ["git"])
+                            if a["kind"] == "wip"], settings),
+        "unpushed": [a for a in git_now if a["kind"] == "commit" and not a["extra"].get("pushed", True)],
     }
 
 

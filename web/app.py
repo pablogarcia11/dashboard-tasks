@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from collectors.git_local import GitLocalCollector
 from core import db
 from core.config import ROOT, load_config
 from core.dates import effective_today, is_workday, next_workday, previous_workday
@@ -72,6 +73,30 @@ def day_view(request: Request, d: str):
         "data": day_data(con, shown, HOLIDAYS), "sync": db.sync_states(con),
         "standup": db.get_summary(con, shown.isoformat(), "standup"),
     })
+
+
+@app.get("/settings", response_class=HTMLResponse)
+def settings_view(request: Request):
+    git = GitLocalCollector(cfg)
+    repos = sorted(git.repos(), key=lambda r: (r.project.lower(), str(r.path).lower()))
+    mains = {r.common_dir: r for r in repos if not r.is_worktree}
+    settings = db.repo_settings(db.connect())
+    rows = []
+    for r in repos:
+        rel = r.path.relative_to(git.root).as_posix()
+        main = mains.get(r.common_dir)
+        rows.append({"repo": rel, "project": r.project, **settings.get(rel, {"visible": True, "show_wip": True}),
+                     "worktree_of": main.path.relative_to(git.root).as_posix() if r.is_worktree and main else None})
+    return templates.TemplateResponse(request, "settings.html", {
+        "rows": rows, "excluded": cfg["git"].get("exclude_repos", []), "root": str(git.root)})
+
+
+@app.post("/settings/repo")
+async def settings_repo(request: Request):
+    form = await request.form()
+    # Un checkbox desmarcado no envía "value"
+    db.set_repo_setting(db.connect(), form["repo"], form["field"], form.get("value") == "on")
+    return Response(status_code=204)
 
 
 @app.post("/collect/{d}")

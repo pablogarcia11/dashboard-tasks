@@ -18,4 +18,11 @@ CREATE TABLE IF NOT EXISTS summaries (
   UNIQUE(work_date, kind)
 );
 
+-- Preferencias de visibilidad por repo (ruta relativa a repos_root). Sin fila = todo visible.
+CREATE TABLE IF NOT EXISTS repo_settings (
+  repo TEXT PRIMARY KEY,
+  visible INTEGER NOT NULL DEFAULT 1,     -- 0: oculta commits, WIP y commits sin subir
+  show_wip INTEGER NOT NULL DEFAULT 1     -- 0: oculta solo los cambios sin commitear
+);
+
 CREATE TABLE IF NOT EXISTS sync_state (source TEXT PRIMARY KEY, last_ok TEXT, last_error TEXT);
