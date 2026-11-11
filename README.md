@@ -36,7 +36,7 @@ Ve a **Ajustes** (⚙, arriba a la derecha) y sigue **Primeros pasos**:
 
 1. **Conectar con Notion**: inicia sesión y comparte tu página diario (y la base de Tareas).
 2. **Página diario**: búscala y pulsa «Usar como diario». La vista previa te dice si el dashboard entiende su formato.
-3. **Carpeta de repositorios**: «Elegir carpeta…» y selecciona donde guardas tus proyectos.
+3. **Carpetas de repositorios**: «Elegir carpeta…» y selecciona donde guardas tus proyectos. Si los tienes repartidos, añade todas las carpetas que necesites con «Añadir otra carpeta…».
 4. **Emails de autor**: se detectan de tu git; añade otros si firmas commits con más de uno.
 
 Mientras falte algo, la vista Día te lo recuerda.

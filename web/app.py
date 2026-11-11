@@ -3,6 +3,7 @@
 Uso:  python -m web.app
 """
 import json
+import os
 import re
 import secrets
 import shutil
@@ -193,14 +194,15 @@ def settings_view(request: Request, msg: str = ""):
     prefs = db.repo_settings(con)
     rows = []
     for r in repos:
-        rel = r.path.relative_to(git.root).as_posix()
         main = mains.get(r.common_dir)
-        rows.append({"repo": rel, "project": r.project, **prefs.get(rel, {"visible": True, "show_wip": True}),
-                     "worktree_of": main.path.relative_to(git.root).as_posix() if r.is_worktree and main else None})
+        rows.append({"repo": r.name, "project": r.project, **prefs.get(r.name, {"visible": True, "show_wip": True}),
+                     "worktree_of": main.name if r.is_worktree and main else None})
+    folders = [{"path": str(root), "missing": not root.is_dir(), "repos": sum(r.root == root for r in repos)}
+               for root in git.roots]
     owner = notion_owner()
     extra = settings.extra_authors(con)
     return templates.TemplateResponse(request, "settings.html", {
-        "rows": rows, "msg": SETTINGS_MESSAGES.get(msg), "repos_root": saved.get(settings.REPOS_ROOT),
+        "rows": rows, "msg": SETTINGS_MESSAGES.get(msg), "folders": folders,
         "steps": setup_steps(con), "path_example": PATH_EXAMPLE,
         "schedule": {"current": effective_config(cfg, con)["timesheet"],
                      "custom": any(saved.get(f"timesheet.{k}") for k in settings.TIMESHEET_KEYS),
@@ -222,7 +224,8 @@ SETTINGS_MESSAGES = {
     "notion-disconnected": ("ok", "Notion desconectado."),
     "notion-error": ("error", "No se pudo conectar con Notion. Vuelve a intentarlo; si se repite, revisa "
                               "NOTION_CLIENT_ID y NOTION_CLIENT_SECRET en .env."),
-    "repos-saved": ("ok", "Carpeta de repositorios guardada."),
+    "repos-added": ("ok", "Carpeta añadida. Sus repos ya aparecen en la lista de abajo."),
+    "repos-removed": ("ok", "Carpeta quitada. Sus repos y sus commits ya no se muestran."),
     "standup-learned": ("ok", "Formato del stand-up actualizado con tus últimos mensajes del canal."),
     "timesheet-saved": ("ok", "Horario guardado. Regenera los días del parte de horas que quieras recalcular."),
     "timesheet-reset": ("ok", "Vuelves a usar el horario de la empresa."),
@@ -242,7 +245,7 @@ def setup_steps(con) -> list[dict]:
         {"label": "Notion conectado", "done": notion_auth.TOKEN_FILE.is_file(), "href": "/settings#notion",
          "hint": None if has_creds else "Antes, añade NOTION_CLIENT_ID y NOTION_CLIENT_SECRET al fichero .env."},
         {"label": "Página diario elegida", "done": bool(saved.get(settings.JOURNAL_PAGE_ID)), "href": "/settings#notion"},
-        {"label": "Carpeta de repositorios elegida", "done": bool(saved.get(settings.REPOS_ROOT)), "href": "/settings#repos"},
+        {"label": "Carpeta de repositorios elegida", "done": bool(settings.repos_roots(con)), "href": "/settings#repos"},
         {"label": "Email de autor de git", "done": bool(identity.git_global_email() or settings.extra_authors(con)),
          "href": "/settings#repos", "hint": "Configura git config --global user.email o añade tu email en Ajustes."},
         {"label": "Google Calendar conectado en Claude", "done": bool(gcal.get("last_ok")) and not gcal.get("last_error"),
@@ -350,7 +353,7 @@ def notion_journal_status(request: Request):
 picker_lock = threading.Lock()
 
 
-PICK_TITLE = "Elige la carpeta donde tienes tus repositorios"
+PICK_TITLE = "Elige una carpeta con tus repositorios"
 PATH_EXAMPLE = r"C:\Users\tu-usuario\Documents\repos" if sys.platform == "win32" else "/Users/tu-usuario/repos"
 # tkinter en un proceso aparte: las ventanas deben abrirse en el hilo principal de un proceso
 TK_PICKER = """
@@ -381,13 +384,18 @@ def pick_directory(initial: str | None) -> str | None:
     return p.stdout.strip() or None   # vacío si se cancela
 
 
-def save_repos_root(path: str) -> Response:
+def add_repos_folder(path: str) -> Response:
     folder = Path(path.strip().strip('"')).expanduser()
-    if not folder.is_dir():
+    if not path.strip() or not folder.is_dir():
         return Response(f"No existe la carpeta «{path}».", status_code=422)
-    settings.set_value(db.connect(), settings.REPOS_ROOT, str(folder.resolve()))
+    con = db.connect()
+    roots = settings.repos_roots(con)
+    folder = str(folder.resolve())
+    if any(os.path.normcase(folder) == os.path.normcase(r) for r in roots):
+        return Response("Esa carpeta ya está en la lista.", status_code=422)
+    settings.set_repos_roots(con, roots + [folder])
     refresh_in_background({"git"})
-    return Response(headers={"HX-Redirect": "/settings?msg=repos-saved#repos"})
+    return Response(headers={"HX-Redirect": "/settings?msg=repos-added#repos"})
 
 
 @app.post("/settings/standup/channel")
@@ -451,23 +459,38 @@ async def git_authors(request: Request):
     return Response(headers={"HX-Redirect": "/settings#repos"})
 
 
-@app.post("/settings/repos-root/pick")
-def repos_root_pick():
+@app.post("/settings/repos-folders/pick")
+def repos_folder_pick():
     if not picker_lock.acquire(blocking=False):
         return Response("Ya hay un selector de carpetas abierto.", status_code=409)
     try:
-        path = pick_directory(settings.get_all(db.connect()).get(settings.REPOS_ROOT))
+        roots = settings.repos_roots(db.connect())
+        # Empieza junto a la última carpeta añadida: las siguientes suelen estar cerca
+        path = pick_directory(str(Path(roots[-1]).parent) if roots else None)
     finally:
         picker_lock.release()
     if not path:
         return Response(status_code=204)   # cancelado
-    return save_repos_root(path)
+    return add_repos_folder(path)
 
 
-@app.post("/settings/repos-root")
-async def repos_root_manual(request: Request):
+@app.post("/settings/repos-folders")
+async def repos_folder_manual(request: Request):
     form = await request.form()
-    return save_repos_root(form.get("path", ""))
+    return add_repos_folder(form.get("path", ""))
+
+
+@app.post("/settings/repos-folders/remove")
+async def repos_folder_remove(request: Request):
+    """Quita una carpeta y la actividad guardada de los repos que solo estaban en ella."""
+    form = await request.form()
+    con = db.connect()
+    before = {r.name for r in GitLocalCollector(effective_config(cfg, con)).repos()}
+    settings.set_repos_roots(con, [r for r in settings.repos_roots(con) if r != form.get("path")])
+    after = {r.name for r in GitLocalCollector(effective_config(cfg, con)).repos()}
+    with collect_lock:
+        db.delete_git_repos(con, sorted(before - after))
+    return Response(headers={"HX-Redirect": "/settings?msg=repos-removed#repos"})
 
 
 @app.post("/settings/repo")

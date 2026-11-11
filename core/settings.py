@@ -1,7 +1,7 @@
 """Ajustes de cada usuario elegidos desde la web (tabla app_settings) y su combinación con config.yaml.
 
 config.yaml queda para lo común (zona horaria, jornada, categorías...). Lo que es propio de cada persona
-(su página diario de Notion, la carpeta donde tiene sus repos) se elige en Ajustes y se guarda aquí.
+(su página diario de Notion, las carpetas donde tiene sus repos) se elige en Ajustes y se guarda aquí.
 """
 import copy
 import json
@@ -11,7 +11,8 @@ from core.identity import notion_owner
 
 JOURNAL_PAGE_ID = "notion.journal_page_id"
 JOURNAL_PAGE_TITLE = "notion.journal_page_title"
-REPOS_ROOT = "git.repos_root"
+REPOS_ROOTS = "git.repos_roots"      # JSON: carpetas donde la persona tiene sus repos (pueden ser varias)
+REPOS_ROOT = "git.repos_root"        # antigua, de cuando solo había una carpeta: se migra a REPOS_ROOTS
 EXTRA_AUTHORS = "git.extra_authors"   # JSON: emails de autor añadidos a mano (los de git se detectan solos)
 STANDUP_CHANNEL = "standup.channel"    # canal de stand-up de la persona (por defecto, el de config.yaml)
 # Horario del parte de horas de la persona (por defecto, el de la empresa en config.yaml)
@@ -28,6 +29,20 @@ def extra_authors(con: sqlite3.Connection) -> list[str]:
 
 def set_extra_authors(con: sqlite3.Connection, emails: list[str]) -> None:
     set_value(con, EXTRA_AUTHORS, json.dumps(sorted(set(emails))) if emails else None)
+
+
+def repos_roots(con: sqlite3.Connection) -> list[str]:
+    saved = get_all(con)
+    try:
+        roots = json.loads(saved.get(REPOS_ROOTS) or "[]")
+    except ValueError:
+        roots = []
+    return roots or ([saved[REPOS_ROOT]] if saved.get(REPOS_ROOT) else [])
+
+
+def set_repos_roots(con: sqlite3.Connection, roots: list[str]) -> None:
+    set_value(con, REPOS_ROOTS, json.dumps(list(dict.fromkeys(roots))) if roots else None)
+    set_value(con, REPOS_ROOT, None)
 
 
 def get_all(con: sqlite3.Connection) -> dict[str, str]:
@@ -53,8 +68,9 @@ def effective_config(cfg: dict, con: sqlite3.Connection) -> dict:
     manual = (out["user"].get("git_authors") or []) + extra_authors(con)
     if manual:
         out["user"]["git_authors"] = manual
-    if saved.get(REPOS_ROOT):
-        out["git"]["repos_root"] = saved[REPOS_ROOT]
+    roots = repos_roots(con)
+    if roots:
+        out["git"]["repos_roots"] = roots
     if saved.get(JOURNAL_PAGE_ID):
         out["notion"]["journal_page_id"] = saved[JOURNAL_PAGE_ID]
         out["notion"]["journal_page_title"] = saved.get(JOURNAL_PAGE_TITLE) or "Diario"

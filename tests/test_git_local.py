@@ -72,6 +72,32 @@ def test_el_propio_dashboard_siempre_se_excluye():
     assert str(ROOT) in GitLocalCollector(cfg).exclude
 
 
+def test_varias_carpetas_de_repos(tmp_path):
+    import subprocess
+    from collectors.git_local import GitLocalCollector
+
+    def init(path: Path):
+        path.mkdir(parents=True)
+        subprocess.run(["git", "init", "-q", str(path)], check=True)
+
+    a, b = tmp_path / "trabajo", tmp_path / "otro-disco"
+    init(a / "airisk-api")
+    init(a / "clientes" / "web")
+    init(b / "airisk-api")                 # mismo nombre que en la primera carpeta
+    init(tmp_path / "sueltos" / "aurea")   # carpeta elegida que ya es un repo
+    roots = [a, b, tmp_path / "sueltos" / "aurea", a / "clientes", tmp_path / "no-existe"]
+    cfg = {"git": {"repos_roots": [str(r) for r in roots]}, "projects": PROJECTS,
+           "user": {"git_authors": [], "timezone": "Europe/Madrid"}}
+
+    git = GitLocalCollector(cfg)
+    repos = {r.name: r for r in git.repos()}
+    assert set(repos) == {"airisk-api", "clientes/web", "otro-disco/airisk-api", "aurea"}
+    assert repos["clientes/web"].root == a               # la carpeta anidada no lo duplica
+    assert repos["aurea"].project == "Aurea"
+    assert repos["otro-disco/airisk-api"].project == "AI Risk"
+    assert any("no-existe" in e for e in git.errors)
+
+
 def test_short_ref():
     assert short_ref("refs/heads/main") == "main"
     assert short_ref("refs/remotes/origin/dev") == "origin/dev"

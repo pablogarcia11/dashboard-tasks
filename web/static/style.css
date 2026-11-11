@@ -355,6 +355,12 @@ textarea:focus { border-color: var(--red-text); outline: 2px solid transparent; 
   flex: 1 1 280px; min-width: 0; display: flex; align-items: center; padding: 8px 12px;
   border: 1px solid var(--line); border-radius: 8px; background: var(--bg); overflow-wrap: anywhere;
 }
+/* Varias carpetas: una caja por ruta con sus repos encontrados y el botón de quitar */
+.folder-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; }
+.folder { flex: none; gap: 12px; margin: 0; padding: 6px 6px 6px 12px; }   /* en columna, la base de .path-box sería altura */
+.folder code { flex: 1; min-width: 0; }
+.folder > span { flex: none; font-variant-numeric: tabular-nums; }
+.folder .is-missing { color: var(--red-text); font-weight: 700; }
 .path-form { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
 .path-form .field { flex: 1 1 280px; width: auto; }
 #picking, #repos-error { margin: 8px 0 0; }

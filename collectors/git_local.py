@@ -23,6 +23,8 @@ class Repo:
     project: str
     common_dir: str = ""   # los worktrees de un mismo repo comparten common_dir
     is_worktree: bool = False
+    name: str = ""         # ruta relativa a su carpeta: la clave en Ajustes y en la actividad guardada
+    root: Path | None = None
 
 
 def run_git(path: Path, *args: str) -> str:
@@ -64,14 +66,27 @@ def project_for(path: Path, root: Path, projects: dict) -> str:
     return parts[0]
 
 
+def repos_base(root: Path) -> Path:
+    """Carpeta respecto a la que se nombran los repos de root (su padre si root ya es un repo)."""
+    return root.parent if git_marker(root) else root
+
+
 def discover_repos(root: Path, depth: int, exclude: list, projects: dict) -> list[Repo]:
-    """Busca repos hasta `depth` niveles bajo root, sin entrar en los excluidos ni dentro de un repo."""
+    """Busca repos hasta `depth` niveles bajo root, sin entrar en los excluidos ni dentro de un repo.
+
+    Si root es ya un repo (alguien que elige sus repos uno a uno), es el único.
+    """
     excluded = [_norm(e) for e in exclude]
     found: list[Repo] = []
 
     def is_excluded(p: Path) -> bool:
         n = _norm(p)
         return any(n == e or n.startswith(e + os.sep) for e in excluded)
+
+    marker = git_marker(root)
+    if marker:
+        return [] if is_excluded(root) else [Repo(root, project_for(root, root.parent, projects),
+                                                  is_worktree=marker == "file")]
 
     def walk(d: Path, level: int):
         try:
@@ -150,7 +165,9 @@ class GitLocalCollector:
 
     def __init__(self, config: dict):
         g = config["git"]
-        self.root = Path(g["repos_root"]) if g.get("repos_root") else None  # carpeta elegida en Ajustes
+        # Carpetas elegidas en Ajustes (antes había una sola: repos_root)
+        roots = g.get("repos_roots") or ([g["repos_root"]] if g.get("repos_root") else [])
+        self.roots = [Path(r) for r in roots]
         self.depth = g.get("scan_depth", 3)
         # El propio dashboard nunca se recoge (no es trabajo de empresa); el resto se controla en Ajustes
         self.exclude = (g.get("exclude_repos") or []) + [str(ROOT)]
@@ -163,10 +180,24 @@ class GitLocalCollector:
         self.errors: list[str] = []
 
     def repos(self) -> list[Repo]:
-        if not self.root or not self.root.is_dir():
+        if not self.roots:
             self.errors.append("No hay carpeta de repositorios: elígela en Ajustes")
             return []
-        repos = discover_repos(self.root, self.depth, self.exclude, self.projects)
+        repos, seen, names = [], set(), set()
+        for root in self.roots:
+            if not root.is_dir():
+                self.errors.append(f"No se encuentra la carpeta {root}: quítala o cámbiala en Ajustes")
+                continue
+            base = repos_base(root)
+            for r in discover_repos(root, self.depth, self.exclude, self.projects):
+                if _norm(r.path) in seen:   # carpetas elegidas una dentro de otra
+                    continue
+                seen.add(_norm(r.path))
+                r.root, r.name = root, r.path.relative_to(base).as_posix()
+                if r.name in names:         # mismo nombre en dos carpetas: se distingue por la carpeta
+                    r.name = f"{base.name}/{r.name}"
+                names.add(r.name)
+                repos.append(r)
         for r in repos:
             try:
                 # Relativo (".git") en repos normales, absoluto en worktrees
@@ -228,7 +259,7 @@ class GitLocalCollector:
                 source="git", kind="commit", external_id=c["sha"], ts=c["date"],
                 work_date=to_work_date(ts, self.tz).isoformat(), title=c["subject"],
                 project=repo.project,
-                extra={"repo": repo.path.relative_to(self.root).as_posix(), "branch": c["branch"],
+                extra={"repo": repo.name, "branch": c["branch"],
                        "sha": c["sha"][:8], "pushed": has_remote and c["sha"] not in unpushed,
                        "files": c["files"], "insertions": c["insertions"], "deletions": c["deletions"]},
             ))
@@ -240,7 +271,7 @@ class GitLocalCollector:
             return None
         branch = run_git(repo.path, "branch", "--show-current").strip() or "(HEAD separado)"
         now = datetime.now().astimezone()
-        rel = repo.path.relative_to(self.root).as_posix()
+        rel = repo.name
         return Activity(
             source="git", kind="wip", external_id=f"wip:{rel}", ts=now.isoformat(timespec="seconds"),
             work_date=to_work_date(now, self.tz).isoformat(),

@@ -238,31 +238,44 @@
   <header class="settings-card-head">
     <div>
       <h2 id="repos-title">Repositorios</h2>
-      <p class="muted small">Los repos de tu carpeta de proyectos y cuáles se muestran.</p>
+      <p class="muted small">Los repos de tus carpetas de proyectos y cuáles se muestran.</p>
     </div>
     <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
   </header>
 
   <div class="setting-row">
     <div class="setting-label">
-      <h3>Carpeta</h3>
-      <p class="muted small">Donde guardas tus proyectos. Se buscan repos hasta 3 niveles por debajo.</p>
+      <h3>Carpetas</h3>
+      <p class="muted small">Donde guardas tus proyectos; añade varias si los tienes repartidos. En cada una se buscan repos hasta 3 niveles por debajo.</p>
     </div>
     <div class="setting-control">
-      <div class="path-row">
-        <div class="path-box">{% if repos_root %}<code translate="no">{{ repos_root }}</code>{% else %}<span class="muted">Sin elegir</span>{% endif %}</div>
-        <button type="button" class="btn" hx-post="/settings/repos-root/pick" hx-swap="none"
-                hx-disabled-elt="this" hx-indicator="#picking">Elegir carpeta…</button>
+      {% if folders %}
+      <ul class="folder-list">
+        {% for f in folders %}
+        <li class="path-box folder">
+          <code translate="no">{{ f.path }}</code>
+          <span class="small {{ 'is-missing' if f.missing else 'muted' }}">{% if f.missing %}No se encuentra{% else %}{{ f.repos }} repo{{ 's' if f.repos != 1 }}{% endif %}</span>
+          <button type="button" class="chip-remove" hx-post="/settings/repos-folders/remove" hx-swap="none"
+                  hx-vals='{"path": {{ f.path | tojson }}}' aria-label="Quitar la carpeta {{ f.path }}" title="Quitar">×</button>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="path-box"><span class="muted">Sin elegir</span></div>
+      {% endif %}
+      <div class="actions">
+        <button type="button" class="btn" hx-post="/settings/repos-folders/pick" hx-swap="none"
+                hx-disabled-elt="this" hx-indicator="#picking">{{ 'Añadir otra carpeta…' if folders else 'Elegir carpeta…' }}</button>
       </div>
       <p id="picking" class="htmx-indicator muted small">Se ha abierto el selector de carpetas; si no lo ves, puede estar detrás del navegador.</p>
       <p id="repos-error" class="notice error small form-error" role="alert" hidden></p>
       <details class="guide">
         <summary>Escribir la ruta a mano</summary>
-        <form class="path-form" hx-post="/settings/repos-root" hx-swap="none">
+        <form class="path-form" hx-post="/settings/repos-folders" hx-swap="none">
           <label class="sr-only" for="repos-path">Ruta de la carpeta</label>
-          <input type="text" id="repos-path" name="path" class="field" value="{{ repos_root or '' }}"
-                 placeholder="{{ path_example }}…" autocomplete="off" spellcheck="false">
-          <button type="submit" class="btn ghost">Guardar</button>
+          <input type="text" id="repos-path" name="path" class="field"
+                 placeholder="{{ path_example }}…" autocomplete="off" spellcheck="false" required>
+          <button type="submit" class="btn ghost">Añadir</button>
         </form>
       </details>
     </div>
@@ -330,8 +343,8 @@
         </tbody>
       </table>
       </div>
-      {% elif repos_root %}
-      <p class="muted">No hay repositorios git en esa carpeta. Elige otra.</p>
+      {% elif folders %}
+      <p class="muted">No hay repositorios git en {{ 'esa carpeta' if folders | length == 1 else 'esas carpetas' }}. Añade otra.</p>
       {% else %}
       <p class="muted">Elige la carpeta donde guardas tus proyectos y aquí aparecerán todos sus repositorios.</p>
       {% endif %}

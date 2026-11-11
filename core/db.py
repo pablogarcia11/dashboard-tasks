@@ -51,6 +51,14 @@ def delete_kinds(con: sqlite3.Connection, source: str, kinds: list[str]) -> None
     con.commit()
 
 
+def delete_git_repos(con: sqlite3.Connection, repos: list[str]) -> None:
+    """Borra la actividad guardada de esos repos (p. ej. al quitar su carpeta en Ajustes)."""
+    if repos:
+        con.execute(f"DELETE FROM activity WHERE source = 'git' AND json_extract(extra_json, '$.repo') "
+                    f"IN ({','.join('?' * len(repos))})", repos)
+        con.commit()
+
+
 def replace_range(con: sqlite3.Connection, source: str, kinds: list[str], start: str, end: str,
                   items: list[Activity]) -> None:
     """Sustituye las entradas de esos tipos en el rango (p. ej. notas de Notion editadas o borradas)."""
