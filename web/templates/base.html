@@ -16,6 +16,10 @@
       var theme = savedTheme() || systemTheme();
       document.documentElement.dataset.theme = theme;
       document.querySelector('meta[name="theme-color"]').content = THEME_COLORS[theme];
+      // La rueda de Ajustes gira al llegar desde otra página (no al recargar Ajustes tras guardar algo)
+      var from = "";
+      try { from = new URL(document.referrer).pathname; } catch (e) {}
+      if (location.pathname === "/settings" && from !== "/settings") document.documentElement.classList.add("gear-arrive");
     })();
 
     // Tema claro/oscuro: el interruptor está en Ajustes › Apariencia. Sin elección guardada se sigue al
