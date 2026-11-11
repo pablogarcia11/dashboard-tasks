@@ -4,6 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Dashboard{% endblock %}</title>
+  <script>
+    // Tema antes de pintar (sin parpadeo): elección guardada o, si no hay, la del sistema
+    (function () {
+      var saved = null;
+      try { saved = localStorage.getItem("theme"); } catch (e) {}
+      var dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700;800&display=swap">
@@ -20,6 +29,18 @@
       <nav class="appnav">
         <a href="/" {% if section == "day" %}aria-current="page"{% endif %}>Día</a>
         <a href="/timesheet" {% if section == "timesheet" %}aria-current="page"{% endif %}>Parte de horas</a>
+        <button type="button" class="theme-toggle" role="switch" id="theme-toggle"
+                aria-label="Modo oscuro" title="Cambiar entre modo claro y oscuro">
+          <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+          </svg>
+          <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
         <a class="icon-link" href="/settings" title="Ajustes" aria-label="Ajustes"
            {% if section == "settings" %}aria-current="page"{% endif %}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -34,5 +55,23 @@
   <main class="wrap">
     {% block content %}{% endblock %}
   </main>
+  <script>
+    (function () {
+      var root = document.documentElement, btn = document.getElementById("theme-toggle");
+      var sync = function () { btn.setAttribute("aria-checked", root.dataset.theme === "dark"); };
+      sync();
+      btn.addEventListener("click", function () {
+        root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
+        try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
+        sync();
+      });
+      // Sin elección guardada, sigue al sistema también en caliente
+      matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
+        var saved = null;
+        try { saved = localStorage.getItem("theme"); } catch (err) {}
+        if (!saved) { root.dataset.theme = e.matches ? "dark" : "light"; sync(); }
+      });
+    })();
+  </script>
 </body>
 </html>
