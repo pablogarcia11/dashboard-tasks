@@ -17,6 +17,7 @@ from core import db
 from core.config import ROOT, load_config
 from core.dates import effective_today, is_workday, next_workday, previous_workday
 from core.identity import avatar_path, display_name, initials
+from core.settings import effective_config
 from core.timesheet import as_text, build_blocks, fmt, parse_tasks
 from core.views import day_data, standup_context, timesheet_inputs
 from jobs.collect_all import run_collect
@@ -37,7 +38,8 @@ def today() -> date:
 
 def collect(start: date, end: date, only=None) -> list[str]:
     with collect_lock:  # SQLite + colectores: una recogida cada vez
-        return run_collect(cfg, db.connect(), start, end, only)
+        con = db.connect()
+        return run_collect(effective_config(cfg, con), con, start, end, only)
 
 
 @asynccontextmanager
@@ -123,7 +125,7 @@ def refresh_card(request: Request, d: str, card: str):
 
 @app.get("/settings", response_class=HTMLResponse)
 def settings_view(request: Request):
-    git = GitLocalCollector(cfg)
+    git = GitLocalCollector(effective_config(cfg, db.connect()))
     repos = sorted(git.repos(), key=lambda r: (r.project.lower(), str(r.path).lower()))
     mains = {r.common_dir: r for r in repos if not r.is_worktree}
     settings = db.repo_settings(db.connect())

@@ -140,16 +140,18 @@ class NotionCollector:
 
     def __init__(self, config: dict):
         n = config["notion"]
-        self.page_id = n["im_back_page_id"]
-        self.db_id = n["tasks_database_id"]
-        self.user_id = n["user_id"]
+        self.page_id = n.get("journal_page_id")       # página diario elegida en Ajustes
+        self.db_id = n.get("tasks_database_id")
+        self.user_id = n.get("user_id")               # de la conexión OAuth (core/settings.py)
         self.person_prop = n.get("tasks_person_property", "Persona Responsable")
         self.inactive = n.get("tasks_inactive_statuses", ["Done", "Archived"])
         self.tz = config["user"]["timezone"]
         self.client = NotionClient()
 
     def collect_journal(self, start: date, end: date) -> list[Activity]:
-        """Notas (kind=note) y pendientes (kind=task_plan) de I'M BACK entre start y end."""
+        """Notas (kind=note) y pendientes (kind=task_plan) de la página diario entre start y end."""
+        if not self.page_id:
+            return []
         items = []
         for h1 in self.client.children(self.page_id):
             if h1["type"] != "heading_1":
@@ -168,6 +170,8 @@ class NotionCollector:
 
     def collect_tasks(self) -> list[Activity]:
         """Tareas activas del usuario (instantánea de hoy)."""
+        if not (self.db_id and self.user_id):
+            return []
         flt = {"and": [{"property": self.person_prop, "people": {"contains": self.user_id}}]
                + [{"property": "Status", "status": {"does_not_equal": s}} for s in self.inactive]}
         now = datetime.now(ZoneInfo(self.tz))

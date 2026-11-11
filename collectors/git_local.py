@@ -125,7 +125,7 @@ class GitLocalCollector:
 
     def __init__(self, config: dict):
         g = config["git"]
-        self.root = Path(g["repos_root"])
+        self.root = Path(g["repos_root"]) if g.get("repos_root") else None  # carpeta elegida en Ajustes
         self.depth = g.get("scan_depth", 3)
         # El propio dashboard nunca se recoge (no es trabajo de empresa); el resto se controla en Ajustes
         self.exclude = (g.get("exclude_repos") or []) + [str(ROOT)]
@@ -135,6 +135,9 @@ class GitLocalCollector:
         self.errors: list[str] = []
 
     def repos(self) -> list[Repo]:
+        if not self.root or not self.root.is_dir():
+            self.errors.append("No hay carpeta de repositorios: elígela en Ajustes")
+            return []
         repos = discover_repos(self.root, self.depth, self.exclude, self.projects)
         for r in repos:
             try:

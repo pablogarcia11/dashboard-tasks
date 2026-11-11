@@ -25,4 +25,7 @@ CREATE TABLE IF NOT EXISTS repo_settings (
   show_wip INTEGER NOT NULL DEFAULT 1     -- 0: oculta solo los cambios sin commitear
 );
 
+-- Ajustes de cada usuario elegidos en la web (página diario, carpeta de repos...); mandan sobre config.yaml
+CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT);
+
 CREATE TABLE IF NOT EXISTS sync_state (source TEXT PRIMARY KEY, last_ok TEXT, last_error TEXT);

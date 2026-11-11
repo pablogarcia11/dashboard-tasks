@@ -15,6 +15,7 @@ from collectors.notion import NotionCollector
 from core import db
 from core.config import load_config
 from core.dates import day_bounds, previous_workday
+from core.settings import effective_config
 
 
 def run_collect(cfg: dict, con: sqlite3.Connection, start: date, end: date, only=None) -> list[str]:
@@ -44,12 +45,15 @@ def run_collect(cfg: dict, con: sqlite3.Connection, start: date, end: date, only
         try:
             notion = NotionCollector(cfg)
             journal = notion.collect_journal(start, end)
-            db.replace_range(con, "notion", ["note", "task_plan"], start.isoformat(), end.isoformat(), journal)
+            if notion.page_id:  # sin página diario elegida no se borra lo que hubiera
+                db.replace_range(con, "notion", ["note", "task_plan"], start.isoformat(), end.isoformat(), journal)
+            else:
+                report.append("notion: no hay página diario; elígela en Ajustes")
             tasks = notion.collect_tasks()
             db.replace_kind(con, "notion", "task", tasks)
             db.set_sync_state(con, "notion")
             pending = sum(1 for i in journal if i.kind == "task_plan")
-            report.append(f"notion: {len(journal) - pending} notas y {pending} pendientes en I'M BACK, "
+            report.append(f"notion: {len(journal) - pending} notas y {pending} pendientes en el diario, "
                           f"{len(tasks)} tareas activas")
         except Exception as e:  # una fuente caída no debe tumbar las demás
             db.set_sync_state(con, "notion", str(e))
@@ -74,7 +78,8 @@ def main() -> None:
     ap.add_argument("--show", action="store_true", help="muestra la actividad guardada del rango")
     args = ap.parse_args()
 
-    cfg = load_config()
+    con = db.connect()
+    cfg = effective_config(load_config(), con)  # con la página diario y la carpeta elegidas en Ajustes
     today = datetime.now().astimezone().date()
     if args.date:
         start = end = date.fromisoformat(args.date)
@@ -84,7 +89,6 @@ def main() -> None:
     else:
         start, end = previous_workday(today, cfg["schedule"].get("holidays", [])), today
 
-    con = db.connect()
     for line in run_collect(cfg, con, start, end):
         print(line)
 
