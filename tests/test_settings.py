@@ -27,6 +27,18 @@ def test_sin_ajustes_ni_conexion(tmp_path, monkeypatch):
     assert out == {"git": {}, "notion": {}}
 
 
+def test_delete_kinds_borra_solo_esas_notas(tmp_path):
+    from collectors.base import Activity
+    con = connect(tmp_path)
+    acts = [Activity("notion", kind, f"id-{kind}", "2026-11-10T00:00:00+01:00", "2026-11-10")
+            for kind in ("note", "task_plan", "task")] + [
+            Activity("git", "commit", "sha", "2026-11-10T10:00:00+01:00", "2026-11-10")]
+    db.upsert_activities(con, acts)
+    db.delete_kinds(con, "notion", ["note", "task_plan"])
+    left = sorted((a["source"], a["kind"]) for a in db.activities(con, "2026-11-10", "2026-11-10"))
+    assert left == [("git", "commit"), ("notion", "task")]
+
+
 def test_borrar_un_ajuste(tmp_path):
     con = connect(tmp_path)
     settings.set_value(con, settings.REPOS_ROOT, "X")

@@ -181,9 +181,14 @@ def notion_workspace() -> str | None:
         return None
 
 
-def refresh_in_background(only: set) -> None:
+JOURNAL_BACKFILL_DAYS = 60   # al cambiar de página diario se releen estos días de la nueva
+
+
+def refresh_in_background(only: set, days: int | None = None) -> None:
+    """Recoge en segundo plano el día laborable anterior y hoy (o los últimos `days` días)."""
     t = today()
-    threading.Thread(target=collect, args=(previous_workday(t, HOLIDAYS), t, only), daemon=True).start()
+    start = t - timedelta(days=days) if days else previous_workday(t, HOLIDAYS)
+    threading.Thread(target=collect, args=(start, t, only), daemon=True).start()
 
 
 # --- Notion: conectar, desconectar y elegir la página diario --------------------------------------
@@ -243,9 +248,13 @@ def notion_pages(request: Request, q: str = ""):
 async def notion_set_journal(request: Request):
     form = await request.form()
     con = db.connect()
+    changed = form["page_id"] != settings.get_all(con).get(settings.JOURNAL_PAGE_ID)
     settings.set_value(con, settings.JOURNAL_PAGE_ID, form["page_id"])
     settings.set_value(con, settings.JOURNAL_PAGE_TITLE, form["title"])
-    refresh_in_background({"notion"})
+    if changed:
+        # Las notas guardadas eran de la página anterior: fuera, y se releen de la nueva
+        db.delete_kinds(con, "notion", ["note", "task_plan"])
+        refresh_in_background({"notion"}, days=JOURNAL_BACKFILL_DAYS)
     return Response(headers={"HX-Redirect": "/settings#notion"})
 
 

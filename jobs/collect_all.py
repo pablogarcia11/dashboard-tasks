@@ -15,6 +15,7 @@ from collectors.notion import NotionCollector
 from core import db
 from core.config import load_config
 from core.dates import day_bounds, previous_workday
+from core import settings
 from core.settings import effective_config
 
 
@@ -47,6 +48,9 @@ def run_collect(cfg: dict, con: sqlite3.Connection, start: date, end: date, only
             journal = notion.collect_journal(start, end)
             if notion.page_id:  # sin página diario elegida no se borra lo que hubiera
                 db.replace_range(con, "notion", ["note", "task_plan"], start.isoformat(), end.isoformat(), journal)
+                title = notion.journal_title()   # si se renombró en Notion, la web usa el nombre nuevo
+                if title and title != cfg["notion"].get("journal_page_title"):
+                    settings.set_value(con, settings.JOURNAL_PAGE_TITLE, title)
             else:
                 report.append("notion: no hay página diario; elígela en Ajustes")
             tasks = notion.collect_tasks()

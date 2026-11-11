@@ -23,6 +23,21 @@ def register(*blocks):
     return list(blocks)
 
 
+def test_journal_title_lee_el_titulo_actual():
+    from collectors.notion import NotionCollector
+
+    class Pages:
+        def request(self, method, path):
+            assert (method, path) == ("GET", "/pages/p1")
+            return {"properties": {"Name": {"type": "title", "title": [{"plain_text": "Diario renombrado"}]}}}
+
+    c = NotionCollector.__new__(NotionCollector)
+    c.page_id, c.client = "p1", Pages()
+    assert c.journal_title() == "Diario renombrado"
+    c.page_id = None
+    assert c.journal_title() is None
+
+
 def test_parse_day():
     assert parse_day("Martes 10/11/2026") == date(2026, 11, 10)
     assert parse_day("Miércoles 1/2/26") == date(2026, 2, 1)

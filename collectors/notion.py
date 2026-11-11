@@ -183,6 +183,12 @@ class NotionCollector:
         self.tz = config["user"]["timezone"]
         self.client = NotionClient()
 
+    def journal_title(self) -> str | None:
+        """Título actual de la página diario (por si se renombró en Notion)."""
+        if not self.page_id:
+            return None
+        return page_title(self.client.request("GET", f"/pages/{self.page_id}"))
+
     def collect_journal(self, start: date, end: date) -> list[Activity]:
         """Notas (kind=note) y pendientes (kind=task_plan) de la página diario entre start y end."""
         if not self.page_id:

@@ -44,6 +44,13 @@ def replace_kind(con: sqlite3.Connection, source: str, kind: str, items: list[Ac
     upsert_activities(con, items)
 
 
+def delete_kinds(con: sqlite3.Connection, source: str, kinds: list[str]) -> None:
+    """Borra todas las entradas de esos tipos (p. ej. las notas al cambiar de página diario)."""
+    con.execute(f"DELETE FROM activity WHERE source = ? AND kind IN ({','.join('?' * len(kinds))})",
+                (source, *kinds))
+    con.commit()
+
+
 def replace_range(con: sqlite3.Connection, source: str, kinds: list[str], start: str, end: str,
                   items: list[Activity]) -> None:
     """Sustituye las entradas de esos tipos en el rango (p. ej. notas de Notion editadas o borradas)."""
