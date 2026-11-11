@@ -4,13 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Dashboard{% endblock %}</title>
+  <meta name="theme-color" content="#FFFFFF">
   <script>
     // Tema antes de pintar (sin parpadeo): elección guardada o, si no hay, la del sistema
+    var THEME_COLORS = { light: "#FFFFFF", dark: "#2C2C2C" };  // color de la barra superior
     (function () {
       var saved = null;
       try { saved = localStorage.getItem("theme"); } catch (e) {}
       var dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
       document.documentElement.dataset.theme = dark ? "dark" : "light";
+      document.querySelector('meta[name="theme-color"]').content = THEME_COLORS[dark ? "dark" : "light"];
     })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,10 +23,11 @@
   <script src="/static/vendor/htmx-1.9.12.min.js" defer></script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Saltar al contenido</a>
   <header class="appbar">
     <div class="wrap appbar-inner">
       <a class="brand" href="/">
-        {% if has_logo %}<img src="/static/logo.png" alt="1MillionBot">{% endif %}
+        {% if has_logo %}<img src="/static/logo.png" alt="1MillionBot" width="120" height="30">{% endif %}
         <span class="brand-text">Dashboard</span>
       </a>
       <nav class="appnav">
@@ -52,7 +56,7 @@
       </nav>
     </div>
   </header>
-  <main class="wrap">
+  <main class="wrap" id="main" tabindex="-1">
     {% block content %}{% endblock %}
   </main>
   <div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
@@ -62,7 +66,11 @@
       var sync = function () { btn.setAttribute("aria-checked", root.dataset.theme === "dark"); };
       // Cambio de tema con fundido suave: View Transitions si existe; si no, transición de colores
       var setTheme = function (theme) {
-        var apply = function () { root.dataset.theme = theme; sync(); };
+        var apply = function () {
+          root.dataset.theme = theme;
+          document.querySelector('meta[name="theme-color"]').content = THEME_COLORS[theme];
+          sync();
+        };
         if (document.startViewTransition) { document.startViewTransition(apply); return; }
         root.classList.add("theme-fading");
         apply();
@@ -103,6 +111,12 @@
       var scope = e.target.closest("#standup-body, .ts-day");
       if (scope && scope.querySelector("textarea[data-dirty]")
           && !confirm("Has editado el texto y se perderá al regenerarlo. ¿Continuar?")) e.preventDefault();
+    });
+    // Anuncia el indicador de carga ("Recogiendo…", "Redactando con Claude…") a lectores de pantalla
+    document.body.addEventListener("htmx:beforeRequest", function (e) {
+      var sel = e.target.getAttribute && e.target.getAttribute("hx-indicator");
+      var ind = sel && document.querySelector(sel);
+      if (ind && !e.defaultPrevented) announce(ind.textContent.trim());
     });
     window.addEventListener("beforeunload", function (e) {
       if (document.querySelector("textarea[data-dirty]")) { e.preventDefault(); e.returnValue = ""; }

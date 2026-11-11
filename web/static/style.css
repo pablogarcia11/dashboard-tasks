@@ -93,7 +93,7 @@ code { font-size: .9em; }
   display: inline-flex; align-items: center; gap: 6px; padding: 3px; border: 1px solid var(--line);
   border-radius: 999px; background: var(--bg); cursor: pointer; color: var(--muted);
 }
-.theme-toggle svg { width: 26px; height: 26px; padding: 5px; border-radius: 50%; transition: background .15s, color .15s; }
+.theme-toggle svg { width: 26px; height: 26px; padding: 5px; border-radius: 50%; transition: background-color var(--fast) ease, color var(--fast) ease; }
 :root[data-theme="light"] .theme-toggle .sun,
 :root[data-theme="dark"] .theme-toggle .moon { background: var(--red); color: var(--white); }
 .theme-toggle:hover { border-color: var(--red-text); }
@@ -155,7 +155,8 @@ textarea {
   width: 100%; background: var(--surface); color: var(--text); border: 1px solid var(--line);
   border-radius: 8px; padding: 10px 12px; font: 13px/1.55 Consolas, ui-monospace, monospace; resize: vertical;
 }
-textarea:focus { border-color: var(--red-text); outline: none; }
+/* Contorno transparente: invisible normalmente, visible en el modo de alto contraste de Windows */
+textarea:focus { border-color: var(--red-text); outline: 2px solid transparent; outline-offset: 2px; }
 
 /* Ajustes */
 .card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
@@ -172,8 +173,8 @@ table.settings th { font-weight: 700; font-size: .85em; color: var(--text); bord
 table.settings tbody tr:hover { background: var(--hover-bg); }
 .switch { position: relative; display: inline-block; width: 40px; height: 22px; cursor: pointer; }
 .switch input { opacity: 0; width: 0; height: 0; }
-.switch span { position: absolute; inset: 0; background: var(--line); border-radius: 999px; transition: background .15s; }
-.switch span::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--white); border-radius: 50%; transition: transform .15s; }
+.switch span { position: absolute; inset: 0; background: var(--line); border-radius: 999px; }
+.switch span::before { content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: var(--white); border-radius: 50%; }
 .switch input:checked + span { background: var(--red); }
 .switch input:checked + span::before { transform: translateX(18px); }
 .switch input:focus-visible + span { outline: 2px solid var(--red-text); outline-offset: 2px; }
@@ -181,11 +182,12 @@ table.settings tbody tr:hover { background: var(--hover-bg); }
 /* Parte de horas */
 .ts-scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 14px 14px 0; }
 .ts-week { display: grid; grid-template-columns: 48px repeat(5, minmax(170px, 1fr)); column-gap: 8px; min-width: 950px; }
-.ts-head { text-align: center; padding: 4px 0 12px; display: flex; flex-direction: column; }
+.ts-head { text-align: center; padding: 4px 0 12px; display: flex; flex-direction: column; margin: 0; font-size: inherit; font-weight: 500; }
 .ts-head strong { font-size: 1.4rem; font-weight: 800; }
 .ts-head.is-today strong { color: var(--white); background: var(--red); border-radius: 50%; width: 2em; height: 2em; display: inline-grid; place-items: center; margin: 0 auto; }
 .ts-axis { position: relative; }
-.ts-axis span { position: absolute; right: 6px; transform: translateY(-50%); font-size: .72em; color: var(--detail); }
+.ts-axis span { position: absolute; right: 6px; transform: translateY(-50%); font-size: .72em; color: var(--detail); font-variant-numeric: tabular-nums; }
+#week-total, .ts-foot strong, .ts-meta { font-variant-numeric: tabular-nums; }
 .ts-grid {
   position: relative; border-left: 1px solid var(--line);
   background: repeating-linear-gradient(to bottom, var(--line) 0 1px, transparent 1px var(--hour));
@@ -258,6 +260,23 @@ textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-text) 22%, t
 .btn.is-copied .i-check { display: block; animation: pop 220ms var(--ease-out); }
 @keyframes pop { from { transform: scale(0.6); opacity: 0; } }
 
+/* Saltar al contenido: oculto hasta que recibe el foco con el teclado */
+.skip-link {
+  position: absolute; left: 16px; top: 8px; z-index: 10; padding: 8px 14px; border-radius: 8px;
+  background: var(--red); color: var(--white); font-weight: 700; text-decoration: none;
+  transform: translateY(-150%); transition: transform 200ms var(--ease-out);
+}
+.skip-link:focus-visible { transform: none; color: var(--white); }
+main:focus { outline: none; }  /* destino del salto: no es interactivo, el foco sigue en el flujo */
+
+/* Enlaces que abren otra pestaña */
+.ext { font-size: .8em; margin-left: 3px; color: var(--muted); }
+
+/* Toques: sin retardo de doble toque ni destello gris */
+.btn, .arrow, .theme-toggle, .icon-link, .ts-block[data-title], .switch, .dialog-close {
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
@@ -314,6 +333,7 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   .btn:active, .arrow:active, .theme-toggle:active, .icon-link:active,
   .ts-block[data-title]:active, .dialog-close:active { transform: none; }
   .icon-link:hover svg { transform: none; }
+  .skip-link { transition: none; }
   .task-dialog, .task-dialog[open] { transform: none; }
   .btn.htmx-request::before { animation-duration: 1.5s; }
   .btn.is-copied .i-check { animation: none; }

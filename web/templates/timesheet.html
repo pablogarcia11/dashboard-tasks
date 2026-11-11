@@ -4,13 +4,13 @@
 {% block content %}
 <header class="top">
   <nav class="daynav">
-    <a class="arrow" href="/timesheet/week/{{ prev.isoformat() }}" title="Semana anterior">←</a>
+    <a class="arrow" href="/timesheet/week/{{ prev.isoformat() }}" title="Semana anterior" aria-label="Semana anterior">←</a>
     <div>
       <h1>Parte de horas</h1>
       <p class="muted">Semana del {{ days[0] | long_date }} · Total <strong id="week-total">—</strong></p>
     </div>
-    {% if next %}<a class="arrow" href="/timesheet/week/{{ next.isoformat() }}" title="Semana siguiente">→</a>
-    {% else %}<span class="arrow disabled">→</span>{% endif %}
+    {% if next %}<a class="arrow" href="/timesheet/week/{{ next.isoformat() }}" title="Semana siguiente" aria-label="Semana siguiente">→</a>
+    {% else %}<span class="arrow disabled" aria-hidden="true">→</span>{% endif %}
   </nav>
   <div class="actions">
     <button type="button" class="btn ghost" hx-post="/collect-range/{{ days[0].isoformat() }}/{{ collect_end.isoformat() }}"
@@ -31,10 +31,10 @@
   <div class="ts-week">
     <div class="ts-head"></div>
     {% for d in days %}
-    <div class="ts-head {% if d == today %}is-today{% endif %}">
+    <h2 class="ts-head {% if d == today %}is-today{% endif %}" {% if d == today %}aria-current="date"{% endif %}>
       <span class="muted small">{{ (d | long_date).split(" ")[0] | capitalize }}</span>
       <strong>{{ d.day }}</strong>
-    </div>
+    </h2>
     {% endfor %}
 
     <div class="ts-axis" style="height: {{ grid_height }}px">

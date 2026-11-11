@@ -4,13 +4,13 @@
 {% block content %}
 <header class="top">
   <nav class="daynav">
-    <a class="arrow" href="/day/{{ prev.isoformat() }}" title="Día laborable anterior">←</a>
+    <a class="arrow" href="/day/{{ prev.isoformat() }}" title="Día laborable anterior" aria-label="Día laborable anterior">←</a>
     <div>
       <h1>{{ day | long_date | capitalize }}</h1>
       <p>{% if is_today %}<span class="today-tag">Hoy</span>{% else %}<span class="muted">{{ day.isoformat() }}</span>{% endif %}</p>
     </div>
-    {% if next %}<a class="arrow" href="/day/{{ next.isoformat() }}" title="Día laborable siguiente">→</a>
-    {% else %}<span class="arrow disabled">→</span>{% endif %}
+    {% if next %}<a class="arrow" href="/day/{{ next.isoformat() }}" title="Día laborable siguiente" aria-label="Día laborable siguiente">→</a>
+    {% else %}<span class="arrow disabled" aria-hidden="true">→</span>{% endif %}
   </nav>
   <div class="actions">
     {% if not is_today %}<a class="btn ghost" href="/">Ir a hoy</a>{% endif %}
@@ -37,13 +37,13 @@
       <h3>Pendiente del día anterior <span class="tag">I'M BACK</span></h3>
       {% for project, items in data.pending_from_prev.items() %}
       <p class="project">{{ project }}</p>
-      <ul>{% for a in items %}<li><a href="{{ a.url }}" target="_blank">{{ a.title }}</a></li>{% endfor %}</ul>
+      <ul>{% for a in items %}<li><a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.title }}<span class="ext" aria-hidden="true">↗</span><span class="sr-only"> (se abre en otra pestaña)</span></a></li>{% endfor %}</ul>
       {% endfor %}
       {% endif %}
       <h3>Tareas activas <span class="tag">Notion</span></h3>
       {% if data.tasks %}
       <ul>{% for t in data.tasks %}
-        <li><a href="{{ t.url }}" target="_blank">{{ t.title }}</a> <span class="status">{{ t.status }}</span></li>
+        <li><a href="{{ t.url }}" target="_blank" rel="noopener">{{ t.title }}<span class="ext" aria-hidden="true">↗</span><span class="sr-only"> (se abre en otra pestaña)</span></a> <span class="status">{{ t.status }}</span></li>
       {% endfor %}</ul>
       {% else %}<p class="muted">Sin tareas activas.</p>{% endif %}
       {% if data.meetings %}
