@@ -59,19 +59,38 @@
     (function () {
       var root = document.documentElement, btn = document.getElementById("theme-toggle");
       var sync = function () { btn.setAttribute("aria-checked", root.dataset.theme === "dark"); };
+      // Cambio de tema con fundido suave: View Transitions si existe; si no, transición de colores
+      var setTheme = function (theme) {
+        var apply = function () { root.dataset.theme = theme; sync(); };
+        if (document.startViewTransition) { document.startViewTransition(apply); return; }
+        root.classList.add("theme-fading");
+        apply();
+        setTimeout(function () { root.classList.remove("theme-fading"); }, 400);
+      };
       sync();
       btn.addEventListener("click", function () {
-        root.dataset.theme = root.dataset.theme === "dark" ? "light" : "dark";
-        try { localStorage.setItem("theme", root.dataset.theme); } catch (e) {}
-        sync();
+        var theme = root.dataset.theme === "dark" ? "light" : "dark";
+        try { localStorage.setItem("theme", theme); } catch (e) {}
+        setTheme(theme);
       });
       // Sin elección guardada, sigue al sistema también en caliente
       matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function (e) {
         var saved = null;
         try { saved = localStorage.getItem("theme"); } catch (err) {}
-        if (!saved) { root.dataset.theme = e.matches ? "dark" : "light"; sync(); }
+        if (!saved) setTheme(e.matches ? "dark" : "light");
       });
     })();
+
+    // Botones "Copiar": copian el texto de un campo y confirman con "Copiado ✓"
+    function copyFrom(id, btn) {
+      navigator.clipboard.writeText(document.getElementById(id).value).then(function () {
+        var label = btn.dataset.label || (btn.dataset.label = btn.textContent);
+        btn.classList.add("is-copied");
+        btn.innerHTML = 'Copiado<span class="check" aria-hidden="true">✓</span>';
+        clearTimeout(btn._reset);
+        btn._reset = setTimeout(function () { btn.classList.remove("is-copied"); btn.textContent = label; }, 1600);
+      });
+    }
   </script>
 </body>
 </html>

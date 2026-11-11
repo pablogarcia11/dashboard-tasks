@@ -11,6 +11,12 @@
   --grey-dark: #949494;
   --font: "Montserrat", Verdana, sans-serif;
 
+  /* Movimiento (skill emil-design-eng): rápido y con curvas marcadas; solo transform/opacity/color */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --press: 160ms;
+  --fast: 150ms;
+
   /* Categorías del parte de horas: iguales en los dos temas, con texto oscuro dentro */
   --cat-text: #1D1D1D;      --cat-meta: #3F3F3F;
   --dev-bg: #BCD4FB;        --dev-line: #2F6FDB;     /* azul: Desarrollo de negocio */
@@ -191,6 +197,97 @@ table.settings tbody tr:hover { background: var(--hover-bg); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend .ts-block { position: static; width: 16px; height: 16px; padding: 0; }
 
+/* ---------- Microinteracciones ---------- */
+
+/* Pulsables: color al pasar el ratón y escala breve al pulsar */
+.btn, .arrow, .theme-toggle, .icon-link, .ts-block[data-title] {
+  transition: transform var(--press) var(--ease-out), background-color var(--fast) ease,
+              border-color var(--fast) ease, color var(--fast) ease, box-shadow var(--fast) ease;
+}
+.btn:active, .arrow:active, .theme-toggle:active, .icon-link:active { transform: scale(0.97); }
+.appnav a { transition: color var(--fast) ease, border-color var(--fast) ease; }
+.icon-link svg { transition: transform 250ms var(--ease-out); }
+@media (hover: hover) and (pointer: fine) {
+  .icon-link:hover svg { transform: rotate(30deg); }
+}
+
+/* Campos: el borde y el anillo de foco cambian suavemente */
+textarea { transition: border-color var(--fast) ease, box-shadow var(--fast) ease; }
+textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-text) 22%, transparent); }
+.switch span::before { transition: transform 200ms var(--ease-out); }
+.switch span { transition: background-color 200ms ease; }
+
+/* Petición en curso: el botón conserva su texto y muestra un spinner */
+.btn.htmx-request { pointer-events: none; opacity: .85; }
+.btn.htmx-request::before {
+  content: ""; display: inline-block; width: .85em; height: .85em; margin-right: 8px; vertical-align: -1px;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+  animation: spin 600ms linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Contenido que llega por HTMX: aparece con un fundido corto */
+.ts-day, #standup-body { transition: opacity 200ms var(--ease-out); }
+.ts-day.htmx-added, #standup-body.htmx-added { opacity: 0; }
+
+/* "Copiar" → "Copiado" */
+.btn.is-copied { background: var(--text); border-color: var(--text); color: var(--bg); }
+.btn .check { display: inline-block; margin-left: 6px; animation: pop 220ms var(--ease-out); }
+@keyframes pop { from { transform: scale(0.6); opacity: 0; } }
+
+/* Bloques del parte de horas: se pueden pulsar para ver el detalle */
+.ts-block[data-title] {
+  cursor: pointer; font: inherit; font-size: .74em; line-height: 1.25; text-align: left;
+  width: calc(100% - 8px); border-top: 0; border-right: 0; border-bottom: 0; justify-content: flex-start;
+}
+@media (hover: hover) and (pointer: fine) {
+  .ts-block[data-title]:hover { box-shadow: 0 0 0 2px var(--text); z-index: 1; }
+}
+.ts-block[data-title]:active { transform: scale(0.98); }
+
+/* Modal de detalle de tarea (<dialog> nativo: foco, Esc y fondo inerte) */
+.task-dialog {
+  border: 1px solid var(--line); border-radius: 12px; padding: 0; width: min(440px, calc(100vw - 32px));
+  background: var(--surface); color: var(--text); overscroll-behavior: contain;
+  box-shadow: 0 1px 2px rgb(0 0 0 / .08), 0 12px 40px rgb(0 0 0 / .22);
+  opacity: 0; transform: scale(0.96);
+  transition: opacity 150ms ease, transform 150ms ease, overlay 150ms allow-discrete, display 150ms allow-discrete;
+}
+.task-dialog[open] {
+  opacity: 1; transform: scale(1);
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out), overlay 220ms allow-discrete, display 220ms allow-discrete;
+}
+@starting-style { .task-dialog[open] { opacity: 0; transform: scale(0.96); } }
+.task-dialog::backdrop { background: rgb(0 0 0 / 0); transition: background-color 220ms ease, overlay 220ms allow-discrete, display 220ms allow-discrete; }
+.task-dialog[open]::backdrop { background: rgb(0 0 0 / .45); }
+@starting-style { .task-dialog[open]::backdrop { background: rgb(0 0 0 / 0); } }
+.task-dialog .dialog-body { padding: 22px 24px 20px; border-left: 6px solid var(--dialog-line, var(--red)); border-radius: 12px; }
+.task-dialog h2 { font-size: 1.1rem; font-weight: 800; line-height: 1.35; margin: 0 32px 14px 0; text-wrap: balance; }
+.task-dialog dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; }
+.task-dialog dt { color: var(--muted); font-weight: 300; }
+.task-dialog dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.task-dialog .chip { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: 0; }
+.dialog-close {
+  position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border: 0; border-radius: 50%;
+  background: transparent; color: var(--muted); font-size: 1.3rem; line-height: 1; cursor: pointer;
+  transition: background-color var(--fast) ease, color var(--fast) ease, transform var(--press) var(--ease-out);
+}
+.dialog-close:hover { background: var(--hover-bg); color: var(--text); }
+.dialog-close:active { transform: scale(0.94); }
+
+/* Cambio de tema: fundido de toda la página con View Transitions (o transición de color de reserva) */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 350ms; animation-timing-function: ease; }
+html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-fading *::after {
+  transition: background-color 350ms ease, color 350ms ease, border-color 350ms ease, fill 350ms ease !important;
+}
+
+/* Menos movimiento: fuera desplazamientos y escalas; se mantienen fundidos breves */
 @media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
+  .btn:active, .arrow:active, .theme-toggle:active, .icon-link:active,
+  .ts-block[data-title]:active, .dialog-close:active { transform: none; }
+  .icon-link:hover svg { transform: none; }
+  .task-dialog, .task-dialog[open] { transform: none; }
+  .btn.htmx-request::before { animation-duration: 1.5s; }
+  .btn .check { animation: none; }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 150ms; }
 }

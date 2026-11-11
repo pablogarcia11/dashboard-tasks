@@ -14,8 +14,8 @@
   </nav>
   <div class="actions">
     {% if not is_today %}<a class="btn ghost" href="/">Ir a hoy</a>{% endif %}
-    <button class="btn" hx-post="/collect/{{ day.isoformat() }}" hx-swap="none"
-            hx-indicator="#collecting">Actualizar datos</button>
+    <button type="button" class="btn" hx-post="/collect/{{ day.isoformat() }}" hx-swap="none"
+            hx-indicator="#collecting" hx-disabled-elt="this">Actualizar datos</button>
     <span id="collecting" class="htmx-indicator muted">Recogiendo…</span>
   </div>
 </header>
@@ -104,8 +104,8 @@
         {% with text=standup.content_md, error=None, cached=True %}{% include "_standup.html" %}{% endwith %}
       {% else %}
       <div id="standup-body">
-        <button class="btn" hx-post="/standup/{{ day.isoformat() }}" hx-target="#standup-body"
-                hx-swap="outerHTML" hx-indicator="#gen">Generar stand-up</button>
+        <button type="button" class="btn" hx-post="/standup/{{ day.isoformat() }}" hx-target="#standup-body"
+                hx-swap="outerHTML" hx-indicator="#gen" hx-disabled-elt="this">Generar stand-up</button>
         <span id="gen" class="htmx-indicator muted">Redactando con Claude…</span>
       </div>
       {% endif %}
