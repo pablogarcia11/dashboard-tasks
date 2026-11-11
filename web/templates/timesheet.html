@@ -13,9 +13,9 @@
     {% else %}<span class="arrow disabled">→</span>{% endif %}
   </nav>
   <div class="actions">
-    <button class="btn ghost" hx-post="/collect-range/{{ days[0].isoformat() }}/{{ collect_end.isoformat() }}"
-            hx-swap="none" hx-indicator="#collecting">Actualizar datos de la semana</button>
-    <button class="btn" onclick="htmx.trigger(document.body, 'generate-week')">Generar semana</button>
+    <button type="button" class="btn ghost" hx-post="/collect-range/{{ days[0].isoformat() }}/{{ collect_end.isoformat() }}"
+            hx-swap="none" hx-indicator="#collecting" hx-disabled-elt="this">Actualizar datos de la semana</button>
+    <button type="button" class="btn" id="generate-week" onclick="generateWeek(this)">Generar semana</button>
     <span id="collecting" class="htmx-indicator muted">Recogiendo…</span>
   </div>
 </header>
@@ -54,18 +54,59 @@
   {% endfor %}
 </div>
 
+<dialog class="task-dialog" id="task-dialog" aria-labelledby="task-dialog-title">
+  <div class="dialog-body">
+    <button type="button" class="dialog-close" aria-label="Cerrar" data-close>×</button>
+    <h2 id="task-dialog-title"></h2>
+    <dl>
+      <dt>Horario</dt><dd id="task-dialog-time"></dd>
+      <dt>Duración</dt><dd id="task-dialog-duration"></dd>
+      <dt>Tipo</dt><dd><span class="chip" id="task-dialog-chip"></span><span id="task-dialog-category"></span></dd>
+      <dt>Proyecto</dt><dd id="task-dialog-project"></dd>
+    </dl>
+  </div>
+</dialog>
+
 <script>
-  function updateWeekTotal() {
+  function formatMinutes(total) {
+    const h = Math.floor(total / 60), m = total % 60;
+    return h ? `${h} h${m ? ` ${String(m).padStart(2, "0")} min` : ""}` : `${m} min`;
+  }
+
+  // Cada columna (_timesheet_day.html) avisa al insertarse: total de la semana y fin de "Generar semana"
+  function onColumnLoaded() {
     let total = 0;
     document.querySelectorAll(".ts-day[data-minutes]").forEach(el => total += Number(el.dataset.minutes));
-    const h = Math.floor(total / 60), m = total % 60;
-    document.getElementById("week-total").textContent = total ? `${h} h ${String(m).padStart(2, "0")} min` : "—";
+    document.getElementById("week-total").textContent = total ? formatMinutes(total) : "—";
+    if (!document.querySelector(".ts-day .htmx-request")) {
+      document.getElementById("generate-week").classList.remove("htmx-request");
+    }
   }
-  // Cada columna (_timesheet_day.html) llama a updateWeekTotal al insertarse
-  function copyText(id, btn) {
-    navigator.clipboard.writeText(document.getElementById(id).value).then(() => {
-      btn.textContent = "Copiado"; setTimeout(() => btn.textContent = "Copiar", 1500);
-    });
+
+  function generateWeek(btn) {
+    htmx.trigger(document.body, "generate-week");
+    // Spinner mientras quede algún día generándose
+    if (document.querySelector(".ts-day .htmx-request")) btn.classList.add("htmx-request");
   }
+
+  // Detalle de una tarea al pulsarla (nombre completo, horario, duración, tipo)
+  const dialog = document.getElementById("task-dialog");
+  document.addEventListener("click", event => {
+    const block = event.target.closest(".ts-block[data-title]");
+    if (block) {
+      const d = block.dataset, color = getComputedStyle(block).borderLeftColor;
+      document.getElementById("task-dialog-title").textContent = d.title;
+      document.getElementById("task-dialog-time").textContent = d.time;
+      document.getElementById("task-dialog-duration").textContent = formatMinutes(Number(d.minutes));
+      document.getElementById("task-dialog-category").textContent = d.category;
+      document.getElementById("task-dialog-project").textContent = d.project || "—";
+      document.getElementById("task-dialog-chip").style.background = color;
+      dialog.style.setProperty("--dialog-line", color);
+      dialog.showModal();
+      return;
+    }
+    // Cerrar con la ×, o pulsando fuera (el propio <dialog> es el fondo)
+    if (event.target === dialog || event.target.closest("[data-close]")) dialog.close();
+  });
 </script>
 {% endblock %}

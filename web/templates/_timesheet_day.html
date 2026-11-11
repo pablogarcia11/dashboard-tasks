@@ -2,17 +2,21 @@
 <div id="{{ id }}" class="ts-day" {% if state in ("ok", "empty") %}data-minutes="{{ total }}"{% endif %}>
   <div class="ts-grid" style="height: {{ grid_height }}px; --hour: {{ 60 * ppm }}px">
     {% for b in blocks %}
-    <div class="ts-block cat-{{ b.category | cat_class }}{% if b.title == 'Por definir' %} is-empty{% endif %}"
-         style="top: {{ (b.start - grid_start) * ppm }}px; height: {{ b.minutes * ppm }}px"
-         title="{{ b.start | fmt }}–{{ b.end | fmt }} · {{ b.title }} · {{ b.category }}">
+    {% set span = (b.start | fmt) ~ "–" ~ (b.end | fmt) %}
+    <button type="button" aria-haspopup="dialog"
+            class="ts-block cat-{{ b.category | cat_class }}{% if b.title == 'Por definir' %} is-empty{% endif %}"
+            style="top: {{ (b.start - grid_start) * ppm }}px; height: {{ b.minutes * ppm }}px"
+            data-title="{{ b.title }}" data-time="{{ span }}" data-minutes="{{ b.minutes }}"
+            data-category="{{ b.category }}" data-project="{{ b.project }}"
+            aria-label="{{ b.title }}, {{ span }}, {{ b.category }}">
       <span class="ts-title">{{ b.title }}</span>
-      <span class="ts-meta">{{ b.start | fmt }}–{{ b.end | fmt }} · {{ b.category }}</span>
-    </div>
+      <span class="ts-meta">{{ span }} · {{ b.category }}</span>
+    </button>
     {% endfor %}
     {% if state == "pending" %}
     <div class="ts-center">
-      <button class="btn" hx-post="/timesheet/day/{{ day.isoformat() }}" hx-target="#{{ id }}" hx-swap="outerHTML"
-              hx-trigger="click, generate-week from:body" hx-indicator="#{{ id }}-gen">Generar</button>
+      <button type="button" class="btn" hx-post="/timesheet/day/{{ day.isoformat() }}" hx-target="#{{ id }}" hx-swap="outerHTML"
+              hx-trigger="click, generate-week from:body" hx-indicator="#{{ id }}-gen" hx-disabled-elt="this">Generar</button>
       <span id="{{ id }}-gen" class="htmx-indicator muted small">Agrupando con Claude…</span>
     </div>
     {% elif state == "future" %}<div class="ts-center muted small">Aún no</div>
@@ -31,14 +35,14 @@
     {% if state == "ok" %}
       <details>
         <summary>Texto para copiar</summary>
-        <textarea id="{{ id }}-text" rows="8" spellcheck="false">{{ text }}</textarea>
-        <button class="btn small" onclick="copyText('{{ id }}-text', this)">Copiar</button>
+        <textarea id="{{ id }}-text" rows="8" spellcheck="false" aria-label="Texto del parte del {{ day.isoformat() }}">{{ text }}</textarea>
+        <button type="button" class="btn small" aria-live="polite" onclick="copyFrom('{{ id }}-text', this)">Copiar</button>
       </details>
-      <button class="btn ghost small" hx-post="/timesheet/day/{{ day.isoformat() }}?force=true" hx-target="#{{ id }}"
+      <button type="button" class="btn ghost small" hx-post="/timesheet/day/{{ day.isoformat() }}?force=true" hx-target="#{{ id }}"
               hx-swap="outerHTML" {% if stale %}hx-trigger="click, generate-week from:body"{% endif %}
-              hx-indicator="#{{ id }}-regen">Regenerar</button>
+              hx-indicator="#{{ id }}-regen" hx-disabled-elt="this">Regenerar</button>
       <span id="{{ id }}-regen" class="htmx-indicator muted small">Agrupando…</span>
     {% endif %}
   </div>
-  <script>setTimeout(() => window.updateWeekTotal && updateWeekTotal());</script>
+  <script>setTimeout(() => window.onColumnLoaded && onColumnLoaded());</script>
 </div>
