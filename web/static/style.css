@@ -207,6 +207,9 @@ table.settings tbody tr:hover { background: var(--hover-bg); }
   -webkit-line-clamp: var(--lines, 2); line-clamp: var(--lines, 2);
 }
 .ts-meta { color: var(--cat-meta); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Bloques muy bajos (15 min): una línea compacta centrada en vertical */
+.ts-block.is-tiny[data-title] { padding: 0 6px; justify-content: center; font-size: .66em; line-height: 1; border-radius: 4px; }
+.ts-block.is-tiny .ts-title { -webkit-line-clamp: 1; line-clamp: 1; }
 .ts-block.is-empty .ts-meta { color: var(--muted); }
 .ts-center { position: absolute; top: 40%; left: 0; right: 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .ts-foot { padding: 10px 4px 0; font-size: .88em; }
