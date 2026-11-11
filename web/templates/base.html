@@ -90,16 +90,15 @@
       });
     })();
 
-    // Botones "Copiar" (_macros.html): copian el texto de un campo, el icono pasa a ✓ y se anuncia
+    // Botones "Copiar" (_macros.html, solo icono): copian el texto de un campo, el icono pasa a ✓ y se anuncia
     function copyFrom(id, btn) {
       navigator.clipboard.writeText(document.getElementById(id).value).then(function () {
-        var label = btn.querySelector(".label");
         delete document.getElementById(id).dataset.dirty;  // copiado: ya no se pierde nada
         btn.classList.add("is-copied");
-        label.textContent = "Copiado";
+        btn.title = "Copiado";
         announce("Copiado al portapapeles");
         clearTimeout(btn._reset);
-        btn._reset = setTimeout(function () { btn.classList.remove("is-copied"); label.textContent = "Copiar"; }, 1600);
+        btn._reset = setTimeout(function () { btn.classList.remove("is-copied"); btn.title = "Copiar"; }, 1600);
       });
     }
 

@@ -254,9 +254,11 @@ textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-text) 22%, t
 .ts-day, #standup-body { transition: opacity 200ms var(--ease-out); }
 .ts-day.htmx-added, #standup-body.htmx-added { opacity: 0; }
 
-/* "Copiar" (icono de portapapeles) → ✓ "Copiado" */
-.btn-copy { display: inline-flex; align-items: center; gap: 6px; }
-.btn-copy svg { width: 1.05em; height: 1.05em; flex: none; }
+/* "Copiar": botón cuadrado solo con icono → ✓ al copiar */
+.btn-copy { display: inline-grid; place-items: center; width: 38px; height: 38px; padding: 0; }
+.btn-copy.small { width: 32px; height: 32px; padding: 0; }
+.btn-copy svg { width: 20px; height: 20px; }
+.btn-copy.small svg { width: 17px; height: 17px; }
 .btn-copy .i-check { display: none; }
 .btn.is-copied { background: var(--text); border-color: var(--text); color: var(--bg); }
 .btn.is-copied .i-copy { display: none; }
