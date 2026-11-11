@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 from collectors.base import Activity
+from core.config import ROOT
 from core.dates import to_work_date
 
 SKIP_DIRS = {"node_modules", ".venv", "venv", "__pycache__", "dist", "build"}
@@ -126,7 +127,8 @@ class GitLocalCollector:
         g = config["git"]
         self.root = Path(g["repos_root"])
         self.depth = g.get("scan_depth", 3)
-        self.exclude = g.get("exclude_repos", [])
+        # El propio dashboard nunca se recoge (no es trabajo de empresa); el resto se controla en Ajustes
+        self.exclude = (g.get("exclude_repos") or []) + [str(ROOT)]
         self.projects = config.get("projects", {})
         self.authors = [a.lower() for a in config["user"]["git_authors"]]
         self.tz = config["user"]["timezone"]

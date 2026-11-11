@@ -54,6 +54,13 @@ def test_parse_log():
     assert (second["files"], second["insertions"], second["deletions"]) == (1, 1, 0)
 
 
+def test_el_propio_dashboard_siempre_se_excluye():
+    from collectors.git_local import GitLocalCollector
+    from core.config import ROOT
+    cfg = {"git": {"repos_root": str(ROOT.parent)}, "user": {"git_authors": ["a@b"], "timezone": "Europe/Madrid"}}
+    assert str(ROOT) in GitLocalCollector(cfg).exclude
+
+
 def test_short_ref():
     assert short_ref("refs/heads/main") == "main"
     assert short_ref("refs/remotes/origin/dev") == "origin/dev"

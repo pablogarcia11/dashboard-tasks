@@ -11,7 +11,6 @@ Reglas:
 - Cada tarea: frase corta en infinitivo, poco técnica, de 4 a 10 palabras ("Corregir…", "Revisar…", "Ajustar…"). Condensa: como mucho 8 tareas por proyecto, más una última "Subir cambios a producción" si algo se pasó a production. Antes de responder, cuenta las tareas de cada proyecto; si pasan de 8, fusiona las relacionadas (p. ej. dos ajustes de la misma pantalla) o quita las menores (limpiezas, preparación de datos) hasta dejar 8.
 - Las reuniones van bajo su proyecto como "Reunión <tema>".
 - "Tareas que haré durante hoy": pendientes de ayer, tareas activas en curso, reuniones de hoy y trabajo sin terminar. No repitas tareas equivalentes. Si no hay nada, pon una sola viñeta "• Por definir".
-- No menciones el repositorio "dashboard" ni nada de este propio dashboard.
 
 Responde SOLO con el mensaje, sin explicaciones ni bloques de código, exactamente con este formato (markdown de Slack; las subviñetas llevan 4 espacios delante):
 

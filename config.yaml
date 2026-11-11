@@ -39,11 +39,7 @@ notion:
 git:
   repos_root: C:\Users\daxte\Documents\1MillionBot
   scan_depth: 3
-  # Excluidos siempre (ruta absoluta). Este repo es personal, no trabajo de empresa.
-  exclude_repos:
-    - C:\Users\daxte\Documents\1MillionBot\dashboard
-    - C:\Users\daxte\Documents\1MillionBot\Kanvas
-    - C:\Users\daxte\Documents\1MillionBot\shannon
+  # Qué repos se muestran se decide en Ajustes (interruptor "Visible"). El propio dashboard nunca se recoge.
 
 # Proyecto = encabezado 3 de I'M BACK. Rutas relativas a repos_root; una carpeta incluye sus repos anidados.
 projects:

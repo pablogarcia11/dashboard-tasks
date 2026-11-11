@@ -136,7 +136,7 @@ Estado observado el 2026-11-11 (puede cambiar; **descúbrelos dinámicamente**, 
 - `aurea/.git` existe pero está vacío (no es repo). Los repos reales están anidados.
 - **Repos anidados**: `aurea/aurea-1mb`, `aurea/aurea-api`, `ibh/bff-user-control-panel`, `ibh/ibh-api`, `millie/apiREST`, `millie/dashboard`, `rec-aereas/juridocraft-api`, `rec-aereas/juridocraft-assist`. Escanea hasta profundidad 3 buscando `.git` (carpeta o fichero).
 - La carpeta `dashboard/` (este proyecto) debe **excluirse por ruta absoluta**: `millie/dashboard` es un repo de trabajo distinto con el mismo nombre y **sí** cuenta.
-- **También excluidos** (decisión del usuario, 2026-11-11): `Kanvas` y `shannon`.
+- **Exclusiones (actualizado 2026-11-11):** ya no hay `exclude_repos` en `config.yaml`. El **propio dashboard se excluye siempre y automáticamente** en el colector (su ruta `ROOT`), sin aviso en Ajustes. `Kanvas` y `shannon` dejan de estar excluidos: aparecen en Ajustes con "Visible" apagado y el usuario decide.
 - **Repo → proyecto** (en `config.yaml`, `projects`; el nombre del proyecto = encabezado 3 de I'M BACK): AI Risk = `airisk-api`, `airiskmanagement` y sus worktrees; Kit migración = `boilerplate-api`, `migration-boilerplate-api`; Aurea = `aurea/*`; IBH = `ibh/*`; Millie = `millie/*`; Rec Aéreas = `rec-aereas/*`. Repo nuevo sin mapear → proyecto = nombre de la carpeta de primer nivel, y avisa en la UI.
 - Proyecto especial **"1MB"** = reuniones de empresa (Sprint Review, Monthly Review…). Puede aparecer como encabezado 3 en I'M BACK. Las reuniones de Calendar que no encajan en ningún proyecto van a "1MB" (en stand-up, resumen y parte de horas).
 - Identidad de autor: `pablogarcia@1millionbot.com` (firma como "Pablo García" y "pablogarcia11"); filtra por email.
@@ -329,7 +329,7 @@ En la plataforma interna **1million hub** (Trabajo → Tareas → Mis tareas) ca
 ### 7.6 Ajustes (icono ⚙ en la barra superior, `/settings`)
 - Tabla con todos los repos descubiertos (proyecto, si es worktree) y dos interruptores por repo: **Visible** (oculta commits, WIP y commits sin subir de ese repo) y **Cambios sin commitear** (oculta solo el WIP).
 - Se guarda en SQLite (`repo_settings`), no en `config.yaml`. El filtro se aplica al preparar los datos de las vistas (`core/views.py`), así que **lo oculto tampoco se envía a Claude**. Los datos se siguen recogiendo: al reactivar aparece al momento.
-- Distinto de `exclude_repos` (config): lo excluido allí no se recoge nunca (este repo, Kanvas, shannon).
+- Sin lista de excluidos: todos los repos aparecen aquí salvo el propio dashboard, que el colector nunca recoge.
 - Los worktrees comparten commits con su repo principal: ocultar un worktree solo oculta su WIP.
 
 Los prompts (`standup.md`, `day_summary.md`, `notion_summary.md`, `timesheet.md`) viven en ficheros para que el usuario los ajuste sin tocar código. Regla común en todos: *"Usa solo la información proporcionada. Si algo no está claro, dilo en vez de inventarlo."*

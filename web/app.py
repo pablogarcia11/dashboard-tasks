@@ -123,8 +123,7 @@ def settings_view(request: Request):
         main = mains.get(r.common_dir)
         rows.append({"repo": rel, "project": r.project, **settings.get(rel, {"visible": True, "show_wip": True}),
                      "worktree_of": main.path.relative_to(git.root).as_posix() if r.is_worktree and main else None})
-    return templates.TemplateResponse(request, "settings.html", {
-        "rows": rows, "excluded": cfg["git"].get("exclude_repos", []), "root": str(git.root)})
+    return templates.TemplateResponse(request, "settings.html", {"rows": rows})
 
 
 @app.post("/settings/repo")
