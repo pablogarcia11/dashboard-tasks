@@ -192,8 +192,11 @@ table.settings tbody tr:hover { background: var(--hover-bg); }
 .ts-block.cat-admin { background: var(--admin-bg); border-left-color: var(--admin-line); }
 .ts-block.cat-learn { background: var(--learn-bg); border-left-color: var(--learn-line); }
 .ts-block.is-empty { background: var(--surface); border: 1px dashed var(--detail); color: var(--muted); }
-.ts-title { font-weight: 700; }
-.ts-meta { color: var(--cat-meta); font-weight: 500; }
+.ts-title {
+  font-weight: 700; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden;
+  -webkit-line-clamp: var(--lines, 2); line-clamp: var(--lines, 2);
+}
+.ts-meta { color: var(--cat-meta); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ts-block.is-empty .ts-meta { color: var(--muted); }
 .ts-center { position: absolute; top: 40%; left: 0; right: 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .ts-foot { padding: 10px 4px 0; font-size: .88em; }

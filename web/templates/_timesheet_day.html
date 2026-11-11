@@ -4,14 +4,16 @@
   <div class="ts-grid" style="height: {{ grid_height }}px; --hour: {{ 60 * ppm }}px">
     {% for b in blocks %}
     {% set span = (b.start | fmt) ~ "–" ~ (b.end | fmt) %}
+    {# Líneas que caben (≈13,5 px cada una): el título se recorta con "…" y el horario solo si hay sitio #}
+    {% set lines = ((b.minutes * ppm - 6) / 13.5) | int %}
     <button type="button" aria-haspopup="dialog"
             class="ts-block cat-{{ b.category | cat_class }}{% if b.title == 'Por definir' %} is-empty{% endif %}"
             style="top: {{ (b.start - grid_start) * ppm }}px; height: {{ b.minutes * ppm }}px"
             data-title="{{ b.title }}" data-time="{{ span }}" data-minutes="{{ b.minutes }}"
             data-category="{{ b.category }}" data-project="{{ b.project }}"
             aria-label="{{ b.title }}, {{ span }}, {{ b.category }}">
-      <span class="ts-title">{{ b.title }}</span>
-      <span class="ts-meta">{{ span }} · {{ b.category }}</span>
+      <span class="ts-title" style="--lines: {{ [lines - 1, 1] | max }}">{{ b.title }}</span>
+      {% if lines >= 2 %}<span class="ts-meta">{{ span }} · {{ b.category }}</span>{% endif %}
     </button>
     {% endfor %}
     {% if state == "pending" %}

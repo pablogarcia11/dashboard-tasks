@@ -117,7 +117,8 @@ def collect_range(start: str, end: str):
 
 # --- Parte de horas -------------------------------------------------------------------------
 
-GRID_START, GRID_END, PPM = 7 * 60, 20 * 60, 1.1  # rejilla 07:00–20:00, píxeles por minuto
+# Rejilla 07:00–20:00. 1,6 px por minuto: un bloque de 15 min mide 24 px (objetivo táctil mínimo)
+GRID_START, GRID_END, PPM = 7 * 60, 20 * 60, 1.6
 CATEGORY_CLASS = {"Desarrollo de negocio": "dev", "Reunión": "meet", "Documentación": "doc",
                   "Tareas administrativas": "admin", "Formación": "learn"}
 templates.env.filters["fmt"] = fmt
