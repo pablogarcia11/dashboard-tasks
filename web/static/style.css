@@ -124,13 +124,20 @@ html:active-view-transition-type(section-nav)::view-transition-new(root) { anima
 .appearance-card .settings-card-head { align-items: center; padding-bottom: 0; }
 .appearance-card h2 { margin: 0; }
 .theme-setting { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 14px; }
-/* "Seguir al sistema" y su mensaje comparten celda: el hueco no cambia de tamaño, así que el interruptor no se mueve */
-.theme-system { display: inline-grid; }
-.theme-system > * { grid-area: 1 / 1; justify-content: center; text-align: center; }
-.theme-system-done { display: inline-flex; align-items: center; padding: 4px 12px; border: 1px solid transparent;
-  font: 500 .8rem var(--font); color: var(--muted); white-space: nowrap; }
-.theme-system .btn { white-space: nowrap; }
-.theme-system.is-following #theme-system, .theme-system:not(.is-following) .theme-system-done { visibility: hidden; }
+/* «Sistema»: pantalla → check (se sigue al sistema). Los dos iconos comparten celda y se funden con un
+   pequeño giro de escala y desenfoque; el check además se dibuja con el trazo */
+.theme-system { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.theme-system[aria-pressed="true"] { color: var(--red-text); border-color: var(--red-text); }
+.theme-system-icon { display: inline-grid; width: 14px; height: 14px; }
+.theme-system-icon svg {
+  grid-area: 1 / 1; width: 14px; height: 14px;
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out), filter 200ms var(--ease-out);
+}
+.theme-system .icon-check { opacity: 0; transform: scale(.6); filter: blur(2px); }
+.theme-system .icon-check path { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 260ms var(--ease-out) 50ms; }
+.theme-system[aria-pressed="true"] .icon-monitor { opacity: 0; transform: scale(.6); filter: blur(2px); }
+.theme-system[aria-pressed="true"] .icon-check { opacity: 1; transform: none; filter: none; }
+.theme-system[aria-pressed="true"] .icon-check path { stroke-dashoffset: 0; }
 .theme-toggle {
   display: inline-flex; align-items: center; gap: 6px; padding: 3px; border: 1px solid var(--line);
   border-radius: 999px; background: var(--bg); cursor: pointer; color: var(--muted);
@@ -673,6 +680,9 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   .skip-link { transition: none; }
   ::view-transition-group(nav-indicator) { animation-duration: 0s; }
   .tab-indicator.is-ready { transition: none; }
+  .theme-system-icon svg { transition: opacity 150ms ease; }
+  .theme-system .icon-check, .theme-system[aria-pressed="true"] .icon-monitor { transform: none; filter: none; }
+  .theme-system .icon-check path { transition: none; }
   .date-picker, .date-picker.is-open { transform: translateX(-50%); }
   .task-dialog, .task-dialog[open] { transform: none; }
   .btn.htmx-request::before { animation-duration: 1.5s; }
