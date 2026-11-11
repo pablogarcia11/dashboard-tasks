@@ -82,8 +82,27 @@ def journal_heading(day: date) -> str:
     return f"{WEEKDAYS[day.weekday()]} {day.day:02d}/{day.month:02d}/{day.year}"
 
 
+def written_journal_md(con: sqlite3.Connection, day: date) -> str:
+    """Lo que la persona ya apuntó ese día en su diario, en el mismo Markdown que se genera."""
+    d = day.isoformat()
+    notes = [a for a in db.activities(con, d, d, ["notion"]) if a["kind"] in ("note", "task_plan")]
+    lines = []
+    for project, items in group_by_project(notes).items():
+        lines.append(f"### {project}")
+        done = [a for a in items if a["kind"] == "note"]
+        pending = [a for a in items if a["kind"] == "task_plan"]
+        for a in done:
+            lines.append(f"- {a['title']}")
+            lines += [f"  {sub}" for sub in (a["body"] or "").splitlines() if sub.strip()]
+        if pending:
+            lines.append("- Pendiente:")
+            lines += [f"  - {a['title']}" for a in pending]
+    return "\n".join(lines)
+
+
 def journal_notes_context(con: sqlite3.Connection, day: date, tz: str) -> dict:
-    """Commits del día (repos visibles) por proyecto, para redactar las notas del diario."""
+    """Lo ya escrito en el diario ese día y los commits (repos visibles) por proyecto, para completar
+    las notas del diario sin perder nada de lo escrito a mano."""
     d = day.isoformat()
     commits = [a for a in visible_git(db.activities(con, d, d, ["git"]), db.repo_settings(con))
                if a["kind"] == "commit"]
@@ -95,7 +114,7 @@ def journal_notes_context(con: sqlite3.Connection, day: date, tz: str) -> dict:
             "hora": f"{m // 60:02d}:{m % 60:02d}", "repo": x.get("repo", ""), "mensaje": a["title"],
             "cambios": f"{x.get('files', 0)} ficheros, +{x.get('insertions', 0)} -{x.get('deletions', 0)}",
         })
-    return {"encabezado_dia": journal_heading(day), "commits": by_project}
+    return {"encabezado_dia": journal_heading(day), "ya_escrito": written_journal_md(con, day), "commits": by_project}
 
 
 def standup_context(con: sqlite3.Connection, today: date, holidays=()) -> dict:

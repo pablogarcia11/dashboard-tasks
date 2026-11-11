@@ -1,4 +1,33 @@
-from core.views import visible_git
+from datetime import date
+
+from collectors.base import Activity
+from core import db
+from core.views import visible_git, written_journal_md
+
+
+def test_written_journal_md_conserva_proyectos_subvinetas_y_pendientes(tmp_path):
+    con = db.connect(tmp_path / "t.db")
+    ts = "2026-11-10T00:00:00+01:00"
+    db.upsert_activities(con, [
+        Activity("notion", "note", "n1", ts, "2026-11-10", title="Informe de roles:", project="AI Risk",
+                 body="- Revisé la cola de aprobaciones.\n  - Solo Alta dirección."),
+        Activity("notion", "task_plan", "p1", ts, "2026-11-10", title="Probar flujo completo", project="AI Risk"),
+        Activity("notion", "note", "n2", ts, "2026-11-10", title="Reunión del kit.", project="Kit migración"),
+    ])
+    assert written_journal_md(con, date(2026, 11, 10)) == (
+        "### AI Risk\n- Informe de roles:\n  - Revisé la cola de aprobaciones.\n    - Solo Alta dirección.\n"
+        "- Pendiente:\n  - Probar flujo completo\n### Kit migración\n- Reunión del kit."
+    )
+    assert written_journal_md(con, date(2026, 11, 11)) == ""
+
+
+def test_las_notas_salen_en_el_orden_del_diario(tmp_path):
+    con = db.connect(tmp_path / "t.db")
+    ts = "2026-11-10T00:00:00+01:00"
+    titles = [f"Nota {i}" for i in range(12)]
+    db.upsert_activities(con, [Activity("notion", "note", f"zz-{9 - i % 10}-{i}", ts, "2026-11-10",
+                                        title=t, project="P") for i, t in enumerate(titles)])
+    assert [a["title"] for a in db.activities(con, "2026-11-10", "2026-11-10")] == titles
 
 
 def act(source, kind, repo=""):

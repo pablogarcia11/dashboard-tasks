@@ -596,6 +596,7 @@ def journal_notes_state(con, day: date) -> dict:
 def journal_notes(request: Request, d: str, force: bool = False):
     """Redacta (o devuelve guardadas) las notas del día para el diario a partir de los commits."""
     day = date.fromisoformat(d)
+    collect(day, day, only={"notion"})   # lo último que haya escrito a mano ese día, para no pisarlo
     con = db.connect()
     state, error = journal_notes_state(con, day), None
     if state["has_commits"]:

@@ -67,7 +67,8 @@ def activities(con: sqlite3.Connection, start: str, end: str, sources=None) -> l
         q += f" AND source IN ({','.join('?' * len(sources))})"
         args += list(sources)
     out = []
-    for r in con.execute(q + " ORDER BY ts", args):
+    # A igual hora (p. ej. todas las notas de un día) manda el orden de llegada, que es el del documento
+    for r in con.execute(q + " ORDER BY ts, id", args):
         d = dict(r)
         d["extra"] = json.loads(d.pop("extra_json") or "{}")
         out.append(d)

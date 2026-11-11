@@ -4,13 +4,13 @@
 <div role="tabpanel" class="tab-panel" id="panel-notes" aria-labelledby="tab-notes" {% if hidden %}hidden{% endif %}>
   {% if text %}{{ regen_button("/journal-notes/" ~ day.isoformat() ~ "?force=true", "Regenerar notas",
                                target="closest [role=tabpanel]") }}{% endif %}
-  <p class="muted">Borrador del día a partir de tus commits, con el formato de tu diario. Cópialo y pégalo en Notion:
-    los encabezados y las viñetas se convierten solos.</p>
+  <p class="muted">Lo que ya escribiste ese día en tu diario, completado con lo que falte de tus commits. Cópialo y
+    pégalo en Notion: los encabezados y las viñetas se convierten solos.</p>
   {% if error %}<p class="notice error">No se pudo generar: {{ error }}<span class="hint">{{ claude_hint }}</span></p>{% endif %}
   {% if not has_commits %}
   <p class="muted small">Sin commits ese día: no hay nada que redactar.</p>
   {% elif text %}
-  {% if stale %}<p class="notice small">Hay commits nuevos desde que se generó: pulsa el icono de regenerar para incluirlos.</p>{% endif %}
+  {% if stale %}<p class="notice small">Tus notas o tus commits han cambiado desde que se generó: pulsa el icono de regenerar para incluirlos.</p>{% endif %}
   <div class="copy-wrap">
     <textarea id="journal-notes-text" rows="18" spellcheck="false" aria-label="Notas para {{ journal }}" data-guard>{{ text }}</textarea>
     {{ copy_button("journal-notes-text", inline=True) }}
