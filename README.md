@@ -20,6 +20,10 @@ copy .env.example .env          # y rellena NOTION_CLIENT_ID / NOTION_CLIENT_SEC
 .venv\Scripts\python.exe -m pytest -q
 ```
 
+Para revisar la interfaz con capturas (skill `webapp-testing`): `uv pip install --python .venv\Scripts\python.exe -r requirements-dev.txt` y `.venv\Scripts\python.exe -m playwright install chromium`.
+
+Logo: copia el PNG oficial de 1MillionBot (versión principal, para fondo blanco) en `web/static/logo.png` y reinicia el servidor.
+
 La configuración (autor de git, repos excluidos, proyectos, jornada…) está en `config.yaml`. Los prompts que usa Claude están en `prompts/` y se pueden ajustar sin tocar código.
 
 Convención de commits: ver [CONTRIBUTING.md](CONTRIBUTING.md).

@@ -52,6 +52,8 @@ app.mount("/static", StaticFiles(directory=ROOT / "web" / "static"), name="stati
 templates = Jinja2Templates(directory=ROOT / "web" / "templates")
 templates.env.filters["long_date"] = lambda d: f"{WEEKDAYS[d.weekday()]} {d.day} de {MONTHS[d.month - 1]}"
 templates.env.filters["hhmm"] = lambda ts: ts[11:16]
+# Logo oficial: se muestra si existe web/static/logo.png (no se versiona una copia recreada)
+templates.env.globals["has_logo"] = (ROOT / "web" / "static" / "logo.png").is_file()
 
 
 @app.get("/")

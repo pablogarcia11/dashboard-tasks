@@ -7,7 +7,7 @@
     <a class="arrow" href="/day/{{ prev.isoformat() }}" title="Día laborable anterior">←</a>
     <div>
       <h1>{{ day | long_date | capitalize }}</h1>
-      <p class="muted">{% if is_today %}Hoy{% else %}{{ day.isoformat() }}{% endif %}</p>
+      <p>{% if is_today %}<span class="today-tag">Hoy</span>{% else %}<span class="muted">{{ day.isoformat() }}</span>{% endif %}</p>
     </div>
     {% if next %}<a class="arrow" href="/day/{{ next.isoformat() }}" title="Día laborable siguiente">→</a>
     {% else %}<span class="arrow disabled">→</span>{% endif %}
@@ -63,8 +63,8 @@
     <section class="card">
       <h2>Reuniones</h2>
       <ul class="timeline">{% for m in data.meetings %}
-        <li><span class="time">{{ m.extra.start | hhmm }}–{{ m.extra.end | hhmm }}</span> {{ m.title }}
-          <span class="repo">{{ m.project }}</span></li>
+        <li><span class="time">{{ m.extra.start | hhmm }}–{{ m.extra.end | hhmm }}</span>
+          <span>{{ m.title }} <span class="repo">{{ m.project }}</span></span></li>
       {% endfor %}</ul>
     </section>
     {% endif %}
@@ -87,8 +87,8 @@
       <p class="project">{{ project }}</p>
       <ul class="timeline">{% for c in commits %}
         <li><span class="time">{{ c.ts | hhmm }}</span>
-          <span class="repo">{{ c.extra.repo }}</span> {{ c.title }}
-          {% if not c.extra.pushed %}<span class="badge">solo local</span>{% endif %}</li>
+          <span>{{ c.title }} {% if not c.extra.pushed %}<span class="badge">solo local</span>{% endif %}
+            <span class="repo">{{ c.extra.repo }}</span></span></li>
       {% endfor %}</ul>
       {% else %}
       <p class="muted">Sin commits ese día. Si es un día antiguo, pulsa «Actualizar datos».</p>

@@ -4,13 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Dashboard{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;500;700;800&display=swap">
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
 </head>
 <body>
   <header class="appbar">
     <div class="wrap appbar-inner">
-      <a class="brand" href="/">Dashboard</a>
+      <a class="brand" href="/">
+        {% if has_logo %}<img src="/static/logo.png" alt="1MillionBot">{% endif %}
+        <span class="brand-text">Dashboard</span>
+      </a>
       <nav class="appnav">
         <a href="/" {% if section == "day" %}aria-current="page"{% endif %}>Día</a>
         <a href="/timesheet" {% if section == "timesheet" %}aria-current="page"{% endif %}>Parte de horas</a>

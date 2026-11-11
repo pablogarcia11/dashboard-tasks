@@ -109,7 +109,8 @@ resultado = json.loads(p.stdout)["result"]
 |---|---|
 | Lenguaje | Python (3.12–3.14 según compatibilidad de librerías) con `venv`/`uv` |
 | Backend | FastAPI + Uvicorn |
-| Frontend | Plantillas Jinja2 + HTMX + CSS sencillo (sin paso de build). Alternativa válida: Streamlit |
+| Frontend | Plantillas Jinja2 + HTMX + CSS sencillo (sin paso de build). Identidad visual de 1MillionBot (skill `brand-1mb`): rojo `#CD3434` muy presente, coral `#FE6565` solo como acento puntual (commits "solo local", reuniones), fondo blanco, texto `#1D1D1D`, grises `#D2D2D2`/`#949494` en detalles, Montserrat (Google Fonts) con Verdana de reserva. Sin modo oscuro (la marca no admite el negro como color dominante). Logo: se muestra si existe `web/static/logo.png` (la skill no trae los ficheros; no se recrea a mano) |
+| Pruebas de UI | Playwright (`requirements-dev.txt`) con la skill `webapp-testing`: capturas de las pantallas para revisarlas |
 | BD | SQLite (`db/dashboard.db`, fuera de git) |
 | Git | Llamadas a `git` por `subprocess` (`git -C <repo> ...`) |
 | Notion | `notion-client` (integración interna) |

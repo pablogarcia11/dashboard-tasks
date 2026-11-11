@@ -61,7 +61,7 @@
     const h = Math.floor(total / 60), m = total % 60;
     document.getElementById("week-total").textContent = total ? `${h} h ${String(m).padStart(2, "0")} min` : "—";
   }
-  document.body.addEventListener("htmx:afterSwap", updateWeekTotal);
+  // Cada columna (_timesheet_day.html) llama a updateWeekTotal al insertarse
   function copyText(id, btn) {
     navigator.clipboard.writeText(document.getElementById(id).value).then(() => {
       btn.textContent = "Copiado"; setTimeout(() => btn.textContent = "Copiar", 1500);
