@@ -394,8 +394,10 @@ pre.example {
 }
 
 /* Horario del parte de horas */
-/* Jornada y comida como rangos «inicio – fin», con más aire entre un grupo y otro */
-.time-ranges { display: flex; flex-direction: column; align-items: flex-start; gap: 22px; }
+/* Jornada y comida como rangos «inicio – fin» en la misma línea, con más aire entre uno y otro; las horas
+   mínimas van debajo. Si no caben, la comida baja a la línea siguiente */
+.time-ranges { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 22px 56px; }
+.time-ranges > :last-child { flex: 0 0 100%; align-items: flex-start; }
 .time-range { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; border: 0; min-width: 0; }
 .time-range legend, .range-label { padding: 0; margin-bottom: 6px; font-weight: 700; font-size: .85em; }
 .range { display: flex; align-items: center; gap: 8px; }
