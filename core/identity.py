@@ -38,9 +38,11 @@ def git_user_name() -> str | None:
     return p.stdout.strip() or None
 
 
-def email_name(cfg: dict) -> str | None:
+def email_name(cfg: dict, global_email=None) -> str | None:
+    """Parte local del email de autor (el añadido en Ajustes o el global de git)."""
     authors = cfg.get("user", {}).get("git_authors") or []
-    return authors[0].split("@")[0] if authors else None
+    email = authors[0] if authors else (global_email() if global_email else None)
+    return email.split("@")[0] if email else None
 
 
 def resolve_name(cfg: dict, sources=(notion_user_name, git_user_name)) -> str:
@@ -48,7 +50,16 @@ def resolve_name(cfg: dict, sources=(notion_user_name, git_user_name)) -> str:
         name = source()
         if name:
             return name
-    return email_name(cfg) or "Dashboard"
+    return email_name(cfg, git_global_email) or "Dashboard"
+
+
+def git_global_email() -> str | None:
+    try:
+        p = subprocess.run(["git", "config", "--global", "user.email"], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return p.stdout.strip() or None
 
 
 @lru_cache

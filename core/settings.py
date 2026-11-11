@@ -4,6 +4,7 @@ config.yaml queda para lo común (zona horaria, jornada, categorías...). Lo que
 (su página diario de Notion, la carpeta donde tiene sus repos) se elige en Ajustes y se guarda aquí.
 """
 import copy
+import json
 import sqlite3
 
 from core.identity import notion_owner
@@ -11,6 +12,18 @@ from core.identity import notion_owner
 JOURNAL_PAGE_ID = "notion.journal_page_id"
 JOURNAL_PAGE_TITLE = "notion.journal_page_title"
 REPOS_ROOT = "git.repos_root"
+EXTRA_AUTHORS = "git.extra_authors"   # JSON: emails de autor añadidos a mano (los de git se detectan solos)
+
+
+def extra_authors(con: sqlite3.Connection) -> list[str]:
+    try:
+        return json.loads(get_all(con).get(EXTRA_AUTHORS) or "[]")
+    except ValueError:
+        return []
+
+
+def set_extra_authors(con: sqlite3.Connection, emails: list[str]) -> None:
+    set_value(con, EXTRA_AUTHORS, json.dumps(sorted(set(emails))) if emails else None)
 
 
 def get_all(con: sqlite3.Connection) -> dict[str, str]:
@@ -32,6 +45,10 @@ def effective_config(cfg: dict, con: sqlite3.Connection) -> dict:
     saved = get_all(con)
     out.setdefault("git", {})
     out.setdefault("notion", {})
+    out.setdefault("user", {})
+    manual = (out["user"].get("git_authors") or []) + extra_authors(con)
+    if manual:
+        out["user"]["git_authors"] = manual
     if saved.get(REPOS_ROOT):
         out["git"]["repos_root"] = saved[REPOS_ROOT]
     if saved.get(JOURNAL_PAGE_ID):

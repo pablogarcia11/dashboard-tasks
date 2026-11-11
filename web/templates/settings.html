@@ -132,6 +132,36 @@
     </div>
   </div>
 
+  <div class="setting-row">
+    <div class="setting-label">
+      <h3>Tus emails de autor</h3>
+      <p class="muted small">Los commits se reconocen por estos emails. Los de tu git se detectan solos; añade otros si firmas con más de uno.</p>
+    </div>
+    <div class="setting-control">
+      {% if authors.detected or authors.extra %}
+      <ul class="chip-list">
+        {% for e in authors.detected %}
+        <li class="chip"><span translate="no">{{ e }}</span><span class="muted small">detectado</span></li>
+        {% endfor %}
+        {% for e in authors.extra %}
+        <li class="chip"><span translate="no">{{ e }}</span>
+          <button type="button" class="chip-remove" hx-post="/settings/git-authors" hx-swap="none"
+                  hx-vals='{"action": "remove", "email": {{ e | tojson }}}' aria-label="Quitar {{ e }}" title="Quitar">×</button></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="notice small">No se ha detectado ningún email: configura <code>git config --global user.email</code> o añade uno aquí.</p>
+      {% endif %}
+      <form class="path-form" hx-post="/settings/git-authors" hx-swap="none">
+        <label class="sr-only" for="author-email">Añadir email de autor</label>
+        <input type="email" id="author-email" name="email" class="field" placeholder="otro-email@ejemplo.com…"
+               autocomplete="off" spellcheck="false" required>
+        <input type="hidden" name="action" value="add">
+        <button type="submit" class="btn ghost">Añadir</button>
+      </form>
+    </div>
+  </div>
+
   <div class="setting-row setting-row-wide">
     <div class="setting-label">
       <h3>Qué se muestra</h3>

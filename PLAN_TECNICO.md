@@ -266,6 +266,19 @@ def previous_workday(d):  # d: date
 ### 7.1 Vista "Hoy" (principal)
 Secciones: **Tareas de hoy** (tareas activas del usuario en la base Tareas + pendientes apuntados ayer en I'M BACK), **Reuniones** (Calendar), **Trabajo sin commitear / commits sin subir** (para no perder nada), y más adelante **Pendientes de revisión/menciones**. Cada ítem con su origen y enlace.
 
+### 7.0 ter Hoja de ruta: dashboard para cualquier persona de la empresa (2026-11-11)
+Alcance decidido por el usuario: **para la gente de 1MillionBot, no para externos**. Es común a la empresa (y se queda en `config.yaml`): workspace y base "Tareas" de Notion, estados, categorías y horario por defecto del hub, marca, idioma, zona horaria, proyectos y palabras clave de reuniones. Es **de cada persona** (se detecta o se elige en Ajustes) lo de la lista. Hay gente con **Mac**: todo debe funcionar en Windows y macOS.
+
+Orden de trabajo:
+1. **Emails de autor de git, automáticos.** Del `git config user.email` global y del de cada repo; se pueden añadir más a mano en Ajustes. Sin esto otra persona ve 0 commits.
+2. **Instalación y primer arranque.** Scripts `setup.ps1` (Windows) y `setup.sh` (macOS/Linux), lista de "primeros pasos" en Ajustes y aviso en la vista Día mientras falte algo, README para compañeros.
+3. **Stand-up con el formato de cada persona.** Se aprende de sus últimos stand-ups en el canal (conector de Slack): saludo, encabezados, viñetas y emojis. Sin ejemplos, formato por defecto.
+4. **Más formatos de diario.** Días como encabezado de cualquier nivel o desplegable, como páginas hijas o como base de datos con una página por día; más formatos de fecha (dd/mm/aaaa, aaaa-mm-dd, «10 de noviembre de 2026»…); proyectos como encabezados o desplegables (sin ellos, «General»); pendientes con «Pendiente(s):», «Para mañana:» o casillas sin marcar.
+5. **Repo → proyecto por nomenclatura de la empresa**, no por la ruta local: se compara con el nombre del repo o de cualquier carpeta que lo contenga (`airisk-api` y `airiskmanagement` → AI Risk; todo lo de `millie/` → Millie, `ibh/` → IBH…). Los worktrees heredan el proyecto de su repo principal.
+6. **Horario del parte de horas por persona** en Ajustes (el de la empresa por defecto).
+7. **Limpiar configuración sin uso** (`github`, `standup_time`, `weekend_view`).
+- Riesgo anotado: la conexión OAuth de Notion está creada con la cuenta del usuario; conviene que la tenga una cuenta de la empresa.
+
 ### 7.0 bis Dashboard genérico: configuración por usuario desde Ajustes (2026-11-11)
 Objetivo del usuario: que un compañero pueda usar el dashboard sin tocar código. Lo propio de cada persona se elige en **Ajustes** y se guarda en su base de datos local (`app_settings`, `core/settings.py`), no en `config.yaml`:
 - **Notion**: botón "Conectar con Notion" que hace el OAuth desde la propia web (`/settings/notion/connect` → Notion → `/oauth/notion/callback`, que es el redirect registrado; `state` contra CSRF). "Desconectar" borra el token, la página diario y las tareas de esa cuenta. Credenciales de la conexión OAuth en `.env` (compartibles en el equipo; cada uno autoriza con su cuenta). El usuario de Notion (`user_id`) sale del token.

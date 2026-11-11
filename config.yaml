@@ -4,9 +4,7 @@ user:
   # El nombre de la cabecera no se configura: sale de git (user.name global) o de Notion (core/identity.py)
   github: pablogarcia11
   timezone: Europe/Madrid
-  # Identidades con las que firmas commits (se filtra por cualquiera de ellas)
-  git_authors:
-    - pablogarcia@1millionbot.com
+  # Los emails de autor de git se detectan solos (git config); se pueden añadir más en Ajustes
 
 schedule:
   standup_time: "08:30"     # solo lunes a viernes

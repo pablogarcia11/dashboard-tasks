@@ -120,6 +120,24 @@ def short_ref(ref: str) -> str:
     return ref
 
 
+def git_email(path: Path | None = None) -> str | None:
+    """user.email de git: el global (path=None) o el efectivo de un repo (el suyo o, si no tiene, el global)."""
+    args = ["config", "--global", "user.email"] if path is None else ["-C", str(path), "config", "user.email"]
+    try:
+        p = subprocess.run(["git", *args], capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=10)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return p.stdout.strip().lower() or None
+
+
+def detect_author_emails(repos: list["Repo"]) -> set[str]:
+    """Emails con los que la persona firma sus commits: el global y el configurado en cada repo."""
+    emails = {git_email()}
+    emails.update(git_email(r.path) for r in repos)
+    return {e for e in emails if e}
+
+
 class GitLocalCollector:
     source = "git"
 
@@ -130,7 +148,10 @@ class GitLocalCollector:
         # El propio dashboard nunca se recoge (no es trabajo de empresa); el resto se controla en Ajustes
         self.exclude = (g.get("exclude_repos") or []) + [str(ROOT)]
         self.projects = config.get("projects", {})
-        self.authors = [a.lower() for a in config["user"]["git_authors"]]
+        # Emails añadidos a mano en Ajustes; los detectados en git se suman al descubrir los repos
+        self.manual_authors = {a.lower() for a in config["user"].get("git_authors") or []}
+        self.detected_authors: set[str] = set()
+        self.authors = set(self.manual_authors)
         self.tz = config["user"]["timezone"]
         self.errors: list[str] = []
 
@@ -145,7 +166,10 @@ class GitLocalCollector:
                 r.common_dir = _norm(r.path / run_git(r.path, "rev-parse", "--git-common-dir").strip())
             except RuntimeError as e:
                 self.errors.append(str(e))
-        return [r for r in repos if r.common_dir]
+        repos = [r for r in repos if r.common_dir]
+        self.detected_authors = detect_author_emails(repos)
+        self.authors = self.manual_authors | self.detected_authors
+        return repos
 
     def collect(self, since: datetime, until: datetime, include_wip: bool = False) -> list[Activity]:
         repos = self.repos()

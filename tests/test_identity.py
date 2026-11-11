@@ -10,9 +10,13 @@ def test_usa_la_primera_fuente_con_nombre():
     assert resolve_name(CFG, sources=(lambda: "Pablo García", lambda: "Otro")) == "Pablo García"
 
 
-def test_sin_fuentes_usa_el_email_y_luego_dashboard():
+def test_sin_fuentes_usa_el_email_y_luego_dashboard(monkeypatch):
+    import core.identity as identity
+    monkeypatch.setattr(identity, "git_global_email", lambda: None)
     assert resolve_name(CFG, sources=(lambda: None,)) == "pablogarcia"
     assert resolve_name({"user": {}}, sources=(lambda: None,)) == "Dashboard"
+    monkeypatch.setattr(identity, "git_global_email", lambda: "ana@empresa.com")
+    assert resolve_name({"user": {}}, sources=(lambda: None,)) == "ana"
 
 
 def test_notion_user_name(tmp_path):

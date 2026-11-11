@@ -24,7 +24,18 @@ def test_los_ajustes_guardados_mandan_sobre_config(tmp_path, monkeypatch):
 def test_sin_ajustes_ni_conexion(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "notion_owner", lambda: {})
     out = settings.effective_config({}, connect(tmp_path))
-    assert out == {"git": {}, "notion": {}}
+    assert out == {"git": {}, "notion": {}, "user": {}}
+
+
+def test_emails_de_autor_manuales(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "notion_owner", lambda: {})
+    con = connect(tmp_path)
+    settings.set_extra_authors(con, ["b@x.com", "a@x.com", "a@x.com"])
+    assert settings.extra_authors(con) == ["a@x.com", "b@x.com"]
+    out = settings.effective_config({"user": {"git_authors": ["c@x.com"]}}, con)
+    assert out["user"]["git_authors"] == ["c@x.com", "a@x.com", "b@x.com"]
+    settings.set_extra_authors(con, [])
+    assert settings.extra_authors(con) == []
 
 
 def test_delete_kinds_borra_solo_esas_notas(tmp_path):

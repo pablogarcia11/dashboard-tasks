@@ -155,8 +155,10 @@ def settings_view(request: Request, msg: str = ""):
         rows.append({"repo": rel, "project": r.project, **prefs.get(rel, {"visible": True, "show_wip": True}),
                      "worktree_of": main.path.relative_to(git.root).as_posix() if r.is_worktree and main else None})
     owner = notion_owner()
+    extra = settings.extra_authors(con)
     return templates.TemplateResponse(request, "settings.html", {
         "rows": rows, "msg": SETTINGS_MESSAGES.get(msg), "repos_root": saved.get(settings.REPOS_ROOT),
+        "authors": {"detected": sorted(git.detected_authors), "extra": [e for e in extra if e not in git.detected_authors]},
         "notion": {
             "has_credentials": all(notion_auth.client_credentials()),
             "connected": notion_auth.TOKEN_FILE.is_file(), "user": owner.get("name"),
@@ -297,6 +299,24 @@ def save_repos_root(path: str) -> Response:
     settings.set_value(db.connect(), settings.REPOS_ROOT, str(folder.resolve()))
     refresh_in_background({"git"})
     return Response(headers={"HX-Redirect": "/settings?msg=repos-saved#repos"})
+
+
+@app.post("/settings/git-authors")
+async def git_authors(request: Request):
+    """Añade o quita un email de autor manual (los de git config se detectan solos)."""
+    form = await request.form()
+    email = form.get("email", "").strip().lower()
+    con = db.connect()
+    emails = settings.extra_authors(con)
+    if form.get("action") == "remove":
+        emails = [e for e in emails if e != email]
+    elif "@" not in email or " " in email:
+        return Response(f"«{email}» no parece un email.", status_code=422)
+    else:
+        emails.append(email)
+    settings.set_extra_authors(con, emails)
+    refresh_in_background({"git"})
+    return Response(headers={"HX-Redirect": "/settings#repos"})
 
 
 @app.post("/settings/repos-root/pick")
