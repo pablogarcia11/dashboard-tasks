@@ -141,8 +141,44 @@ html:active-view-transition-type(section-nav)::view-transition-new(root) { anima
   margin-right: 8px; padding: 7px 16px; border: 1px solid var(--line); border-radius: 999px;
   color: var(--text); font-weight: 700; font-size: .9rem; text-decoration: none; white-space: nowrap;
 }
+.nav-current:not(.is-current) { color: var(--muted); }   /* sin seleccionar: apagado */
 .nav-current:hover { border-color: var(--red-text); color: var(--red-text); }
 .nav-current.is-current { background: var(--red); border-color: var(--red); color: var(--white); }
+
+/* Calendario para ir a un día concreto (sale bajo el icono, desde su posición) */
+.picker-wrap { position: relative; display: inline-flex; }
+.picker-toggle { border: 0; background: transparent; cursor: pointer; }
+.picker-toggle svg { width: 20px; height: 20px; }
+.picker-toggle[aria-expanded="true"] { background: var(--hover-bg); color: var(--red-text); }
+.date-picker {
+  position: absolute; top: calc(100% + 8px); left: 50%; z-index: 20; width: 280px; padding: 12px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .08), 0 12px 32px rgb(0 0 0 / .18);
+  opacity: 0; transform: translateX(-50%) scale(0.96); transform-origin: top center;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+.date-picker.is-open { opacity: 1; transform: translateX(-50%) scale(1); transition-duration: 200ms; transition-timing-function: var(--ease-out); }
+.dp-head { display: flex; align-items: center; gap: 2px; margin-bottom: 8px; }
+.dp-title { flex: 1; text-align: center; font-weight: 700; font-size: .92em; white-space: nowrap; text-transform: capitalize; font-variant-numeric: tabular-nums; }
+.dp-nav {
+  display: inline-grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 50%;
+  background: transparent; color: var(--muted); cursor: pointer;
+  transition: background-color var(--fast) ease, color var(--fast) ease;
+}
+.dp-nav svg { width: 17px; height: 17px; }
+.dp-nav:hover { background: var(--hover-bg); color: var(--text); }
+.dp-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+.dp-wd { font-size: .72em; font-weight: 700; color: var(--muted); padding: 4px 0; }
+.dp-wd.is-weekend { color: var(--detail); }
+.dp-day {
+  display: grid; place-items: center; aspect-ratio: 1; border-radius: 50%; font-size: .88em;
+  font-variant-numeric: tabular-nums; text-decoration: none; color: var(--text);
+  transition: background-color var(--fast) ease, color var(--fast) ease;
+}
+a.dp-day:hover { background: var(--hover-bg); color: var(--red-text); }
+.dp-day.is-today { box-shadow: inset 0 0 0 1.5px var(--red-text); }
+.dp-day.is-selected { background: var(--red); color: var(--white); }
+.dp-day.is-disabled { color: var(--detail); opacity: .45; cursor: not-allowed; }
 .nav-arrow {
   display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 50%;
   color: var(--text); text-decoration: none;
@@ -329,10 +365,16 @@ pre.example {
 }
 
 /* Horario del parte de horas */
-.time-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px 14px; }
-.time-grid label { display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: .85em; }
-.time-grid .field { font-variant-numeric: tabular-nums; }
+/* Jornada y comida como rangos «inicio – fin», con más aire entre un grupo y otro */
+.time-ranges { display: flex; flex-direction: column; align-items: flex-start; gap: 22px; }
+.time-range { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.time-range legend, .range-label { padding: 0; margin-bottom: 6px; font-weight: 700; font-size: .85em; }
+.range { display: flex; align-items: center; gap: 8px; }
+.range .field { width: 9.5em; font-variant-numeric: tabular-nums; }   /* cabe también «08:30 AM» */
+.range-dash { color: var(--muted); font-weight: 700; }
+.hours-field { width: 120px; font-variant-numeric: tabular-nums; }
 .form-error { margin: 10px 0 0; }
+.time-ranges ~ .actions { margin-top: 22px; }
 
 /* Primeros pasos */
 .steps { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
@@ -615,6 +657,7 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   .skip-link { transition: none; }
   ::view-transition-group(nav-indicator) { animation-duration: 0s; }
   .tab-indicator.is-ready { transition: none; }
+  .date-picker, .date-picker.is-open { transform: translateX(-50%); }
   .task-dialog, .task-dialog[open] { transform: none; }
   .btn.htmx-request::before { animation-duration: 1.5s; }
   .btn.is-copied .i-check { animation: none; }

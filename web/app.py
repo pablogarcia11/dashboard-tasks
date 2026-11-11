@@ -154,6 +154,7 @@ def day_view(request: Request, d: str):
     nxt = next_workday(shown, HOLIDAYS)
     return templates.TemplateResponse(request, "day.html", {
         "day": shown, "is_today": shown == effective_today(today(), HOLIDAYS)[0], "weekend": weekend,
+        "today": today(),
         "prev": previous_workday(shown, HOLIDAYS), "next": nxt if nxt <= today() else None,
         "data": day_data(con, shown, HOLIDAYS), "sync": db.sync_states(con),
         "standup": db.get_summary(con, shown.isoformat(), "standup"),

@@ -31,8 +31,10 @@
 </button>
 {%- endmacro %}
 
-{# Navegación de fechas al estilo Google Calendar: [Hoy] ‹ › #}
-{% macro date_nav(current_href, current_label, is_current, prev_href, prev_label, next_href, next_label) -%}
+{# Navegación de fechas al estilo Google Calendar: [Hoy] ‹ 📅 › ; el calendario lleva a `picker_url`
+   con {date} sustituido por el día elegido (solo días laborables, no futuros) #}
+{% macro date_nav(current_href, current_label, is_current, prev_href, prev_label, next_href, next_label,
+                  picker_url, selected, today) -%}
 <div class="date-nav" role="group" aria-label="Cambiar de fecha">
   <a class="nav-current{% if is_current %} is-current{% endif %}" href="{{ current_href }}"
      {% if is_current %}aria-current="date"{% endif %}>{{ current_label }}</a>
@@ -40,6 +42,18 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"
          stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
   </a>
+  <span class="picker-wrap">
+    <button type="button" class="nav-arrow picker-toggle" aria-haspopup="dialog" aria-expanded="false"
+            aria-label="Elegir una fecha en el calendario" title="Elegir fecha"
+            data-url="{{ picker_url }}" data-selected="{{ selected.isoformat() }}" data-today="{{ today.isoformat() }}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+           stroke-linejoin="round" aria-hidden="true">
+        <rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>
+        <path d="M7.5 13.5h.01M12 13.5h.01M16.5 13.5h.01M7.5 17.5h.01M12 17.5h.01" stroke-width="2.6"/>
+      </svg>
+    </button>
+    <div class="date-picker" role="dialog" aria-label="Calendario" hidden></div>
+  </span>
   {% if next_href %}
   <a class="nav-arrow" href="{{ next_href }}" aria-label="{{ next_label }}" title="{{ next_label }}">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"

@@ -7,7 +7,8 @@
   <div class="daynav">
     {{ date_nav("/", "Hoy", is_today,
                 "/day/" ~ prev.isoformat(), "Día laborable anterior",
-                "/day/" ~ next.isoformat() if next else None, "Día laborable siguiente") }}
+                "/day/" ~ next.isoformat() if next else None, "Día laborable siguiente",
+                "/day/{date}", day, today) }}
     <h1>{{ day | title_date }}</h1>
   </div>
   <div class="actions">

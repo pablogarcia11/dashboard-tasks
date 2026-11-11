@@ -150,6 +150,89 @@
       if (document.querySelector("textarea[data-dirty]")) { e.preventDefault(); e.returnValue = ""; }
     });
 
+    // Calendario de la navegación de fechas (_macros.html): mes clásico, lunes primero; sábados,
+    // domingos y días futuros no se pueden elegir. Se cierra con Escape o pulsando fuera.
+    (function () {
+      var MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre",
+                    "octubre", "noviembre", "diciembre"];
+      var iso = function (d) {
+        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+      };
+      var parse = function (s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); };
+      var arrow = function (path) {
+        return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" ' +
+               'stroke-linejoin="round" aria-hidden="true"><path d="' + path + '"/></svg>';
+      };
+
+      function render(picker, btn, year, month) {
+        var selected = btn.dataset.selected, today = btn.dataset.today, url = btn.dataset.url;
+        var first = new Date(year, month, 1), offset = (first.getDay() + 6) % 7;   // lunes = 0
+        var days = new Date(year, month + 1, 0).getDate();
+        var html = '<div class="dp-head">' +
+          '<button type="button" class="dp-nav" data-step="-12" aria-label="Año anterior">' + arrow("m11 17-5-5 5-5M18 17l-5-5 5-5") + '</button>' +
+          '<button type="button" class="dp-nav" data-step="-1" aria-label="Mes anterior">' + arrow("m15 18-6-6 6-6") + '</button>' +
+          '<span class="dp-title" aria-live="polite">' + MONTHS[month] + " " + year + '</span>' +
+          '<button type="button" class="dp-nav" data-step="1" aria-label="Mes siguiente">' + arrow("m9 18 6-6-6-6") + '</button>' +
+          '<button type="button" class="dp-nav" data-step="12" aria-label="Año siguiente">' + arrow("m13 17 5-5-5-5M6 17l5-5-5-5") + '</button>' +
+          '</div><div class="dp-grid" role="grid">';
+        ["L", "M", "X", "J", "V", "S", "D"].forEach(function (w, i) {
+          html += '<span class="dp-wd' + (i > 4 ? ' is-weekend' : '') + '" aria-hidden="true">' + w + '</span>';
+        });
+        for (var i = 0; i < offset; i++) html += '<span></span>';
+        for (var day = 1; day <= days; day++) {
+          var d = new Date(year, month, day), key = iso(d), wd = (d.getDay() + 6) % 7;
+          var disabled = wd > 4 || key > today;
+          var cls = "dp-day" + (key === selected ? " is-selected" : "") + (key === today ? " is-today" : "");
+          var label = day + " de " + MONTHS[month] + " de " + year + (wd > 4 ? " (fin de semana)" : key > today ? " (futuro)" : "");
+          html += disabled
+            ? '<span class="' + cls + ' is-disabled" aria-disabled="true" aria-label="' + label + '">' + day + '</span>'
+            : '<a class="' + cls + '" href="' + url.replace("{date}", key) + '" aria-label="' + label + '"' +
+              (key === selected ? ' aria-current="date"' : '') + '>' + day + '</a>';
+        }
+        picker.innerHTML = html + '</div>';
+        picker.dataset.year = year;
+        picker.dataset.month = month;
+      }
+
+      function close(picker, btn, focus) {
+        picker.classList.remove("is-open");
+        btn.setAttribute("aria-expanded", "false");
+        setTimeout(function () { if (!picker.classList.contains("is-open")) picker.hidden = true; }, 150);
+        if (focus) btn.focus();
+      }
+
+      document.querySelectorAll(".picker-toggle").forEach(function (btn) {
+        var picker = btn.nextElementSibling;
+        btn.addEventListener("click", function () {
+          if (btn.getAttribute("aria-expanded") === "true") return close(picker, btn);
+          var d = parse(btn.dataset.selected);
+          render(picker, btn, d.getFullYear(), d.getMonth());
+          picker.hidden = false;
+          // Solo si sigue abierto: un clic rápido fuera puede haberlo cerrado antes de este fotograma
+          requestAnimationFrame(function () {
+            if (btn.getAttribute("aria-expanded") === "true") picker.classList.add("is-open");
+          });
+          btn.setAttribute("aria-expanded", "true");
+          var target = picker.querySelector(".is-selected") || picker.querySelector("a.dp-day");
+          if (target) target.focus();
+        });
+        picker.addEventListener("click", function (e) {
+          // Al cambiar de mes se repinta el calendario y el botón pulsado deja de existir: que el clic
+          // no llegue al documento, que lo tomaría por un clic fuera y cerraría el calendario
+          e.stopPropagation();
+          var nav = e.target.closest(".dp-nav");
+          if (!nav) return;
+          var m = new Date(+picker.dataset.year, +picker.dataset.month + Number(nav.dataset.step), 1);
+          render(picker, btn, m.getFullYear(), m.getMonth());
+          picker.querySelector('.dp-nav[data-step="' + nav.dataset.step + '"]').focus();
+        });
+        picker.addEventListener("keydown", function (e) { if (e.key === "Escape") close(picker, btn, true); });
+        document.addEventListener("click", function (e) {
+          if (btn.getAttribute("aria-expanded") === "true" && !e.target.closest(".picker-wrap")) close(picker, btn);
+        });
+      });
+    })();
+
     // Mensajes para lectores de pantalla (región role="status")
     function announce(text) {
       var region = document.getElementById("sr-status");

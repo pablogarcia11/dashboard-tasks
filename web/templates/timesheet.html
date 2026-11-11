@@ -7,7 +7,8 @@
   <div class="daynav">
     {{ date_nav("/timesheet", "Esta semana", is_current_week,
                 "/timesheet/week/" ~ prev.isoformat(), "Semana anterior",
-                "/timesheet/week/" ~ next.isoformat() if next else None, "Semana siguiente") }}
+                "/timesheet/week/" ~ next.isoformat() if next else None, "Semana siguiente",
+                "/timesheet/week/{date}", days[0], today) }}
     <div>
       <h1>Parte de horas</h1>
       <p class="muted">Semana del {{ days[0] | long_date }} · Total <strong id="week-total">—</strong></p>
