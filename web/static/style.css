@@ -93,9 +93,29 @@ code { font-size: .9em; }
   background: var(--red); color: var(--white); font-size: .8rem; font-weight: 800; letter-spacing: .02em;
 }
 .appnav { display: flex; align-items: center; gap: 22px; }
-.appnav a { text-decoration: none; color: var(--muted); font-weight: 500; padding: 4px 0; border-bottom: 2px solid transparent; }
+.appnav a { text-decoration: none; color: var(--muted); font-weight: 500; }
 .appnav a:hover { color: var(--red-text); }
-.appnav a[aria-current="page"] { color: var(--red-text); font-weight: 700; border-bottom-color: var(--red-text); }
+.appnav .icon-link[aria-current="page"] { color: var(--red-text); }   /* Ajustes: color, sin barra */
+
+/* Enlaces de sección: el ::after invisible con el texto en negrita fija el ancho, así que pasar
+   a negrita al seleccionarlo no desplaza a los vecinos (la causa del salto era el peso, no la barra) */
+.nav-link { position: relative; display: inline-flex; flex-direction: column; align-items: center; padding: 6px 0; }
+.nav-link::after {
+  content: attr(data-text); height: 0; overflow: hidden; visibility: hidden;
+  font-weight: 700; pointer-events: none; user-select: none;
+}
+.nav-link[aria-current="page"] { color: var(--red-text); font-weight: 700; }
+/* Barra de la sección activa: se desliza entre páginas con View Transitions entre documentos */
+.nav-indicator {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 2px; border-radius: 2px;
+  background: var(--red-text); view-transition-name: nav-indicator;
+}
+
+@view-transition { navigation: auto; types: section-nav; }
+/* Al navegar, la página cambia al instante; solo se anima la barra */
+html:active-view-transition-type(section-nav)::view-transition-old(root),
+html:active-view-transition-type(section-nav)::view-transition-new(root) { animation: none; }
+::view-transition-group(nav-indicator) { animation-duration: 280ms; animation-timing-function: var(--ease-in-out); }
 .icon-link { display: inline-flex; }
 
 /* Interruptor de tema */
@@ -217,6 +237,8 @@ table.settings { width: 100%; border-collapse: collapse; margin: 10px 0 14px; }
 table.settings th, table.settings td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
 table.settings th { font-weight: 700; font-size: .85em; color: var(--text); border-bottom: 2px solid var(--red); }
 table.settings tbody tr:hover { background: var(--hover-bg); }
+table.settings tbody tr:last-child td { border-bottom: 0; }
+table.settings { margin-bottom: 0; }
 .switch { position: relative; display: inline-block; width: 40px; height: 22px; cursor: pointer; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .switch span { position: absolute; inset: 0; background: var(--line); border-radius: 999px; }
@@ -284,7 +306,7 @@ table.settings tbody tr:hover { background: var(--hover-bg); }
 .project-group[open] > :not(summary) { animation: reveal 200ms var(--ease-out); }
 @keyframes reveal { from { opacity: 0; transform: translateY(-4px); } }
 @keyframes fade { from { opacity: 0; } }
-.appnav a { transition: color var(--fast) ease, border-color var(--fast) ease; }
+.appnav a { transition: color var(--fast) ease; }
 .icon-link svg { transition: transform 250ms var(--ease-out); }
 @media (hover: hover) and (pointer: fine) {
   .icon-link:hover svg { transform: rotate(30deg); }
@@ -397,6 +419,7 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   .icon-btn.htmx-request svg { animation-duration: 1.5s; }
   .icon-link:hover svg { transform: none; }
   .skip-link { transition: none; }
+  ::view-transition-group(nav-indicator) { animation-duration: 0s; }
   .task-dialog, .task-dialog[open] { transform: none; }
   .btn.htmx-request::before { animation-duration: 1.5s; }
   .btn.is-copied .i-check { animation: none; }

@@ -269,6 +269,7 @@ Secciones: **Tareas de hoy** (tareas activas del usuario en la base Tareas + pen
 ### 7.0 Barra superior: nombre del usuario (2026-11-11)
 - En lugar de "Dashboard", la barra muestra el **nombre de quien usa el dashboard** con un avatar de iniciales, deducido de las herramientas conectadas, **nunca fijo en código ni en config** (`core/identity.py`): `git config --global user.name` → usuario de Notion que autorizó la conexión (`owner.user.name` del token OAuth) → parte local del primer email de `git_authors` → "Dashboard". Se calcula al arrancar el servidor.
 - En móvil (≤ 520 px) solo se ve el avatar; el nombre sigue en el `aria-label` del enlace.
+- Navegación Día / Parte de horas: la sección activa va en negrita con una barra inferior que **se desliza entre páginas** (View Transitions entre documentos, `@view-transition { navigation: auto }`; solo se anima la barra, 280 ms). Cada enlace reserva el ancho de su texto en negrita (`::after` invisible con `attr(data-text)`), porque el salto al cambiar de sección lo causaba el cambio de peso (106,6 → 110,3 px), no la barra. Ajustes (la rueda) no lleva barra.
 
 ### 7.1 bis Vista Día: cabecera y tarjetas (2026-11-11)
 - Título con la fecha completa, "Miércoles 11 de noviembre 2026", sin subtítulo. Navegación al estilo Google Calendar: botón **Hoy** (relleno en rojo cuando ya estás en hoy) y flechas ‹ › con SVG; la siguiente se desactiva si es futuro. El parte de horas usa el mismo componente con "Esta semana".

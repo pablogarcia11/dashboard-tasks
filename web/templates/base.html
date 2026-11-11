@@ -50,8 +50,13 @@
         <span class="brand-text">{{ user_name }}</span>
       </a>
       <nav class="appnav">
-        <a href="/" {% if section == "day" %}aria-current="page"{% endif %}>Día</a>
-        <a href="/timesheet" {% if section == "timesheet" %}aria-current="page"{% endif %}>Parte de horas</a>
+        {# data-text: reserva el ancho en negrita para que el texto no salte al seleccionarlo #}
+        {% for href, label, key in [("/", "Día", "day"), ("/timesheet", "Parte de horas", "timesheet")] %}
+        <a class="nav-link" href="{{ href }}" data-text="{{ label }}" {% if section == key %}aria-current="page"{% endif %}>
+          {{- label -}}
+          {% if section == key %}<span class="nav-indicator" aria-hidden="true"></span>{% endif %}
+        </a>
+        {% endfor %}
         <button type="button" class="theme-toggle" role="switch" id="theme-toggle"
                 aria-label="Modo oscuro" title="Cambiar entre modo claro y oscuro">
           <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
