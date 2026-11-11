@@ -225,7 +225,9 @@ class NotionCollector:
                 work_date=now.date().isoformat(), title=title, url=p["url"],
                 status=(pr.get("Status") or {}).get("status", {}).get("name", ""),
                 extra={"priority": select_name(pr, "Prioridad"), "type": select_name(pr, "Tipo"),
-                       "due": first_date(pr, DUE_PROPS)},
+                       "due": first_date(pr, DUE_PROPS),
+                       # color del estado en Notion (blue, orange, default…) para pintar la etiqueta igual
+                       "status_color": ((pr.get("Status") or {}).get("status") or {}).get("color", "default")},
             ))
         return items
 

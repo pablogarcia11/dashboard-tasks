@@ -215,6 +215,38 @@ li::marker { color: var(--red-text); }
   font-size: .72em; color: var(--muted); border: 1px solid var(--line); border-radius: 999px;
   padding: 1px 8px; font-weight: 500; vertical-align: middle;
 }
+/* Estado de una tarea con su color de Notion (paleta de etiquetas de Notion, clara y oscura):
+   fondo, texto y punto, como en el tablero */
+.status[class*="notion-"] {
+  display: inline-flex; align-items: center; gap: 5px; padding: 1px 8px 1px 7px; border: 0;
+  background: var(--n-bg); color: var(--n-fg); font-weight: 500;
+}
+.status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--n-dot); flex: none; }
+.notion-default { --n-bg: #F1F1EF; --n-fg: #32302C; --n-dot: #91918E; }
+.notion-gray    { --n-bg: #E3E2E0; --n-fg: #32302C; --n-dot: #91918E; }
+.notion-brown   { --n-bg: #EEE0DA; --n-fg: #442A1E; --n-dot: #A27763; }
+.notion-orange  { --n-bg: #FADEC9; --n-fg: #49290E; --n-dot: #CC782F; }
+.notion-yellow  { --n-bg: #FDECC8; --n-fg: #402C1B; --n-dot: #C29343; }
+.notion-green   { --n-bg: #DBEDDB; --n-fg: #1C3829; --n-dot: #548164; }
+.notion-blue    { --n-bg: #D3E5EF; --n-fg: #183347; --n-dot: #487CA5; }
+.notion-purple  { --n-bg: #E8DEEE; --n-fg: #412454; --n-dot: #8A67AB; }
+.notion-pink    { --n-bg: #F5E0E9; --n-fg: #4C2337; --n-dot: #B35488; }
+.notion-red     { --n-bg: #FFE2DD; --n-fg: #5D1715; --n-dot: #C4554D; }
+:root[data-theme="dark"] .notion-default { --n-bg: #373737; --n-fg: #D4D4D4; --n-dot: #7F7F7F; }
+:root[data-theme="dark"] .notion-gray    { --n-bg: #5A5A5A; --n-fg: #F0F0F0; --n-dot: #9B9B9B; }
+:root[data-theme="dark"] .notion-brown   { --n-bg: #603B2C; --n-fg: #F2E6DF; --n-dot: #B7856A; }
+:root[data-theme="dark"] .notion-orange  { --n-bg: #854C1D; --n-fg: #FBE5D0; --n-dot: #E28B3B; }
+:root[data-theme="dark"] .notion-yellow  { --n-bg: #89632A; --n-fg: #FCEFD3; --n-dot: #DFAB40; }
+:root[data-theme="dark"] .notion-green   { --n-bg: #2B593F; --n-fg: #DFF2E5; --n-dot: #4FAE7A; }
+:root[data-theme="dark"] .notion-blue    { --n-bg: #28456C; --n-fg: #DCEBF7; --n-dot: #4A9BE0; }
+:root[data-theme="dark"] .notion-purple  { --n-bg: #492F64; --n-fg: #EEE3F7; --n-dot: #9A6DD7; }
+:root[data-theme="dark"] .notion-pink    { --n-bg: #69314C; --n-fg: #F7E1EC; --n-dot: #D15796; }
+:root[data-theme="dark"] .notion-red     { --n-bg: #6E3630; --n-fg: #FBE1DE; --n-dot: #E16259; }
+
+/* Logo en lugar del nombre de la herramienta, del tamaño de la etiqueta */
+.tag-logo { display: inline-flex; align-items: center; padding: 2px 6px; color: var(--text); }
+.tag-logo svg { width: 12px; height: 12px; }
+
 /* Acento puntual: lo que aún no está subido */
 .badge { font-size: .72em; background: var(--coral); color: var(--black); border-radius: 999px; padding: 1px 8px; font-weight: 700; }
 
@@ -324,6 +356,8 @@ table.settings th, table.settings td { text-align: left; padding: 10px 12px; bor
 table.settings th { font-weight: 700; font-size: .85em; color: var(--text); border-bottom: 2px solid var(--red); }
 table.settings tbody tr:hover { background: var(--hover-bg); }
 table.settings tbody tr:last-child td { border-bottom: 0; }
+table.settings .col-center { text-align: center; }
+table.settings .col-center .switch { vertical-align: middle; }
 table.settings { margin: 0; }
 table.settings th:first-child, table.settings td:first-child { padding-left: 0; }
 .switch { position: relative; display: inline-block; width: 40px; height: 22px; cursor: pointer; }

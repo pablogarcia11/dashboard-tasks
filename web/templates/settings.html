@@ -142,19 +142,19 @@
       {% if rows %}
       <div class="table-scroll">
       <table class="settings">
-        <thead><tr><th>Repo</th><th class="col-project">Proyecto</th><th>Visible</th>
-          <th><span class="label-long">Cambios sin commitear</span><span class="label-short" aria-hidden="true">Sin commitear</span></th></tr></thead>
+        <thead><tr><th>Repo</th><th class="col-project col-center">Proyecto</th><th class="col-center">Visible</th>
+          <th class="col-center"><span class="label-long">Cambios sin commitear</span><span class="label-short" aria-hidden="true">Sin commitear</span></th></tr></thead>
         <tbody>
         {% for r in rows %}
           <tr>
             <td translate="no">{{ r.repo }}{% if r.worktree_of %}<br><span class="muted small">worktree de {{ r.worktree_of }}: sus commits se muestran con ese repo</span>{% endif %}</td>
-            <td class="col-project">{{ r.project }}</td>
-            <td><label class="switch"><input type="checkbox" name="value" {% if r.visible %}checked{% endif %}
+            <td class="col-project col-center">{{ r.project }}</td>
+            <td class="col-center"><label class="switch"><input type="checkbox" name="value" {% if r.visible %}checked{% endif %}
                   hx-post="/settings/repo" hx-trigger="change" hx-swap="none"
                   hx-vals='{"repo": "{{ r.repo }}", "field": "visible"}'
                   data-repo="{{ r.repo }}" data-what="visible"
                   aria-label="Mostrar {{ r.repo }}"><span></span></label></td>
-            <td><label class="switch"><input type="checkbox" name="value" {% if r.show_wip %}checked{% endif %}
+            <td class="col-center"><label class="switch"><input type="checkbox" name="value" {% if r.show_wip %}checked{% endif %}
                   hx-post="/settings/repo" hx-trigger="change" hx-swap="none"
                   hx-vals='{"repo": "{{ r.repo }}", "field": "show_wip"}'
                   data-repo="{{ r.repo }}" data-what="cambios sin commitear"

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import date_nav %}
+{% from "_macros.html" import date_nav, notion_logo %}
 {% set section = "day" %}
 {% block title %}{{ day | title_date }} · Dashboard{% endblock %}
 {% block content %}
@@ -37,10 +37,12 @@
       <ul>{% for a in items %}<li><a href="{{ a.url }}" target="_blank" rel="noopener">{{ a.title }}<span class="ext" aria-hidden="true">↗</span><span class="sr-only"> (se abre en otra pestaña)</span></a></li>{% endfor %}</ul>
       {% endfor %}
       {% endif %}
-      <h3>Tareas activas <span class="tag">Notion</span></h3>
+      <h3>Tareas activas {{ notion_logo() }}</h3>
       {% if data.tasks %}
       <ul>{% for t in data.tasks %}
-        <li><a href="{{ t.url }}" target="_blank" rel="noopener">{{ t.title }}<span class="ext" aria-hidden="true">↗</span><span class="sr-only"> (se abre en otra pestaña)</span></a> <span class="status">{{ t.status }}</span></li>
+        <li><a href="{{ t.url }}" target="_blank" rel="noopener">{{ t.title }}<span class="ext" aria-hidden="true">↗</span><span class="sr-only"> (se abre en otra pestaña)</span></a>
+          {# mismo color que el estado en Notion #}
+          <span class="status notion-{{ t.extra.status_color or 'default' }}"><i class="dot" aria-hidden="true"></i>{{ t.status }}</span></li>
       {% endfor %}</ul>
       {% else %}<p class="muted">Sin tareas activas.</p>{% endif %}
       {% if data.meetings %}

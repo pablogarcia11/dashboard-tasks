@@ -283,6 +283,10 @@ Objetivo del usuario: que un compañero pueda usar el dashboard sin tocar códig
 - En móvil (≤ 520 px) solo se ve el avatar; el nombre sigue en el `aria-label` del enlace.
 - Navegación Día / Parte de horas: la sección activa va en negrita con una barra inferior que **se desliza entre páginas** (View Transitions entre documentos, `@view-transition { navigation: auto }`; solo se anima la barra, 280 ms). Cada enlace reserva el ancho de su texto en negrita (`::after` invisible con `attr(data-text)`), porque el salto al cambiar de sección lo causaba el cambio de peso (106,6 → 110,3 px), no la barra. Ajustes (la rueda) no lleva barra.
 
+### 7.1 ter Vista Día: etiquetas con estilo de Notion (2026-11-11)
+- El estado de cada tarea activa lleva **su color de Notion** (se guarda `extra.status_color` al leer las tareas: In progress = blue, Weekly backlog = orange, Done = green…) con la paleta de etiquetas de Notion (fondo, texto y punto) en versión clara y oscura.
+- La etiqueta de origen "Notion" se sustituye por el **logo de Notion** (Simple Icons, CC0, en línea en `_macros.html`), del mismo alto que las etiquetas.
+
 ### 7.1 bis Vista Día: cabecera y tarjetas (2026-11-11)
 - Título con la fecha completa, "Miércoles 11 de noviembre 2026", sin subtítulo. Navegación al estilo Google Calendar: botón **Hoy** (relleno en rojo cuando ya estás en hoy) y flechas ‹ › con SVG; la siguiente se desactiva si es futuro. El parte de horas usa el mismo componente con "Esta semana".
 - **Actualizar por tarjeta**: icono de actualizar (flechas en círculo) a la derecha de "Notas en I'M BACK" y de "Commits". `POST /refresh/{día}/{notes|commits}` recoge **solo** su fuente (`run_collect(..., only={"notion"})` o `{"git"}`) para ese día y devuelve la tarjeta, que HTMX sustituye sin recargar la página. Notas ≈ 2,6 s y commits ≈ 2 s, sin pasar por Claude. "Actualizar datos" sigue recogiendo todo.
