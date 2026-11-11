@@ -1,0 +1,73 @@
+# Configuración del dashboard personal. Sin secretos: los tokens van en .env.
+
+user:
+  name: Pablo García
+  github: pablogarcia11
+  timezone: Europe/Madrid
+  # Identidades con las que firmas commits (se filtra por cualquiera de ellas)
+  git_authors:
+    - pablogarcia@1millionbot.com
+
+schedule:
+  standup_time: "08:30"     # solo lunes a viernes
+  weekend_view: last_friday # en fin de semana, "Hoy" muestra el último viernes con aviso
+  holidays: []              # fechas YYYY-MM-DD no laborables
+
+timesheet:                  # parte de horas para 1million hub (aproximado)
+  day_start: "08:30"
+  day_end: "17:30"
+  lunch_start: "14:00"
+  lunch_end: "15:00"
+  min_block_minutes: 10     # sin franjas fijas; duración estimada por los commits
+  min_daily_hours: 8
+  categories:
+    - Desarrollo de negocio
+    - Reunión
+    - Documentación
+    - Tareas administrativas
+    - Formación
+
+notion:
+  im_back_page_id: 3f3687e7-3de1-8073-956a-c811a2c466e2
+  tasks_database_id: b92ea782-b911-4e74-b4d2-0998a47c343e
+  redirect_uri: http://localhost:8765/oauth/notion/callback
+  user_id: 356d872b-594c-81c5-a0ce-00025064453c   # tu usuario de Notion
+  tasks_person_property: Persona Responsable
+  tasks_inactive_statuses: [Done, Archived]
+
+git:
+  repos_root: C:\Users\daxte\Documents\1MillionBot
+  scan_depth: 3
+  # Excluidos siempre (ruta absoluta). Este repo es personal, no trabajo de empresa.
+  exclude_repos:
+    - C:\Users\daxte\Documents\1MillionBot\dashboard
+    - C:\Users\daxte\Documents\1MillionBot\Kanvas
+    - C:\Users\daxte\Documents\1MillionBot\shannon
+
+# Proyecto = encabezado 3 de I'M BACK. Rutas relativas a repos_root; una carpeta incluye sus repos anidados.
+projects:
+  AI Risk: [airisk-api, airisk-api-cdu, airisk-api-roles, airiskmanagement, airiskmanagement-roles]
+  Kit migración: [boilerplate-api, migration-boilerplate-api]
+  Aurea: [aurea]
+  IBH: [ibh]
+  Millie: [millie]
+  Rec Aéreas: [rec-aereas]
+  # Reuniones de empresa (Sprint Review, Monthly Review...) sin proyecto concreto
+  1MB: []
+company_meetings_project: 1MB
+
+claude:
+  command: claude   # ruta absoluta si el programador de tareas no lo encuentra en el PATH
+  model: sonnet
+  timeout_seconds: 300
+
+sources:
+  git: { enabled: true }
+  notion: { enabled: true }
+  gcal: { enabled: true, via: claude_connector }
+  slack: { enabled: true, via: claude_connector, standup_channel_id: C056VQM4E74 }
+  github: { enabled: false }
+
+server:
+  host: 127.0.0.1
+  port: 8765

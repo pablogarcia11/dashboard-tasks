@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+jinja2
+httpx
+notion-client
+python-dotenv
+pyyaml
+pytest
