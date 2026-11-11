@@ -277,6 +277,7 @@ Orden de trabajo:
 5. **Repo → proyecto por nomenclatura de la empresa**, no por la ruta local: se compara con el nombre del repo o de cualquier carpeta que lo contenga (`airisk-api` y `airiskmanagement` → AI Risk; todo lo de `millie/` → Millie, `ibh/` → IBH…). Los worktrees heredan el proyecto de su repo principal.
 6. **Horario del parte de horas por persona** en Ajustes (el de la empresa por defecto).
 7. **Limpiar configuración sin uso** (`github`, `standup_time`, `weekend_view`).
+8. **Comando `dashboard-1mb` (2026-11-11).** `setup.ps1` / `setup.sh` instalan un lanzador en `~/.local/bin` (Windows: `dashboard-1mb.cmd` que llama a `start.ps1`; macOS/Linux: script que hace `exec start.sh`) y añaden esa carpeta al PATH de la persona si falta (Windows: registro de usuario sin expandir variables; macOS/Linux: `.zshrc`, `.bash_profile` o `.bashrc`). `start.*` detecta si el puerto 8765 ya está en uso y en ese caso solo abre el navegador. Si se mueve la carpeta, hay que repetir `setup`. README reescrito con instalación y arranque por sistema, formatos de diario, Día, Parte de horas, Ajustes, privacidad, actualizar y problemas frecuentes.
 - Riesgo anotado: la conexión OAuth de Notion está creada con la cuenta del usuario; conviene que la tenga una cuenta de la empresa.
 
 ### 7.0 bis Dashboard genérico: configuración por usuario desde Ajustes (2026-11-11)
