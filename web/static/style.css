@@ -323,6 +323,20 @@ textarea:focus { border-color: var(--red-text); outline: 2px solid transparent; 
 .path-form .field { flex: 1 1 280px; width: auto; }
 #picking, #repos-error { margin: 8px 0 0; }
 
+/* Primeros pasos */
+.steps { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.steps li { display: flex; align-items: flex-start; gap: 14px; margin: 0; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.steps li:last-child { border-bottom: 0; }
+.steps li > div { flex: 1; min-width: 0; }
+.steps li p { margin: 2px 0 0; max-width: 70ch; }
+.step-mark {
+  display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; flex: none;
+  border: 1px solid var(--line); color: var(--muted); font-size: .8em; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.steps .done .step-mark { border-color: var(--doc-line); background: color-mix(in srgb, var(--doc-line) 18%, var(--surface)); color: var(--text); }
+.steps .done .step-label { color: var(--muted); }
+.steps .todo .step-label { font-weight: 700; }
+
 /* Emails de autor como "chips" */
 .chip-list { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 0; }
 .chip {

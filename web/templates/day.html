@@ -17,6 +17,10 @@
   </div>
 </header>
 
+{% if pending_steps %}
+<p class="notice">Te falta{{ "n" if pending_steps > 1 }} {{ pending_steps }} paso{{ "s" if pending_steps > 1 }} para dejar el dashboard listo.
+  <a href="/settings#setup">Ver primeros pasos</a></p>
+{% endif %}
 {% if weekend %}
 <p class="notice">Hoy no es día laborable: se muestra el último día laborable.</p>
 {% endif %}

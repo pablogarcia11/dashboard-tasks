@@ -9,6 +9,30 @@
 </header>
 {% if msg %}<p class="notice{% if msg[0] == 'error' %} error{% else %} ok{% endif %}" role="status">{{ msg[1] }}</p>{% endif %}
 
+{% set pending = steps | rejectattr("done") | list %}
+{% if pending %}
+<section class="card settings-card" id="setup" aria-labelledby="setup-title">
+  <header class="settings-card-head">
+    <div>
+      <h2 id="setup-title">Primeros pasos</h2>
+      <p class="muted small">Te falta{{ "n" if pending | length > 1 }} {{ pending | length }} de {{ steps | length }} para dejar el dashboard listo.</p>
+    </div>
+  </header>
+  <ol class="steps">
+    {% for s in steps %}
+    <li class="{{ 'done' if s.done else 'todo' }}">
+      <span class="step-mark" aria-hidden="true">{% if s.done %}✓{% else %}{{ loop.index }}{% endif %}</span>
+      <div>
+        <span class="step-label">{{ s.label }}</span><span class="sr-only">{{ ": hecho" if s.done else ": pendiente" }}</span>
+        {% if not s.done and s.hint %}<p class="muted small">{{ s.hint }}</p>{% endif %}
+      </div>
+      {% if not s.done and s.href %}<a class="btn ghost small" href="{{ s.href }}">Ir</a>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+{% endif %}
+
 {# ---------- Notion ---------- #}
 <section class="card settings-card" id="notion" aria-labelledby="notion-title">
   <header class="settings-card-head">
@@ -125,7 +149,7 @@
         <form class="path-form" hx-post="/settings/repos-root" hx-swap="none">
           <label class="sr-only" for="repos-path">Ruta de la carpeta</label>
           <input type="text" id="repos-path" name="path" class="field" value="{{ repos_root or '' }}"
-                 placeholder="C:\Users\tu-usuario\Documents\repos…" autocomplete="off" spellcheck="false">
+                 placeholder="{{ path_example }}…" autocomplete="off" spellcheck="false">
           <button type="submit" class="btn ghost">Guardar</button>
         </form>
       </details>

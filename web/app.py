@@ -4,6 +4,9 @@ Uso:  python -m web.app
 """
 import json
 import secrets
+import shutil
+import subprocess
+import sys
 import threading
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
@@ -117,6 +120,7 @@ def day_view(request: Request, d: str):
         "data": day_data(con, shown, HOLIDAYS), "sync": db.sync_states(con),
         "standup": db.get_summary(con, shown.isoformat(), "standup"),
         "journal_notes": journal_notes_state(con, shown),
+        "pending_steps": sum(not s["done"] for s in setup_steps(con)),
     })
 
 
@@ -158,6 +162,7 @@ def settings_view(request: Request, msg: str = ""):
     extra = settings.extra_authors(con)
     return templates.TemplateResponse(request, "settings.html", {
         "rows": rows, "msg": SETTINGS_MESSAGES.get(msg), "repos_root": saved.get(settings.REPOS_ROOT),
+        "steps": setup_steps(con), "path_example": PATH_EXAMPLE,
         "authors": {"detected": sorted(git.detected_authors), "extra": [e for e in extra if e not in git.detected_authors]},
         "notion": {
             "has_credentials": all(notion_auth.client_credentials()),
@@ -175,6 +180,25 @@ SETTINGS_MESSAGES = {
                               "NOTION_CLIENT_ID y NOTION_CLIENT_SECRET en .env."),
     "repos-saved": ("ok", "Carpeta de repositorios guardada."),
 }
+
+
+def setup_steps(con) -> list[dict]:
+    """Lo que hace falta para que el dashboard funcione a una persona nueva, y si ya está hecho."""
+    saved = settings.get_all(con)
+    gcal = db.sync_states(con).get("gcal", {})
+    has_creds = all(notion_auth.client_credentials())
+    return [
+        {"label": "Claude Code instalado", "done": bool(shutil.which(cfg["claude"].get("command", "claude"))),
+         "hint": "Instala Claude Code y ejecuta «claude» una vez en una terminal para iniciar sesión."},
+        {"label": "Notion conectado", "done": notion_auth.TOKEN_FILE.is_file(), "href": "/settings#notion",
+         "hint": None if has_creds else "Antes, añade NOTION_CLIENT_ID y NOTION_CLIENT_SECRET al fichero .env."},
+        {"label": "Página diario elegida", "done": bool(saved.get(settings.JOURNAL_PAGE_ID)), "href": "/settings#notion"},
+        {"label": "Carpeta de repositorios elegida", "done": bool(saved.get(settings.REPOS_ROOT)), "href": "/settings#repos"},
+        {"label": "Email de autor de git", "done": bool(identity.git_global_email() or settings.extra_authors(con)),
+         "href": "/settings#repos", "hint": "Configura git config --global user.email o añade tu email en Ajustes."},
+        {"label": "Google Calendar conectado en Claude", "done": bool(gcal.get("last_ok")) and not gcal.get("last_error"),
+         "hint": "En claude.ai → Configuración → Conectores, conecta Google Calendar con todos los permisos y pulsa «Actualizar datos»."},
+    ]
 
 
 def notion_workspace() -> str | None:
@@ -277,19 +301,35 @@ def notion_journal_status(request: Request):
 picker_lock = threading.Lock()
 
 
+PICK_TITLE = "Elige la carpeta donde tienes tus repositorios"
+PATH_EXAMPLE = r"C:\Users\tu-usuario\Documents\repos" if sys.platform == "win32" else "/Users/tu-usuario/repos"
+# tkinter en un proceso aparte: las ventanas deben abrirse en el hilo principal de un proceso
+TK_PICKER = """
+import sys, tkinter as tk
+from tkinter import filedialog
+root = tk.Tk(); root.withdraw(); root.attributes("-topmost", True)
+print(filedialog.askdirectory(parent=root, initialdir=sys.argv[1], mustexist=True, title=sys.argv[2]) or "")
+"""
+
+
 def pick_directory(initial: str | None) -> str | None:
-    """Abre el selector de carpetas nativo del sistema (el servidor corre en el mismo ordenador)."""
-    import tkinter as tk
-    from tkinter import filedialog
-    root = tk.Tk()
-    root.withdraw()
-    root.attributes("-topmost", True)   # que no quede detrás del navegador
+    """Abre el selector de carpetas nativo del sistema (el servidor corre en el mismo ordenador).
+
+    macOS: diálogo de Finder (osascript). Windows/Linux: tkinter en un proceso aparte, porque desde
+    un hilo del servidor no se pueden abrir ventanas (en macOS, ni siquiera con tkinter).
+    """
+    start = initial or str(Path.home())
+    if sys.platform == "darwin":
+        script = (f'POSIX path of (choose folder with prompt "{PICK_TITLE}" '
+                  f'default location (POSIX file "{start}"))')
+        cmd = ["osascript", "-e", script]
+    else:
+        cmd = [sys.executable, "-c", TK_PICKER, start, PICK_TITLE]
     try:
-        path = filedialog.askdirectory(parent=root, initialdir=initial or str(Path.home()), mustexist=True,
-                                       title="Elige la carpeta donde tienes tus repositorios")
-    finally:
-        root.destroy()
-    return path or None
+        p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", timeout=600)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return p.stdout.strip() or None   # vacío si se cancela
 
 
 def save_repos_root(path: str) -> Response:
