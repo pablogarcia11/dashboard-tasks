@@ -36,7 +36,7 @@
     {% if state == "ok" %}
       <details>
         <summary>Texto para copiar</summary>
-        <textarea id="{{ id }}-text" rows="8" spellcheck="false" aria-label="Texto del parte del {{ day.isoformat() }}">{{ text }}</textarea>
+        <textarea id="{{ id }}-text" rows="8" spellcheck="false" aria-label="Texto del parte del {{ day.isoformat() }}" data-guard>{{ text }}</textarea>
         {{ copy_button(id ~ "-text", small=True) }}
       </details>
       <button type="button" class="btn ghost small" hx-post="/timesheet/day/{{ day.isoformat() }}?force=true" hx-target="#{{ id }}"

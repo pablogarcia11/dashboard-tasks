@@ -86,6 +86,7 @@
     function copyFrom(id, btn) {
       navigator.clipboard.writeText(document.getElementById(id).value).then(function () {
         var label = btn.querySelector(".label");
+        delete document.getElementById(id).dataset.dirty;  // copiado: ya no se pierde nada
         btn.classList.add("is-copied");
         label.textContent = "Copiado";
         announce("Copiado al portapapeles");
@@ -93,6 +94,19 @@
         btn._reset = setTimeout(function () { btn.classList.remove("is-copied"); label.textContent = "Copiar"; }, 1600);
       });
     }
+
+    // Textos editados a mano (textarea[data-guard]): avisar antes de perderlos
+    document.addEventListener("input", function (e) {
+      if (e.target.matches("textarea[data-guard]")) e.target.dataset.dirty = "1";
+    });
+    document.body.addEventListener("htmx:beforeRequest", function (e) {
+      var scope = e.target.closest("#standup-body, .ts-day");
+      if (scope && scope.querySelector("textarea[data-dirty]")
+          && !confirm("Has editado el texto y se perderá al regenerarlo. ¿Continuar?")) e.preventDefault();
+    });
+    window.addEventListener("beforeunload", function (e) {
+      if (document.querySelector("textarea[data-dirty]")) { e.preventDefault(); e.returnValue = ""; }
+    });
 
     // Mensajes para lectores de pantalla (región role="status")
     function announce(text) {
