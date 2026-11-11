@@ -229,43 +229,87 @@ textarea:focus { border-color: var(--red-text); outline: 2px solid transparent; 
 .notice.ok { border-left-color: var(--doc-line); background: color-mix(in srgb, var(--doc-line) 10%, var(--surface)); }
 .pill { font-size: .75em; font-weight: 700; border-radius: 999px; padding: 2px 10px; white-space: nowrap; }
 .pill.ok { color: var(--text); background: color-mix(in srgb, var(--doc-line) 22%, var(--surface)); }
-.connected-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
-.connected-row p { margin: 0; }
-.field-label { display: block; margin: 14px 0 6px; font-weight: 700; font-size: .88em; }
+/* Página de ajustes: tarjetas separadas; dentro, filas "etiqueta + ayuda | control" */
+.settings-page { display: flex; flex-direction: column; gap: 20px; }
+.settings-head h1 { margin: 0 0 4px; }
+.settings-head p { margin: 0; }
+.settings-page > .notice { margin: 0; }
+.settings-card { padding: 22px 26px 18px; }
+.settings-card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px 16px; padding-bottom: 18px; }
+.settings-card-head h2 { margin: 0 0 4px; font-size: 1.15rem; }
+.settings-card-head p { margin: 0; }
+.setting-row {
+  display: grid; grid-template-columns: minmax(150px, 230px) minmax(0, 1fr); gap: 10px 36px;
+  padding: 20px 0; border-top: 1px solid var(--line);
+}
+.setting-label h3 { margin: 0 0 4px; font-size: .95rem; }
+.setting-label p { margin: 0; max-width: 34ch; }
+.setting-control { min-width: 0; max-width: 680px; }
+.setting-row-wide .setting-control { max-width: none; }
+.settings-card-foot { margin: 0; padding-top: 16px; border-top: 1px solid var(--line); }
+@media (max-width: 760px) {
+  .settings-card { padding: 18px 16px 14px; }
+  .setting-row { grid-template-columns: 1fr; gap: 10px; }
+  .setting-label p { max-width: none; }
+}
+
+/* Valor actual (cuenta, página diario) */
+.value-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; }
+.value-line .btn { margin-left: auto; }
+.avatar-sm { width: 28px; height: 28px; font-size: .7rem; }
+.current-value {
+  display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--bg);
+}
+.current-value .journal-ok, .current-value p { margin: 0; }
+.current-title { font-weight: 700; }
+
+/* Campos y lista de páginas, del mismo ancho que la columna */
+.field-label { display: block; margin: 18px 0 6px; font-weight: 700; font-size: .88em; }
 .field {
-  width: 100%; max-width: 520px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px;
+  width: 100%; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px;
   background: var(--surface); color: var(--text); font: 500 1rem var(--font);
   transition: border-color var(--fast) ease, box-shadow var(--fast) ease;
 }
 .field:focus { border-color: var(--red-text); outline: 2px solid transparent; box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-text) 22%, transparent); }
 .field::placeholder { color: var(--muted); font-weight: 300; }
-.page-list { list-style: none; padding: 0; margin: 10px 0 0; max-width: 640px; }
-.page-list li {
-  display: flex; align-items: center; gap: 10px; margin: 0; padding: 8px 10px; border-radius: 8px;
-  border-bottom: 1px solid var(--line);
-}
+.page-list { list-style: none; padding: 0; margin: 8px 0 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.page-list li { display: flex; align-items: center; gap: 10px; margin: 0; padding: 9px 12px; border-bottom: 1px solid var(--line); }
 .page-list li:last-child { border-bottom: 0; }
 .page-list li:hover { background: var(--hover-bg); }
 .page-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .journal-ok { display: flex; align-items: flex-start; gap: 6px; color: var(--text); }
 .journal-ok svg { width: 16px; height: 16px; margin-top: .15em; color: var(--doc-line); flex: none; }
-.guide[open] > :not(summary) { animation: reveal 200ms var(--ease-out); }
-/* Móvil: la tabla de repos conserva su ancho y se desplaza dentro de la tarjeta; sin la columna Proyecto */
-@media (max-width: 600px) {
-  table.settings { min-width: 420px; }
-  table.settings .col-project { display: none; }
+
+/* Carpeta de repositorios: la ruta en una caja junto a su botón */
+.path-row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; }
+.path-box {
+  flex: 1 1 280px; min-width: 0; display: flex; align-items: center; padding: 8px 12px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--bg); overflow-wrap: anywhere;
 }
-.guide { margin-top: 16px; }
+.path-form { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.path-form .field { flex: 1 1 280px; width: auto; }
+#picking, #repos-error { margin: 8px 0 0; }
+
+/* Desplegables de ayuda */
+.guide { margin-top: 14px; }
 .guide > summary { cursor: pointer; color: var(--red-text); font-weight: 700; width: fit-content; }
-.guide ol { margin: 10px 0; padding-left: 22px; }
+.guide ol { margin: 10px 0; padding-left: 22px; max-width: 75ch; }
 .guide li { margin: 6px 0; }
-.folder-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 16px; }
-.folder-path { min-width: 0; }
-.folder-path .field-label { margin-top: 4px; }
-.folder-path code { word-break: break-all; }
-.path-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 10px; }
-.path-form .field-label { flex-basis: 100%; margin-top: 10px; margin-bottom: 0; }
-.path-form .field { flex: 1 1 320px; }
+.guide p { max-width: 75ch; }
+.guide[open] > :not(summary) { animation: reveal 200ms var(--ease-out); }
+
+/* Textos de ayuda en peso medio: en pequeño, el peso fino (300) se lee mal */
+.setting-label p, .settings-card-head p { font-weight: 500; }
+
+/* Móvil: sin la columna Proyecto y con la cabecera corta, para que quepan los dos interruptores */
+.label-short { display: none; }
+@media (max-width: 600px) {
+  table.settings .col-project { display: none; }
+  table.settings td:first-child { overflow-wrap: anywhere; }
+  .label-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .label-short { display: inline; }
+}
 .card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 6px; }
 .card-head h2 { margin: 0; }
 .save-status {
@@ -280,7 +324,8 @@ table.settings th, table.settings td { text-align: left; padding: 10px 12px; bor
 table.settings th { font-weight: 700; font-size: .85em; color: var(--text); border-bottom: 2px solid var(--red); }
 table.settings tbody tr:hover { background: var(--hover-bg); }
 table.settings tbody tr:last-child td { border-bottom: 0; }
-table.settings { margin-bottom: 0; }
+table.settings { margin: 0; }
+table.settings th:first-child, table.settings td:first-child { padding-left: 0; }
 .switch { position: relative; display: inline-block; width: 40px; height: 22px; cursor: pointer; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .switch span { position: absolute; inset: 0; background: var(--line); border-radius: 999px; }

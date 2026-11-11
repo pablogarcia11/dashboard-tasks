@@ -2,50 +2,87 @@
 {% set section = "settings" %}
 {% block title %}Ajustes · Dashboard{% endblock %}
 {% block content %}
-<h1>Ajustes</h1>
+<div class="settings-page">
+<header class="settings-head">
+  <h1>Ajustes</h1>
+  <p class="muted">Conecta tus herramientas y elige qué se muestra. Todo se guarda solo en este ordenador.</p>
+</header>
 {% if msg %}<p class="notice{% if msg[0] == 'error' %} error{% else %} ok{% endif %}" role="status">{{ msg[1] }}</p>{% endif %}
 
-<section class="card" id="notion" aria-labelledby="notion-title">
-  <div class="card-head">
-    <h2 id="notion-title">Notion</h2>
+{# ---------- Notion ---------- #}
+<section class="card settings-card" id="notion" aria-labelledby="notion-title">
+  <header class="settings-card-head">
+    <div>
+      <h2 id="notion-title">Notion</h2>
+      <p class="muted small">Tu diario y tus tareas. Solo lectura: el dashboard nunca escribe en Notion.</p>
+    </div>
     {% if notion.connected %}<span class="pill ok">Conectado</span>{% endif %}
-  </div>
+  </header>
 
   {% if not notion.has_credentials %}
-  <p class="notice error">Faltan las credenciales de la conexión con Notion.
-    <span class="hint">Añade <code>NOTION_CLIENT_ID</code> y <code>NOTION_CLIENT_SECRET</code> al fichero <code>.env</code>
-    del dashboard (pídelos a quien administre la conexión OAuth del equipo) y reinicia el dashboard.</span></p>
+  <div class="setting-row">
+    <div class="setting-label"><h3>Cuenta</h3></div>
+    <div class="setting-control">
+      <p class="notice error">Faltan las credenciales de la conexión con Notion.
+        <span class="hint">Añade <code>NOTION_CLIENT_ID</code> y <code>NOTION_CLIENT_SECRET</code> al fichero <code>.env</code>
+        del dashboard (pídelos a quien administre la conexión OAuth del equipo) y reinicia el dashboard.</span></p>
+    </div>
+  </div>
   {% elif not notion.connected %}
-  <p class="muted">Conecta tu cuenta para leer tu página diario y tus tareas. Solo lectura: el dashboard nunca escribe en Notion.</p>
-  <a class="btn" href="/settings/notion/connect">Conectar con Notion</a>
-  {% else %}
-  <div class="connected-row">
-    <p>Conectado como <strong>{{ notion.user or "tu cuenta" }}</strong>{% if notion.workspace %} en <strong translate="no">{{ notion.workspace }}</strong>{% endif %}.</p>
-    <button type="button" class="btn ghost small" hx-post="/settings/notion/disconnect" hx-swap="none"
-            hx-confirm="¿Desconectar Notion? Dejarás de ver tu diario y tus tareas hasta que vuelvas a conectarlo."
-            hx-disabled-elt="this">Desconectar</button>
-  </div>
-
-  <h3>Página diario</h3>
-  {% if notion.journal_id %}
-  <p>Usando <strong>{{ notion.journal_title }}</strong>.</p>
-  <div hx-get="/settings/notion/journal-status" hx-trigger="load" hx-swap="outerHTML">
-    <p class="muted small">Comprobando el formato…</p>
+  <div class="setting-row">
+    <div class="setting-label">
+      <h3>Cuenta</h3>
+      <p class="muted small">Inicia sesión y comparte tu página diario con el dashboard.</p>
+    </div>
+    <div class="setting-control">
+      <a class="btn" href="/settings/notion/connect">Conectar con Notion</a>
+    </div>
   </div>
   {% else %}
-  <p class="notice">Todavía no has elegido tu página diario: búscala y pulsa «Usar como diario».</p>
+  <div class="setting-row">
+    <div class="setting-label"><h3>Cuenta</h3></div>
+    <div class="setting-control">
+      <div class="value-line">
+        <span class="avatar avatar-sm" aria-hidden="true">{{ user_initials }}
+          {%- if has_avatar %}<img src="/avatar" alt="" width="28" height="28" onerror="this.remove()">{% endif -%}
+        </span>
+        <span><strong>{{ notion.user or "Tu cuenta" }}</strong>{% if notion.workspace %}<span class="muted"> · <span translate="no">{{ notion.workspace }}</span></span>{% endif %}</span>
+        <button type="button" class="btn ghost small" hx-post="/settings/notion/disconnect" hx-swap="none"
+                hx-confirm="¿Desconectar Notion? Dejarás de ver tu diario y tus tareas hasta que vuelvas a conectarlo."
+                hx-disabled-elt="this">Desconectar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="setting-row">
+    <div class="setting-label">
+      <h3>Página diario</h3>
+      <p class="muted small">La página donde apuntas cada día lo que haces. De ella salen tus notas, el stand-up y el parte de horas.</p>
+    </div>
+    <div class="setting-control">
+      {% if notion.journal_id %}
+      <div class="current-value">
+        <span class="current-title">{{ notion.journal_title }}</span>
+        <div hx-get="/settings/notion/journal-status" hx-trigger="load" hx-swap="outerHTML">
+          <p class="muted small">Comprobando el formato…</p>
+        </div>
+      </div>
+      {% else %}
+      <p class="notice">Todavía no has elegido tu página diario: búscala y pulsa «Usar como diario».</p>
+      {% endif %}
+
+      <label class="field-label" for="journal-search">{% if notion.journal_id %}Cambiar de página{% else %}Busca tu página diario{% endif %}</label>
+      <input type="search" id="journal-search" name="q" class="field" placeholder="Título de la página…"
+             autocomplete="off" spellcheck="false"
+             hx-get="/settings/notion/pages" hx-trigger="input changed delay:300ms, search, load"
+             hx-target="#journal-results" hx-indicator="#journal-searching">
+      <span id="journal-searching" class="htmx-indicator muted small">Buscando…</span>
+      <div id="journal-results" aria-live="polite"></div>
+    </div>
+  </div>
   {% endif %}
 
-  <label class="field-label" for="journal-search">{% if notion.journal_id %}Cambiar de página{% else %}Busca tu página diario{% endif %}</label>
-  <input type="search" id="journal-search" name="q" class="field" placeholder="Título de la página…"
-         autocomplete="off" spellcheck="false"
-         hx-get="/settings/notion/pages" hx-trigger="input changed delay:300ms, search, load"
-         hx-target="#journal-results" hx-indicator="#journal-searching">
-  <span id="journal-searching" class="htmx-indicator muted small">Buscando…</span>
-  <div id="journal-results" aria-live="polite"></div>
-  {% endif %}
-
-  <details class="guide">
+  <details class="guide settings-card-foot">
     <summary>Cómo conectar tu diario</summary>
     <ol>
       <li>Pulsa <strong>Conectar con Notion</strong> e inicia sesión con tu cuenta.</li>
@@ -60,64 +97,82 @@
   </details>
 </section>
 
-<section class="card" id="repos" aria-labelledby="repos-title">
-  <div class="card-head">
-    <h2 id="repos-title">Repositorios</h2>
-    <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
-  </div>
-
-  <div class="folder-row">
-    <div class="folder-path">
-      <span class="field-label">Carpeta donde están tus repositorios</span>
-      {% if repos_root %}<code translate="no">{{ repos_root }}</code>{% else %}<span class="muted">Sin elegir</span>{% endif %}
+{# ---------- Repositorios ---------- #}
+<section class="card settings-card" id="repos" aria-labelledby="repos-title">
+  <header class="settings-card-head">
+    <div>
+      <h2 id="repos-title">Repositorios</h2>
+      <p class="muted small">Los repos de tu carpeta de proyectos y cuáles se muestran.</p>
     </div>
-    <button type="button" class="btn" hx-post="/settings/repos-root/pick" hx-swap="none"
-            hx-disabled-elt="this" hx-indicator="#picking">Elegir carpeta…</button>
-  </div>
-  <span id="picking" class="htmx-indicator muted small">Se ha abierto el selector de carpetas: búscalo si queda detrás del navegador…</span>
-  <details class="guide">
-    <summary>Escribir la ruta a mano</summary>
-    <form class="path-form" hx-post="/settings/repos-root" hx-swap="none">
-      <label class="field-label" for="repos-path">Ruta de la carpeta</label>
-      <input type="text" id="repos-path" name="path" class="field" value="{{ repos_root or '' }}"
-             placeholder="C:\Users\tu-usuario\Documents\repos…" autocomplete="off" spellcheck="false">
-      <button type="submit" class="btn ghost">Guardar</button>
-    </form>
-  </details>
-  <p id="repos-error" class="notice error" role="alert" hidden></p>
+    <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
+  </header>
 
-  {% if rows %}
-  <p class="muted">Se buscan repositorios hasta 3 niveles por debajo de la carpeta. Elige cuáles se muestran: lo oculto tampoco
-    se envía a Claude (stand-up, parte de horas). Se sigue recogiendo, así que al volver a activarlo aparece al momento.</p>
-  <div class="table-scroll">
-  <table class="settings">
-    <thead><tr><th>Repo</th><th class="col-project">Proyecto</th><th>Visible</th><th>Cambios sin commitear</th></tr></thead>
-    <tbody>
-    {% for r in rows %}
-      <tr>
-        <td translate="no">{{ r.repo }}{% if r.worktree_of %}<br><span class="muted small">worktree de {{ r.worktree_of }}: sus commits se muestran con ese repo</span>{% endif %}</td>
-        <td class="col-project">{{ r.project }}</td>
-        <td><label class="switch"><input type="checkbox" name="value" {% if r.visible %}checked{% endif %}
-              hx-post="/settings/repo" hx-trigger="change" hx-swap="none"
-              hx-vals='{"repo": "{{ r.repo }}", "field": "visible"}'
-              data-repo="{{ r.repo }}" data-what="visible"
-              aria-label="Mostrar {{ r.repo }}"><span></span></label></td>
-        <td><label class="switch"><input type="checkbox" name="value" {% if r.show_wip %}checked{% endif %}
-              hx-post="/settings/repo" hx-trigger="change" hx-swap="none"
-              hx-vals='{"repo": "{{ r.repo }}", "field": "show_wip"}'
-              data-repo="{{ r.repo }}" data-what="cambios sin commitear"
-              aria-label="Mostrar cambios sin commitear de {{ r.repo }}"><span></span></label></td>
-      </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+  <div class="setting-row">
+    <div class="setting-label">
+      <h3>Carpeta</h3>
+      <p class="muted small">Donde guardas tus proyectos. Se buscan repos hasta 3 niveles por debajo.</p>
+    </div>
+    <div class="setting-control">
+      <div class="path-row">
+        <div class="path-box">{% if repos_root %}<code translate="no">{{ repos_root }}</code>{% else %}<span class="muted">Sin elegir</span>{% endif %}</div>
+        <button type="button" class="btn" hx-post="/settings/repos-root/pick" hx-swap="none"
+                hx-disabled-elt="this" hx-indicator="#picking">Elegir carpeta…</button>
+      </div>
+      <p id="picking" class="htmx-indicator muted small">Se ha abierto el selector de carpetas; si no lo ves, puede estar detrás del navegador.</p>
+      <p id="repos-error" class="notice error small" role="alert" hidden></p>
+      <details class="guide">
+        <summary>Escribir la ruta a mano</summary>
+        <form class="path-form" hx-post="/settings/repos-root" hx-swap="none">
+          <label class="sr-only" for="repos-path">Ruta de la carpeta</label>
+          <input type="text" id="repos-path" name="path" class="field" value="{{ repos_root or '' }}"
+                 placeholder="C:\Users\tu-usuario\Documents\repos…" autocomplete="off" spellcheck="false">
+          <button type="submit" class="btn ghost">Guardar</button>
+        </form>
+      </details>
+    </div>
   </div>
-  {% elif repos_root %}
-  <p class="muted">No hay repositorios git en esa carpeta (se busca hasta 3 niveles por debajo). Elige otra carpeta.</p>
-  {% else %}
-  <p class="muted">Elige la carpeta donde guardas tus proyectos y aquí aparecerán todos sus repositorios.</p>
-  {% endif %}
+
+  <div class="setting-row setting-row-wide">
+    <div class="setting-label">
+      <h3>Qué se muestra</h3>
+      <p class="muted small">Lo oculto tampoco se envía a Claude (stand-up, parte de horas). Se sigue recogiendo,
+        así que al volver a activarlo aparece al momento.</p>
+    </div>
+    <div class="setting-control">
+      {% if rows %}
+      <div class="table-scroll">
+      <table class="settings">
+        <thead><tr><th>Repo</th><th class="col-project">Proyecto</th><th>Visible</th>
+          <th><span class="label-long">Cambios sin commitear</span><span class="label-short" aria-hidden="true">Sin commitear</span></th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+          <tr>
+            <td translate="no">{{ r.repo }}{% if r.worktree_of %}<br><span class="muted small">worktree de {{ r.worktree_of }}: sus commits se muestran con ese repo</span>{% endif %}</td>
+            <td class="col-project">{{ r.project }}</td>
+            <td><label class="switch"><input type="checkbox" name="value" {% if r.visible %}checked{% endif %}
+                  hx-post="/settings/repo" hx-trigger="change" hx-swap="none"
+                  hx-vals='{"repo": "{{ r.repo }}", "field": "visible"}'
+                  data-repo="{{ r.repo }}" data-what="visible"
+                  aria-label="Mostrar {{ r.repo }}"><span></span></label></td>
+            <td><label class="switch"><input type="checkbox" name="value" {% if r.show_wip %}checked{% endif %}
+                  hx-post="/settings/repo" hx-trigger="change" hx-swap="none"
+                  hx-vals='{"repo": "{{ r.repo }}", "field": "show_wip"}'
+                  data-repo="{{ r.repo }}" data-what="cambios sin commitear"
+                  aria-label="Mostrar cambios sin commitear de {{ r.repo }}"><span></span></label></td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+      </div>
+      {% elif repos_root %}
+      <p class="muted">No hay repositorios git en esa carpeta. Elige otra.</p>
+      {% else %}
+      <p class="muted">Elige la carpeta donde guardas tus proyectos y aquí aparecerán todos sus repositorios.</p>
+      {% endif %}
+    </div>
+  </div>
 </section>
+</div>
 
 <script>
   // El aviso (?msg=…) se muestra una vez: se quita de la URL para que no reaparezca al recargar

@@ -272,6 +272,7 @@ Objetivo del usuario: que un compañero pueda usar el dashboard sin tocar códig
 - **Página diario** (antes fija: "I'M BACK"): buscador de páginas compartidas (búsqueda de Notion sin filas de bases de datos) → "Usar como diario". Vista previa del formato (nº de días con encabezado 1 + fecha, primer y último día). Los textos de la web usan el título de la página elegida. Guía desplegable con los pasos y el formato esperado.
 - **Carpeta de repositorios**: botón "Elegir carpeta…" que abre el **selector de carpetas nativo** (tkinter en el servidor local, siempre encima) y alternativa de escribir la ruta a mano (validada). Al guardar se recogen los commits de nuevo en segundo plano.
 - Sin configurar, los colectores avisan ("elige la página diario / la carpeta en Ajustes") en vez de fallar.
+- Diseño de Ajustes: tarjetas separadas (20 px) con cabecera (título, descripción, estado) y filas "etiqueta + ayuda | control" separadas por líneas; los controles de una tarjeta comparten borde izquierdo y ancho (680 px). En ≤ 760 px las filas se apilan; en ≤ 600 px la tabla de repos oculta "Proyecto" y acorta la cabecera para que quepan los dos interruptores.
 - Pendiente para más adelante (sigue en `config.yaml` y es de la empresa o de esta persona): base de tareas de Notion y su propiedad de persona, autores de git, mapeo repo → proyecto, palabras clave de reuniones, jornada del parte de horas.
 
 ### 7.0 Barra superior: nombre del usuario (2026-11-11)
