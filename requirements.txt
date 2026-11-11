@@ -6,3 +6,4 @@ notion-client
 python-dotenv
 pyyaml
 pytest
+tzdata

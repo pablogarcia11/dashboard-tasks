@@ -318,7 +318,8 @@ C:\Users\daxte\Documents\1MillionBot\dashboard\
 ├─ config.yaml            # emails, usuario, tz, repos_root, exclude_repos, fuentes activas, hora stand-up
 ├─ .env / .env.example    # tokens (el .env fuera de git)
 ├─ secrets/               # credentials.json, token.json (fuera de git)
-├─ collectors/            # base.py · git_local.py · notion.py · gcal.py · slack.py · github.py
+├─ core/                  # config.py · dates.py (días laborables) · db.py (SQLite)
+├─ collectors/            # base.py · git_local.py · notion_auth.py · notion.py · gcal.py · slack.py · github.py
 ├─ llm/claude_cli.py      # envoltorio de claude -p + caché por hash
 ├─ prompts/               # standup.md · day_summary.md · notion_summary.md
 ├─ web/                   # app.py · templates/ · static/
@@ -335,8 +336,8 @@ Inicializa este directorio como repo git propio (`git init`) con `.gitignore` co
 ## 9. Fases y criterios de aceptación
 
 **Fase 1 — MVP con git local (sin credenciales externas)**
-- `config.yaml`, SQLite, colector git local con commits (incluidos no pushed) y WIP.
-- Lógica de día laborable con tests.
+- ✅ (2026-11-11) `config.yaml`, SQLite, colector git local con commits (incluidos no pushed) y WIP: `python -m jobs.collect_all [--date D | --since A --until B] [--show]`. Verificado con datos reales: 16 commits el 10/11 (todos subidos), 5 "solo local" y 2 repos con WIP el 11/11; worktrees deduplicados; `dashboard/`, `Kanvas` y `shannon` excluidos.
+- ✅ Lógica de día laborable con tests (`python -m pytest`: 14 tests, incluidos DST y cambio de año).
 - Web: timeline por día + botón "Generar stand-up" con `claude -p`.
 - ✅ Aceptación: ejecutar para "ayer laborable" lista commits reales de los repos del usuario, marca los no subidos, **no aparece nada del repo `dashboard/`**, y genera un stand-up coherente que el usuario valida.
 
