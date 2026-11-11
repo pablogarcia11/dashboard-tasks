@@ -17,7 +17,7 @@
   --press: 160ms;
   --fast: 150ms;
 
-  /* Categorías del parte de horas: iguales en los dos temas, con texto oscuro dentro */
+  /* Categorías del parte de horas: mismos tonos en los dos temas (claros aquí, más oscuros en el tema oscuro) */
   --cat-text: #1D1D1D;      --cat-meta: #3F3F3F;
   --dev-bg: #BCD4FB;        --dev-line: #2F6FDB;     /* azul: Desarrollo de negocio */
   --doc-bg: #AEE5DD;        --doc-line: #12A08B;     /* azul verdoso: Documentación */
@@ -50,6 +50,14 @@
   --red-text: #EE6A6A;      /* 4,6:1 sobre tarjeta; #CD3434 como texto daría 2,75:1 */
   --red-tint: color-mix(in srgb, var(--red) 16%, #2C2C2C);
   --hover-bg: #353535;
+
+  /* Categorías en tonos más oscuros, con texto claro (≥ 6,6:1) y borde brillante que delimita el bloque */
+  --cat-text: #F3F5F9;      --cat-meta: #CDD3DC;
+  --dev-bg: #2D4C7C;        --dev-line: #6FA0F0;
+  --doc-bg: #1E5A52;        --doc-line: #45C4B0;
+  --meet-bg: #6A5416;       --meet-line: #F0C33C;
+  --admin-bg: #484C54;      --admin-line: #A3A9B3;
+  --learn-bg: #2C5A32;      --learn-line: #5CC46E;
 }
 
 * { box-sizing: border-box; }
