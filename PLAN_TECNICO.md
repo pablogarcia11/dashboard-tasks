@@ -320,6 +320,7 @@ Buenos días! :saluting_face:
 - "Notas para <diario>" redacta con `claude -p` (**Sonnet**, el alias resuelve a `claude-sonnet-5-5`; ≈ 9 s) un borrador del día **a partir de los commits** de los repos visibles, con el formato del diario: `# Martes 10/11/2026`, `### Proyecto`, viñetas en primera persona y pasado, poco técnicas, agrupadas por tema con subviñetas (`prompts/journal_notes.md`). Markdown que Notion convierte al pegar. Se cachea por día (`kind=journal_notes`) y avisa si hay commits nuevos desde que se generó.
 - **Regenerar** es un icono de reinicio (↻): en la vista Día, en la esquina superior derecha de la tarjeta (actúa sobre la pestaña visible); en el parte de horas, al pie de cada día, donde estaba el botón.
 - Los prompts ya no nombran a una persona concreta ("la persona usuaria").
+- **Copiar** (stand-up y notas): icono gris discreto, sin fondo y de 16 px, **dentro de la caja del texto, arriba a la derecha**, al estilo de los bloques de Claude; al copiar pasa a ✓. El texto reserva margen derecho para no quedar debajo. (El parte de horas mantiene su botón de copiar.)
 
 ### 7.5 Parte de horas (calendario para 1million hub)
 

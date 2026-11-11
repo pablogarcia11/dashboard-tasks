@@ -62,9 +62,10 @@
 
 {# Botón "Copiar" solo con icono (documentos superpuestos a dos tonos); al copiar pasa a un círculo con ✓.
    Sin texto visible: el nombre accesible y el tooltip van en aria-label/title (ver copyFrom en base.html). #}
-{% macro copy_button(target_id, small=False) -%}
-<button type="button" class="btn btn-copy{% if small %} small{% endif %}" onclick="copyFrom('{{ target_id }}', this)"
-        aria-label="Copiar" title="Copiar">
+{# inline=True: icono gris discreto dentro de la caja del texto, arriba a la derecha (envuelve el texto en .copy-wrap) #}
+{% macro copy_button(target_id, small=False, inline=False) -%}
+<button type="button" class="{% if inline %}icon-btn copy-inline{% else %}btn btn-copy{% if small %} small{% endif %}{% endif %}"
+        onclick="copyFrom('{{ target_id }}', this)" aria-label="Copiar" title="Copiar">
   <svg class="i-copy" viewBox="0 0 24 24" aria-hidden="true">
     <rect x="8.5" y="2" width="13" height="15" rx="2.5" fill="currentColor" opacity=".35"/>
     <rect x="3" y="7" width="13" height="15" rx="2.5" fill="none" stroke="currentColor" stroke-width="2"/>

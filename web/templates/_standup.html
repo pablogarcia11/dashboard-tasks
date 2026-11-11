@@ -6,8 +6,10 @@
   <p class="muted">Para #equipo-tecnologia-stand-up: lo hecho el {{ prev | long_date }} y lo de este día.</p>
   {% if error %}<p class="notice error">No se pudo generar: {{ error }}<span class="hint">{{ claude_hint }}</span></p>{% endif %}
   {% if text %}
-  <textarea id="standup-text" rows="18" spellcheck="false" aria-label="Texto del stand-up" data-guard>{{ text }}</textarea>
-  <div class="actions">{{ copy_button("standup-text") }}</div>
+  <div class="copy-wrap">
+    <textarea id="standup-text" rows="18" spellcheck="false" aria-label="Texto del stand-up" data-guard>{{ text }}</textarea>
+    {{ copy_button("standup-text", inline=True) }}
+  </div>
   {% else %}
   <div class="actions">
     <button type="button" class="btn" hx-post="/standup/{{ day.isoformat() }}" hx-target="closest [role=tabpanel]"

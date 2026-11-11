@@ -11,8 +11,10 @@
   <p class="muted small">Sin commits ese día: no hay nada que redactar.</p>
   {% elif text %}
   {% if stale %}<p class="notice small">Hay commits nuevos desde que se generó: pulsa el icono de regenerar para incluirlos.</p>{% endif %}
-  <textarea id="journal-notes-text" rows="18" spellcheck="false" aria-label="Notas para {{ journal }}" data-guard>{{ text }}</textarea>
-  <div class="actions">{{ copy_button("journal-notes-text") }}</div>
+  <div class="copy-wrap">
+    <textarea id="journal-notes-text" rows="18" spellcheck="false" aria-label="Notas para {{ journal }}" data-guard>{{ text }}</textarea>
+    {{ copy_button("journal-notes-text", inline=True) }}
+  </div>
   {% else %}
   <div class="actions">
     <button type="button" class="btn" hx-post="/journal-notes/{{ day.isoformat() }}" hx-target="closest [role=tabpanel]"

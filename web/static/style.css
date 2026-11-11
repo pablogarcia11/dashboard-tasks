@@ -446,10 +446,22 @@ textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-text) 22%, t
 .btn-copy.small { width: 32px; height: 32px; padding: 0; }
 .btn-copy svg { width: 20px; height: 20px; }
 .btn-copy.small svg { width: 17px; height: 17px; }
-.btn-copy .i-check { display: none; }
+.btn-copy .i-check, .copy-inline .i-check { display: none; }
 .btn.is-copied { background: var(--text); border-color: var(--text); color: var(--bg); }
-.btn.is-copied .i-copy { display: none; }
-.btn.is-copied .i-check { display: block; animation: pop 220ms var(--ease-out); }
+.btn.is-copied .i-copy, .copy-inline.is-copied .i-copy { display: none; }
+.btn.is-copied .i-check, .copy-inline.is-copied .i-check { display: block; animation: pop 220ms var(--ease-out); }
+
+/* Copiar discreto dentro de la caja del texto (stand-up, notas), al estilo de los bloques de Claude:
+   gris, sin fondo, arriba a la derecha; el texto deja hueco para que nunca quede debajo */
+.copy-wrap { position: relative; }
+.copy-wrap textarea { padding-right: 52px; }
+.copy-inline {
+  position: absolute; top: 6px; right: 20px;   /* 20 px: no tapa la barra de desplazamiento del texto */
+  width: 28px; height: 28px; border-radius: 6px; color: var(--muted);
+}
+.copy-inline svg { width: 16px; height: 16px; }
+.copy-inline:hover { background: var(--hover-bg); color: var(--text); }
+.copy-inline.is-copied { color: var(--doc-line); }
 @keyframes pop { from { transform: scale(0.6); opacity: 0; } }
 
 /* Saltar al contenido: oculto hasta que recibe el foco con el teclado */
