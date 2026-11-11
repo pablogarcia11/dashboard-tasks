@@ -470,7 +470,6 @@ table.settings tbody tr:last-child td { border-bottom: 0; }
 table.settings .col-center { text-align: center; }
 table.settings .col-center .switch { vertical-align: middle; }
 table.settings { margin: 0; }
-table.settings th:first-child, table.settings td:first-child { padding-left: 0; }
 .switch { position: relative; display: inline-block; width: 40px; height: 22px; cursor: pointer; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .switch span { position: absolute; inset: 0; background: var(--line); border-radius: var(--r-pill); }
