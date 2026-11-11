@@ -212,6 +212,7 @@ Verifica leyendo la página I'M BACK con `notion-client` y enséñale al usuario
 
 ✅ **Vía elegida (2026-11-11): conector Google Calendar de Claude** (ver sección 2). Verificado: `claude -p --allowedTools "mcp__claude_ai_Google_Calendar__list_events"` devuelve en el `tool_result` el JSON de eventos de Google (`events[]` con `id`, `summary`, `start.dateTime`, `end.dateTime`, `attendees`, `organizer`, `htmlLink`, `status`, `eventType`, `conferenceUrl`); sin `events` = día sin eventos. Ejemplo real: 2026-11-10 11:00–12:00 "Migración - Revisión kit". Un primer intento dio `Insufficient scope`; se resolvió reconectando el conector en claude.ai marcando todos los permisos.
 - Guarda solo eventos `confirmed` en los que el usuario no haya rechazado (`attendees[self].responseStatus != declined`); ignora eventos de día completo para el parte de horas.
+- ✅ Implementado en `collectors/gcal.py` (`kind=meeting`, `extra.start/end`). Proyecto de la reunión por palabras clave del título (`meeting_keywords` en `config.yaml`); si no encaja → "1MB". Verificado: 3 reuniones del 02 al 11/11/2026.
 
 Alternativa con credenciales propias (solo si el conector deja de servir):
 

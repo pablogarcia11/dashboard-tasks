@@ -47,7 +47,7 @@
       {% else %}<p class="muted">Sin tareas activas.</p>{% endif %}
       {% if data.meetings %}
       <h3>Reuniones <span class="tag">Calendar</span></h3>
-      <ul>{% for m in data.meetings %}<li>{{ m.ts | hhmm }} {{ m.title }}</li>{% endfor %}</ul>
+      <ul>{% for m in data.meetings %}<li>{{ m.extra.start | hhmm }}–{{ m.extra.end | hhmm }} {{ m.title }}</li>{% endfor %}</ul>
       {% endif %}
       {% if data.wip or data.unpushed %}
       <h3>Para no perder <span class="tag">git</span></h3>
@@ -56,6 +56,16 @@
         {% for c in data.unpushed %}<li><span class="badge">solo local</span> {{ c.extra.repo }}: {{ c.title }}</li>{% endfor %}
       </ul>
       {% endif %}
+    </section>
+    {% endif %}
+
+    {% if not is_today and data.meetings %}
+    <section class="card">
+      <h2>Reuniones</h2>
+      <ul class="timeline">{% for m in data.meetings %}
+        <li><span class="time">{{ m.extra.start | hhmm }}–{{ m.extra.end | hhmm }}</span> {{ m.title }}
+          <span class="repo">{{ m.project }}</span></li>
+      {% endfor %}</ul>
     </section>
     {% endif %}
 

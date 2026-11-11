@@ -9,6 +9,7 @@ import argparse
 import sqlite3
 from datetime import date, datetime
 
+from collectors.gcal import GcalCollector
 from collectors.git_local import GitLocalCollector
 from collectors.notion import NotionCollector
 from core import db
@@ -48,6 +49,15 @@ def run_collect(cfg: dict, con: sqlite3.Connection, start: date, end: date) -> l
         except Exception as e:  # una fuente caída no debe tumbar las demás
             db.set_sync_state(con, "notion", str(e))
             report.append(f"notion: error: {e}")
+    if sources["gcal"]["enabled"]:
+        try:
+            meetings = GcalCollector(cfg).collect(start, end)
+            db.replace_range(con, "gcal", ["meeting"], start.isoformat(), end.isoformat(), meetings)
+            db.set_sync_state(con, "gcal")
+            report.append(f"gcal: {len(meetings)} reuniones")
+        except Exception as e:
+            db.set_sync_state(con, "gcal", str(e))
+            report.append(f"gcal: error: {e}")
     return report
 
 

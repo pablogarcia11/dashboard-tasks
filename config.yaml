@@ -55,6 +55,10 @@ projects:
   # Reuniones de empresa (Sprint Review, Monthly Review...) sin proyecto concreto
   1MB: []
 company_meetings_project: 1MB
+# Proyecto de una reunión de Calendar según palabras de su título; si no encaja, va a 1MB
+meeting_keywords:
+  AI Risk: [ai risk, airisk, oia]
+  Kit migración: [migración, migracion, kit]
 
 claude:
   command: claude   # ruta absoluta si el programador de tareas no lo encuentra en el PATH
