@@ -5,7 +5,10 @@
 <h1>Ajustes</h1>
 
 <section class="card">
-  <h2>Repositorios</h2>
+  <div class="card-head">
+    <h2>Repositorios</h2>
+    <p id="save-status" class="save-status" role="status" aria-live="polite"></p>
+  </div>
   <p class="muted">Elige qué repos se muestran. Lo oculto tampoco se envía a Claude (stand-up, parte de horas).
     Se sigue recogiendo, así que al volver a activarlo aparece al momento.</p>
   <div class="table-scroll">
@@ -14,15 +17,17 @@
     <tbody>
     {% for r in rows %}
       <tr>
-        <td>{{ r.repo }}{% if r.worktree_of %}<br><span class="muted small">worktree de {{ r.worktree_of }}: sus commits se muestran con ese repo</span>{% endif %}</td>
+        <td translate="no">{{ r.repo }}{% if r.worktree_of %}<br><span class="muted small">worktree de {{ r.worktree_of }}: sus commits se muestran con ese repo</span>{% endif %}</td>
         <td>{{ r.project }}</td>
         <td><label class="switch"><input type="checkbox" name="value" {% if r.visible %}checked{% endif %}
               hx-post="/settings/repo" hx-trigger="change" hx-swap="none"
               hx-vals='{"repo": "{{ r.repo }}", "field": "visible"}'
+              data-repo="{{ r.repo }}" data-what="visible"
               aria-label="Mostrar {{ r.repo }}"><span></span></label></td>
         <td><label class="switch"><input type="checkbox" name="value" {% if r.show_wip %}checked{% endif %}
               hx-post="/settings/repo" hx-trigger="change" hx-swap="none"
               hx-vals='{"repo": "{{ r.repo }}", "field": "show_wip"}'
+              data-repo="{{ r.repo }}" data-what="cambios sin commitear"
               aria-label="Mostrar cambios sin commitear de {{ r.repo }}"><span></span></label></td>
       </tr>
     {% endfor %}
@@ -32,4 +37,27 @@
   <p class="muted small">Excluidos siempre (en <code>config.yaml</code>, no se recogen):
     {% for e in excluded %}<code>{{ e | replace(root ~ "\\", "") }}</code>{% if not loop.last %}, {% endif %}{% endfor %}</p>
 </section>
+
+<script>
+  // Confirmación breve al guardar; si falla, el interruptor vuelve a su posición y se avisa
+  const saveStatus = document.getElementById("save-status");
+  function showStatus(text, isError) {
+    saveStatus.textContent = text;
+    saveStatus.classList.toggle("is-error", isError);
+    saveStatus.classList.add("show");
+    clearTimeout(saveStatus._hide);
+    saveStatus._hide = setTimeout(() => saveStatus.classList.remove("show"), isError ? 5000 : 1800);
+  }
+  document.body.addEventListener("htmx:afterRequest", event => {
+    const input = event.target;
+    if (!input.matches || !input.matches(".switch input")) return;
+    const { repo, what } = input.dataset;
+    if (event.detail.successful) {
+      showStatus(`Guardado: ${repo}, ${what} ${input.checked ? "sí" : "no"}`, false);
+    } else {
+      input.checked = !input.checked;
+      showStatus(`No se pudo guardar ${repo}. Comprueba que el dashboard sigue en marcha y vuelve a intentarlo.`, true);
+    }
+  });
+</script>
 {% endblock %}

@@ -158,6 +158,13 @@ textarea {
 textarea:focus { border-color: var(--red-text); outline: none; }
 
 /* Ajustes */
+.card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.save-status {
+  margin: 0; font-size: .85em; font-weight: 700; color: var(--muted);
+  opacity: 0; transform: translateY(2px); transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.save-status.show { opacity: 1; transform: none; }
+.save-status.is-error { color: var(--red-text); }
 .table-scroll { overflow-x: auto; }
 table.settings { width: 100%; border-collapse: collapse; margin: 10px 0 14px; }
 table.settings th, table.settings td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
