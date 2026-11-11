@@ -1,3 +1,53 @@
+{# Botón con icono de actualizar (flechas en círculo) en la cabecera de una tarjeta de la vista Día:
+   recoge solo la fuente de esa tarjeta y sustituye la tarjeta (POST /refresh/{día}/{tarjeta}) #}
+{% macro refresh_button(day, card, label) -%}
+<button type="button" class="icon-btn refresh" hx-post="/refresh/{{ day.isoformat() }}/{{ card }}"
+        hx-target="closest section" hx-swap="outerHTML" hx-disabled-elt="this"
+        aria-label="{{ label }}" title="{{ label }}">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+       stroke-linejoin="round" aria-hidden="true">
+    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>
+    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>
+  </svg>
+</button>
+{%- endmacro %}
+
+{# Navegación de fechas al estilo Google Calendar: [Hoy] ‹ › #}
+{% macro date_nav(current_href, current_label, is_current, prev_href, prev_label, next_href, next_label) -%}
+<div class="date-nav" role="group" aria-label="Cambiar de fecha">
+  <a class="nav-current{% if is_current %} is-current{% endif %}" href="{{ current_href }}"
+     {% if is_current %}aria-current="date"{% endif %}>{{ current_label }}</a>
+  <a class="nav-arrow" href="{{ prev_href }}" aria-label="{{ prev_label }}" title="{{ prev_label }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"
+         stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+  </a>
+  {% if next_href %}
+  <a class="nav-arrow" href="{{ next_href }}" aria-label="{{ next_label }}" title="{{ next_label }}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"
+         stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+  </a>
+  {% else %}
+  <span class="nav-arrow is-disabled" aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round"
+         stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+  </span>
+  {% endif %}
+</div>
+{%- endmacro %}
+
+{# Proyecto plegable dentro de una tarjeta; recuerda si estaba plegado (ver base.html) #}
+{% macro project_group(card, project, count) -%}
+<details class="project-group" data-key="{{ card }}:{{ project }}" open>
+  <summary>
+    <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+    <span class="project-name">{{ project }}</span>
+    <span class="count">{{ count }}<span class="sr-only"> elementos</span></span>
+  </summary>
+  {{ caller() }}
+</details>
+{%- endmacro %}
+
 {# Botón "Copiar" solo con icono (documentos superpuestos a dos tonos); al copiar pasa a un círculo con ✓.
    Sin texto visible: el nombre accesible y el tooltip van en aria-label/title (ver copyFrom en base.html). #}
 {% macro copy_button(target_id, small=False) -%}

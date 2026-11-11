@@ -1,17 +1,18 @@
 {% extends "base.html" %}
+{% from "_macros.html" import date_nav %}
 {% set section = "timesheet" %}
 {% block title %}Parte de horas · Dashboard{% endblock %}
 {% block content %}
 <header class="top">
-  <nav class="daynav">
-    <a class="arrow" href="/timesheet/week/{{ prev.isoformat() }}" title="Semana anterior" aria-label="Semana anterior">←</a>
+  <div class="daynav">
+    {{ date_nav("/timesheet", "Esta semana", is_current_week,
+                "/timesheet/week/" ~ prev.isoformat(), "Semana anterior",
+                "/timesheet/week/" ~ next.isoformat() if next else None, "Semana siguiente") }}
     <div>
       <h1>Parte de horas</h1>
       <p class="muted">Semana del {{ days[0] | long_date }} · Total <strong id="week-total">—</strong></p>
     </div>
-    {% if next %}<a class="arrow" href="/timesheet/week/{{ next.isoformat() }}" title="Semana siguiente" aria-label="Semana siguiente">→</a>
-    {% else %}<span class="arrow disabled" aria-hidden="true">→</span>{% endif %}
-  </nav>
+  </div>
   <div class="actions">
     <button type="button" class="btn ghost" hx-post="/collect-range/{{ days[0].isoformat() }}/{{ collect_end.isoformat() }}"
             hx-swap="none" hx-indicator="#collecting" hx-disabled-elt="this">Actualizar datos de la semana</button>

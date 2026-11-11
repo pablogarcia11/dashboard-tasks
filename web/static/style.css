@@ -72,7 +72,7 @@ a:hover { color: var(--red-text); text-decoration-color: currentColor; }
 .muted { color: var(--muted); font-weight: 300; }
 .small { font-size: .85em; }
 h1, h2, h3 { font-family: var(--font); margin: 0; }
-h1 { font-weight: 800; font-size: 1.65rem; letter-spacing: -.01em; }
+h1 { font-weight: 800; font-size: 1.65rem; line-height: 1.25; letter-spacing: -.01em; text-wrap: balance; }
 .wrap > h1 { margin-bottom: 18px; }
 code { font-size: .9em; }
 
@@ -100,15 +100,50 @@ code { font-size: .9em; }
 
 /* Cabecera de página */
 .top { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 22px; }
-.daynav { display: flex; align-items: center; gap: 14px; }
+.daynav { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
 .daynav p { margin: 2px 0 0; }
-.today-tag { color: var(--red-text); font-weight: 700; }
-.arrow {
-  display: inline-grid; place-items: center; width: 38px; height: 38px; text-decoration: none; font-size: 1.15rem;
-  border: 1px solid var(--line); border-radius: 50%; color: var(--text);
+
+/* Navegación de fechas al estilo Google Calendar: [Hoy] ‹ › */
+.date-nav { display: inline-flex; align-items: center; gap: 2px; }
+.nav-current {
+  margin-right: 8px; padding: 7px 16px; border: 1px solid var(--line); border-radius: 999px;
+  color: var(--text); font-weight: 700; font-size: .9rem; text-decoration: none; white-space: nowrap;
 }
-.arrow:hover { border-color: var(--red-text); color: var(--red-text); }
-.arrow.disabled { opacity: .35; }
+.nav-current:hover { border-color: var(--red-text); color: var(--red-text); }
+.nav-current.is-current { background: var(--red); border-color: var(--red); color: var(--white); }
+.nav-arrow {
+  display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 50%;
+  color: var(--text); text-decoration: none;
+}
+.nav-arrow svg { width: 22px; height: 22px; }
+.nav-arrow:hover { background: var(--hover-bg); color: var(--red-text); }
+.nav-arrow.is-disabled { color: var(--detail); opacity: .45; }
+
+/* Botón de icono en la cabecera de una tarjeta (actualizar) */
+.icon-btn {
+  display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%;
+  background: transparent; color: var(--muted); cursor: pointer;
+}
+.icon-btn svg { width: 18px; height: 18px; }
+.icon-btn:hover { background: var(--hover-bg); color: var(--red-text); }
+.icon-btn.htmx-request { color: var(--red-text); cursor: progress; }
+.icon-btn.htmx-request svg { animation: spin 700ms linear infinite; }
+
+/* Proyectos plegables dentro de las tarjetas */
+.project-group { margin-top: 6px; }
+.project-group > summary {
+  display: flex; align-items: center; gap: 8px; margin: 0 -8px; padding: 6px 8px; border-radius: 8px;
+  list-style: none; cursor: pointer; font-weight: 700;
+}
+.project-group > summary::-webkit-details-marker { display: none; }
+.project-group > summary:hover { background: var(--hover-bg); }
+.chevron { width: 16px; height: 16px; flex: none; color: var(--muted); }
+.project-group[open] > summary .chevron { transform: rotate(90deg); }
+.count {
+  font-size: .72em; font-weight: 500; color: var(--muted); border: 1px solid var(--line); border-radius: 999px;
+  padding: 0 7px; font-variant-numeric: tabular-nums;
+}
+.project-group > ul { margin: 4px 0 8px; }
 .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
 
 .btn {
@@ -159,7 +194,8 @@ textarea {
 textarea:focus { border-color: var(--red-text); outline: 2px solid transparent; outline-offset: 2px; }
 
 /* Ajustes */
-.card-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+.card-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 6px; }
+.card-head h2 { margin: 0; }
 .save-status {
   margin: 0; font-size: .85em; font-weight: 700; color: var(--muted);
   opacity: 0; transform: translateY(2px); transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
@@ -224,11 +260,20 @@ table.settings tbody tr:hover { background: var(--hover-bg); }
 /* ---------- Microinteracciones ---------- */
 
 /* Pulsables: color al pasar el ratón y escala breve al pulsar */
-.btn, .arrow, .theme-toggle, .icon-link, .ts-block[data-title] {
+.btn, .nav-current, .nav-arrow, .icon-btn, .theme-toggle, .icon-link, .ts-block[data-title],
+.project-group > summary {
   transition: transform var(--press) var(--ease-out), background-color var(--fast) ease,
               border-color var(--fast) ease, color var(--fast) ease, box-shadow var(--fast) ease;
 }
-.btn:active, .arrow:active, .theme-toggle:active, .icon-link:active { transform: scale(0.97); }
+.btn:active, .nav-current:active, .nav-arrow:active, .icon-btn:active, .theme-toggle:active,
+.icon-link:active { transform: scale(0.97); }
+.nav-arrow:active, .icon-btn:active { transform: scale(0.92); }
+
+/* Plegar/desplegar proyecto: el chevron gira y el contenido aparece con un fundido corto */
+.chevron { transition: transform 200ms var(--ease-out); }
+.project-group[open] > :not(summary) { animation: reveal 200ms var(--ease-out); }
+@keyframes reveal { from { opacity: 0; transform: translateY(-4px); } }
+@keyframes fade { from { opacity: 0; } }
 .appnav a { transition: color var(--fast) ease, border-color var(--fast) ease; }
 .icon-link svg { transition: transform 250ms var(--ease-out); }
 @media (hover: hover) and (pointer: fine) {
@@ -278,7 +323,8 @@ main:focus { outline: none; }  /* destino del salto: no es interactivo, el foco 
 .ext { font-size: .8em; margin-left: 3px; color: var(--muted); }
 
 /* Toques: sin retardo de doble toque ni destello gris */
-.btn, .arrow, .theme-toggle, .icon-link, .ts-block[data-title], .switch, .dialog-close {
+.btn, .nav-current, .nav-arrow, .icon-btn, .theme-toggle, .icon-link, .ts-block[data-title], .switch,
+.dialog-close, .project-group > summary {
   touch-action: manipulation; -webkit-tap-highlight-color: transparent;
 }
 
@@ -335,8 +381,10 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
 
 /* Menos movimiento: fuera desplazamientos y escalas; se mantienen fundidos breves */
 @media (prefers-reduced-motion: reduce) {
-  .btn:active, .arrow:active, .theme-toggle:active, .icon-link:active,
+  .btn:active, .nav-current:active, .nav-arrow:active, .icon-btn:active, .theme-toggle:active, .icon-link:active,
   .ts-block[data-title]:active, .dialog-close:active { transform: none; }
+  .project-group[open] > :not(summary) { animation: fade 150ms ease; }
+  .icon-btn.htmx-request svg { animation-duration: 1.5s; }
   .icon-link:hover svg { transform: none; }
   .skip-link { transition: none; }
   .task-dialog, .task-dialog[open] { transform: none; }

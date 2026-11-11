@@ -17,14 +17,19 @@ from core.config import load_config
 from core.dates import day_bounds, previous_workday
 
 
-def run_collect(cfg: dict, con: sqlite3.Connection, start: date, end: date) -> list[str]:
-    """Recoge [start, end] de las fuentes activas. Devuelve líneas de resumen (y avisos)."""
+def run_collect(cfg: dict, con: sqlite3.Connection, start: date, end: date, only=None) -> list[str]:
+    """Recoge [start, end] de las fuentes activas (o solo de las de `only`, p. ej. {"notion"}).
+
+    Devuelve líneas de resumen (y avisos).
+    """
     tz = cfg["user"]["timezone"]
     today = datetime.now().astimezone().date()
     since, until = day_bounds(start, tz)[0], day_bounds(end, tz)[1]
-    sources, report = cfg["sources"], []
+    report = []
+    sources = {name: s for name, s in cfg["sources"].items()
+               if s.get("enabled") and (only is None or name in only)}
 
-    if sources["git"]["enabled"]:
+    if "git" in sources:
         git = GitLocalCollector(cfg)
         items = git.collect(since, until, include_wip=end >= today)
         commits = [i for i in items if i.kind == "commit"]
@@ -35,7 +40,7 @@ def run_collect(cfg: dict, con: sqlite3.Connection, start: date, end: date) -> l
         report.append(f"git: {len(commits)} commits, {len(items) - len(commits)} repos con trabajo sin commitear")
         report += [f"  aviso: {e}" for e in git.errors]
 
-    if sources["notion"]["enabled"]:
+    if "notion" in sources:
         try:
             notion = NotionCollector(cfg)
             journal = notion.collect_journal(start, end)
@@ -49,7 +54,7 @@ def run_collect(cfg: dict, con: sqlite3.Connection, start: date, end: date) -> l
         except Exception as e:  # una fuente caída no debe tumbar las demás
             db.set_sync_state(con, "notion", str(e))
             report.append(f"notion: error: {e}")
-    if sources["gcal"]["enabled"]:
+    if "gcal" in sources:
         try:
             meetings = GcalCollector(cfg).collect(start, end)
             db.replace_range(con, "gcal", ["meeting"], start.isoformat(), end.isoformat(), meetings)

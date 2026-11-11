@@ -1,19 +1,16 @@
 {% extends "base.html" %}
+{% from "_macros.html" import date_nav %}
 {% set section = "day" %}
-{% block title %}{{ day | long_date | capitalize }} · Dashboard{% endblock %}
+{% block title %}{{ day | title_date }} · Dashboard{% endblock %}
 {% block content %}
 <header class="top">
-  <nav class="daynav">
-    <a class="arrow" href="/day/{{ prev.isoformat() }}" title="Día laborable anterior" aria-label="Día laborable anterior">←</a>
-    <div>
-      <h1>{{ day | long_date | capitalize }}</h1>
-      <p>{% if is_today %}<span class="today-tag">Hoy</span>{% else %}<span class="muted">{{ day.isoformat() }}</span>{% endif %}</p>
-    </div>
-    {% if next %}<a class="arrow" href="/day/{{ next.isoformat() }}" title="Día laborable siguiente" aria-label="Día laborable siguiente">→</a>
-    {% else %}<span class="arrow disabled" aria-hidden="true">→</span>{% endif %}
-  </nav>
+  <div class="daynav">
+    {{ date_nav("/", "Hoy", is_today,
+                "/day/" ~ prev.isoformat(), "Día laborable anterior",
+                "/day/" ~ next.isoformat() if next else None, "Día laborable siguiente") }}
+    <h1>{{ day | title_date }}</h1>
+  </div>
   <div class="actions">
-    {% if not is_today %}<a class="btn ghost" href="/">Ir a hoy</a>{% endif %}
     <button type="button" class="btn" hx-post="/collect/{{ day.isoformat() }}" hx-swap="none"
             hx-indicator="#collecting" hx-disabled-elt="this">Actualizar datos</button>
     <span id="collecting" class="htmx-indicator muted">Recogiendo…</span>
@@ -70,31 +67,9 @@
     </section>
     {% endif %}
 
-    <section class="card">
-      <h2>Notas en I'M BACK</h2>
-      {% for project, notes in data.notes.items() %}
-      <p class="project">{{ project }}</p>
-      <ul>{% for n in notes %}
-        <li>{{ n.title }}{% if n.body %}<pre class="sub">{{ n.body }}</pre>{% endif %}</li>
-      {% endfor %}</ul>
-      {% else %}
-      <p class="muted">Sin notas ese día{% if is_today %} todavía{% endif %}.</p>
-      {% endfor %}
-    </section>
+    {% include "_card_notes.html" %}
 
-    <section class="card">
-      <h2>Commits</h2>
-      {% for project, commits in data.commits.items() %}
-      <p class="project">{{ project }}</p>
-      <ul class="timeline">{% for c in commits %}
-        <li><span class="time">{{ c.ts | hhmm }}</span>
-          <span>{{ c.title }} {% if not c.extra.pushed %}<span class="badge">solo local</span>{% endif %}
-            <span class="repo">{{ c.extra.repo }}</span></span></li>
-      {% endfor %}</ul>
-      {% else %}
-      <p class="muted">Sin commits ese día. Si es un día antiguo, pulsa «Actualizar datos».</p>
-      {% endfor %}
-    </section>
+    {% include "_card_commits.html" %}
   </div>
 
   <div class="col">

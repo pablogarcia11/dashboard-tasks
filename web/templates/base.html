@@ -15,6 +15,24 @@
       document.documentElement.dataset.theme = dark ? "dark" : "light";
       document.querySelector('meta[name="theme-color"]').content = THEME_COLORS[dark ? "dark" : "light"];
     })();
+
+    // Proyectos plegables (details[data-key]): se recuerda cuáles has plegado
+    function collapsedKeys() {
+      try { return JSON.parse(localStorage.getItem("collapsed") || "[]"); } catch (e) { return []; }
+    }
+    function restoreCollapsed(containerId) {
+      var keys = collapsedKeys();
+      document.querySelectorAll("#" + containerId + " details[data-key]").forEach(function (d) {
+        if (keys.indexOf(d.dataset.key) !== -1) d.open = false;
+      });
+    }
+    document.addEventListener("toggle", function (e) {
+      var d = e.target;
+      if (!d.dataset || !d.dataset.key) return;
+      var keys = collapsedKeys().filter(function (k) { return k !== d.dataset.key; });
+      if (!d.open) keys.push(d.dataset.key);
+      try { localStorage.setItem("collapsed", JSON.stringify(keys)); } catch (err) {}
+    }, true);  // "toggle" no burbujea: se escucha en captura
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

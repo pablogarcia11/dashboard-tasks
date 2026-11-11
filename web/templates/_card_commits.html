@@ -1,0 +1,22 @@
+{% from "_macros.html" import refresh_button, project_group %}
+<section class="card" id="card-commits" aria-labelledby="card-commits-title">
+  <div class="card-head">
+    <h2 id="card-commits-title">Commits</h2>
+    {{ refresh_button(day, "commits", "Actualizar commits") }}
+  </div>
+  {% if refresh_error %}
+  <p class="notice error small">No se pudo actualizar: {{ refresh_error }}<span class="hint">{{ sync_hints["git"] }}</span></p>
+  {% endif %}
+  {% for project, commits in data.commits.items() %}
+    {% call project_group("commits", project, commits | length) %}
+    <ul class="timeline">{% for c in commits %}
+      <li><span class="time">{{ c.ts | hhmm }}</span>
+        <span>{{ c.title }} {% if not c.extra.pushed %}<span class="badge">solo local</span>{% endif %}
+          <span class="repo" translate="no">{{ c.extra.repo }}</span></span></li>
+    {% endfor %}</ul>
+    {% endcall %}
+  {% else %}
+  <p class="muted">Sin commits ese día. Si es un día antiguo, pulsa el botón de actualizar.</p>
+  {% endfor %}
+  <script>restoreCollapsed("card-commits");{% if refreshed %} announce("Commits actualizados");{% endif %}</script>
+</section>

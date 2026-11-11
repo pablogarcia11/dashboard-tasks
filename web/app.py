@@ -34,9 +34,9 @@ def today() -> date:
     return datetime.now().astimezone().date()
 
 
-def collect(start: date, end: date) -> list[str]:
+def collect(start: date, end: date, only=None) -> list[str]:
     with collect_lock:  # SQLite + colectores: una recogida cada vez
-        return run_collect(cfg, db.connect(), start, end)
+        return run_collect(cfg, db.connect(), start, end, only)
 
 
 @asynccontextmanager
@@ -51,6 +51,7 @@ app = FastAPI(lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=ROOT / "web" / "static"), name="static")
 templates = Jinja2Templates(directory=ROOT / "web" / "templates")
 templates.env.filters["long_date"] = lambda d: f"{WEEKDAYS[d.weekday()]} {d.day} de {MONTHS[d.month - 1]}"
+templates.env.filters["title_date"] = lambda d: f"{WEEKDAYS[d.weekday()].capitalize()} {d.day} de {MONTHS[d.month - 1]} {d.year}"
 templates.env.filters["hhmm"] = lambda ts: ts[11:16]
 # Qué hacer cuando falla cada fuente (se muestra junto al error)
 templates.env.globals["sync_hints"] = {
@@ -83,6 +84,26 @@ def day_view(request: Request, d: str):
         "prev": previous_workday(shown, HOLIDAYS), "next": nxt if nxt <= today() else None,
         "data": day_data(con, shown, HOLIDAYS), "sync": db.sync_states(con),
         "standup": db.get_summary(con, shown.isoformat(), "standup"),
+    })
+
+
+# Tarjetas de la vista Día que se pueden actualizar por separado: plantilla y fuente que la alimenta
+CARDS = {"notes": ("_card_notes.html", "notion"), "commits": ("_card_commits.html", "git")}
+
+
+@app.post("/refresh/{d}/{card}", response_class=HTMLResponse)
+def refresh_card(request: Request, d: str, card: str):
+    """Recoge solo la fuente de una tarjeta para ese día y devuelve la tarjeta actualizada."""
+    if card not in CARDS:
+        return Response(status_code=404)
+    template, source = CARDS[card]
+    day = date.fromisoformat(d)
+    collect(day, day, only={source})
+    con = db.connect()
+    error = db.sync_states(con).get(source, {}).get("last_error")
+    return templates.TemplateResponse(request, template, {
+        "day": day, "is_today": day == effective_today(today(), HOLIDAYS)[0],
+        "data": day_data(con, day, HOLIDAYS), "refresh_error": error, "refreshed": not error,
     })
 
 
@@ -150,6 +171,7 @@ def timesheet_week(request: Request, d: str):
         "hours": range(GRID_START // 60, GRID_END // 60), "ppm": PPM, "grid_start": GRID_START,
         "grid_height": (GRID_END - GRID_START) * PPM, "sync": db.sync_states(db.connect()),
         "collect_end": min(days[-1], today()),
+        "is_current_week": monday == today() - timedelta(days=today().weekday()),
     })
 
 
