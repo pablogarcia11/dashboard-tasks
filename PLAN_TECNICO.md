@@ -330,7 +330,7 @@ El parte se construye en dos partes:
   5. Los demás huecos se reparten entre las tareas del diario sin commits según su peso estimado. Si no hay, se alarga la tarea anterior.
   6. Los bordes se redondean a múltiplos de `block_step_minutes` (salvo los fijos), con una duración mínima de `min_block_minutes`. Los bloques contiguos con el mismo título se fusionan y los demasiado cortos se absorben en el vecino.
   7. Se avisa si el día queda por debajo de `min_daily_hours`.
-- **Edición a mano** (`parse_edited`, `POST /timesheet/day/{d}/blocks`): la persona puede mover una tarea arrastrándola, alargarla o acortarla desde su borde inferior, y cambiar su nombre, horario, tipo y proyecto, añadir tareas o eliminarlas desde un formulario. Los cambios van en tramos de `block_step_minutes` y no pueden solaparse. Cada cambio guarda el día entero como JSON en `summaries` (`kind=timesheet_edit`); mientras exista, manda sobre la propuesta calculada. «Deshacer mis cambios» (`…/blocks/reset`) y «Regenerar» lo borran. En pantallas táctiles no hay arrastre: se edita con el formulario.
+- **Edición a mano** (`parse_edited`, `POST /timesheet/day/{d}/blocks`): la persona puede mover una tarea arrastrándola, alargarla o acortarla desde su borde inferior, y cambiar su nombre, horario, tipo y proyecto, añadir tareas o eliminarlas desde un formulario. Las horas que se cambian van en tramos de `block_step_minutes` (lo impone la rejilla); las que no se tocan se guardan tal cual, porque cada cambio reenvía el día entero y las reuniones van a su hora real (10:25, 5 min). Solo las reuniones pueden solaparse entre ellas. Cada cambio guarda el día como JSON en `summaries` (`kind=timesheet_edit`); mientras exista, manda sobre la propuesta calculada. Si el servidor rechaza un cambio, la columna vuelve a lo guardado y se muestra el motivo (el formulario no se cierra hasta que se guarda). «Deshacer mis cambios» (`…/blocks/reset`) lo borra, y «Regenerar» también, pero solo si Claude genera la propuesta nueva. En pantallas táctiles no hay arrastre: se edita con el formulario.
 - Se cachea por día (`kind=timesheet`). Las categorías y sus colores son los del hub: Desarrollo de negocio, Reunión, Documentación, Tareas administrativas y Formación.
 
 ---
@@ -348,7 +348,7 @@ El parte se construye en dos partes:
 | `GET /timesheet` → `GET /timesheet/week/{d}` | Parte de horas semanal |
 | `GET`/`POST /timesheet/day/{d}` | Columna de un día: ver o generar |
 | `POST /timesheet/day/{d}/blocks`, `POST …/blocks/reset` | Guardan los bloques editados a mano de un día, o los descartan |
-| `GET /settings` y `POST /settings/…` | Ajustes: canal y aprendizaje del stand-up, jornada, emails de autor, carpetas (selector nativo, alta y baja), visibilidad por repo |
+| `GET /settings` y `POST /settings/…` | Ajustes: canal y aprendizaje del stand-up, jornada, festivos, emails de autor, carpetas (selector nativo, alta y baja), visibilidad por repo. Los festivos devuelven su lista (`_days_off.html`); el resto, `HX-Redirect` a Ajustes, con `HX-Refresh` si solo cambia el `#ancla` (si no, el navegador solo se desplazaría) |
 | `GET /settings/notion/connect`, `GET /oauth/notion/callback`, `POST /settings/notion/disconnect` | OAuth de Notion |
 | `GET /settings/notion/pages`, `POST /settings/notion/journal`, `GET /settings/notion/journal-status` | Búsqueda, elección y vista previa del diario |
 | `GET /search?q=` | Buscador; con HTMX devuelve solo los resultados (`_search_results.html`) |
@@ -392,8 +392,9 @@ Se calcula al arrancar y se recalcula al conectar o desconectar Notion.
   - **Microinteracciones:** escala al pulsar, spinner en botones con petición en curso, fundido del contenido que llega por HTMX, modal con `<dialog>`, barras de navegación, de pestañas y de la tira semanal que se deslizan, y plegables que animan su altura.
   - **Cambio de día o de semana:** el contenido sale y entra hacia el lado al que se navega (View Transitions entre documentos con los tipos `forward` y `back`, que `base.html` añade en `pageswap` y `pagereveal` comparando las fechas de las dos URL). La barra superior y los controles de fecha tienen `view-transition-name` propio y no se mueven.
   - **Actividad:** el filete rojo de la barra superior es el indicador global. Mientras hay peticiones de HTMX en curso (`body.is-busy`), lo recorre un destello.
-  - **Textos de Claude:** durante la espera, unas líneas marcan dónde caerá el texto. Al llegar, el texto se descubre de arriba abajo y los bloques del parte se colocan uno tras otro (clase `just-generated`, que `base.html` pone tras un `POST` de generación).
-  - **Filas nuevas:** al actualizar una tarjeta con ↻, las filas que no estaban antes se señalan con un fondo que se desvanece (clase `is-new`).
+  - **Textos de Claude:** durante la espera, unas líneas marcan dónde caerá el texto. Al llegar, el texto se descubre de arriba abajo y los bloques del parte se colocan uno tras otro (clase `just-generated`, que `base.html` pone tras un `POST` de generación que no ha fallado; guardar bloques editados no cuenta).
+  - **Filas nuevas:** al actualizar una tarjeta con ↻, las filas que no estaban antes se señalan con un fondo que se desvanece (clase `is-new`), y el foco vuelve a donde estaba.
+  - **Recogida automática** (`X-Auto-Refresh`): si la lectura no trae nada distinto, la tarjeta no se sustituye (sin fundido, foco ni aviso); si solo cambia «Para no perder», se sustituye solo eso. «Actualizado hace…» solo se reinicia si la fuente se ha leído bien. Pasada la medianoche, la página vuelve a hoy.
   - **Tema:** al pulsar el interruptor, el tema nuevo se abre en círculo desde el punto pulsado. El cambio que viene del sistema o del teclado es un fundido.
   - **Lo que no se anima:** la navegación con atajos de teclado (se salta la transición) y la carga inicial de las páginas.
   - **`prefers-reduced-motion`:** se quitan desplazamientos, escalas, el círculo del tema y los bucles; quedan fundidos breves y los indicadores de carga, quietos.
@@ -457,7 +458,8 @@ Se calcula al arrancar y se recalcula al conectar o desconectar Notion.
 - `gcal` y `slack`: parseo del stream y de los mensajes;
 - `claude_connector`: errores de ejecución y entorno;
 - `settings`, `identity` y `views`;
-- `timesheet`: colocación de la comida, redondeos, fusiones y validación de la respuesta de Claude.
+- `timesheet`: colocación de la comida, redondeos, fusiones, validación de la respuesta de Claude y de los bloques editados;
+- `app`: rutas que cambian datos (festivos, redirecciones de Ajustes, guardar y regenerar el parte), con una base de datos temporal y Claude simulado.
 
 Los colectores se prueban con datos de ejemplo, sin red.
 
