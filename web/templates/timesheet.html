@@ -191,13 +191,20 @@
 
   // Guarda el día. La promesa devuelve el motivo del error ("" si se ha guardado): el texto del servidor
   // (422) o un aviso de conexión. Si falla, la columna se vuelve a pedir para que se vea lo guardado.
+  // Devuelve null si no se ha enviado nada: la persona ha preferido no perder su «Texto para copiar» editado.
   const OFFLINE = "No se pudo guardar. Comprueba que el dashboard sigue en marcha y vuelve a intentarlo.";
   function saveDay(dayEl, blocks) {
+    if (dayEl.querySelector("textarea[data-dirty]")
+        && !confirm("Has editado el «Texto para copiar» de este día y se perderá con este cambio. ¿Continuar?")) {
+      return Promise.resolve(null);
+    }
     const week = document.querySelector(".ts-week"), day = dayEl.id.slice(3), path = `/timesheet/day/${day}/blocks`;
     week.classList.add("is-editing");   // la columna se repinta sin el fundido de «contenido nuevo»
-    let error = "";
+    let error = "", sent = false;
     const onDone = event => {
-      if ((event.detail.requestConfig || {}).path !== path || event.detail.successful) return;
+      if ((event.detail.requestConfig || {}).path !== path) return;
+      sent = true;
+      if (event.detail.successful) return;
       const xhr = event.detail.xhr;
       error = (xhr && xhr.status >= 400 && xhr.status < 500 && xhr.responseText) || OFFLINE;
     };
@@ -207,17 +214,21 @@
       values: { blocks: JSON.stringify(blocks.map(({ el, ...b }) => b)) },
     }).catch(() => { error = error || OFFLINE; }).then(() => {
       document.body.removeEventListener("htmx:afterRequest", onDone);
+      if (!sent && !error) return null;   // htmx no llegó a enviarla (cancelada en htmx:beforeRequest)
       if (!error) return "";
       return htmx.ajax("GET", `/timesheet/day/${day}`, { target: "#" + dayEl.id, swap: "outerHTML" })
         .catch(() => {}).then(() => error);
     }).finally(() => week.classList.remove("is-editing"));
   }
 
-  // Aviso de un cambio rechazado al arrastrar (el formulario tiene el suyo): visible sobre la semana y anunciado
+  // Aviso de un cambio rechazado al arrastrar (el formulario tiene el suyo): visible sobre la semana, anunciado
+  // y se retira solo a los 10 s (o con el siguiente cambio)
   function showSaveError(text) {
     const box = document.getElementById("ts-save-error");
+    clearTimeout(box._hide);
     box.textContent = text;
     box.hidden = !text;
+    if (text) box._hide = setTimeout(() => { box.hidden = true; }, 10000);
   }
 
   function showTaskError(text) {
@@ -264,6 +275,7 @@
     showSaveError("");
     saveDay(editing.dayEl, blocks).then(error => {
       setSaving(false);
+      if (error === null) return;   // no se ha guardado a propósito: el formulario sigue abierto con lo escrito
       if (!error) return dialog.close();
       if (!dialog.open) return showSaveError(`No se ha guardado el cambio: ${error}`);   // se cerró con Esc mientras tanto
       // La columna se ha vuelto a pintar: la tarea abierta es otro elemento, con las mismas horas
@@ -374,7 +386,13 @@
     showSaveError("");
     saveDay(d.dayEl, [...d.others, { el: null, start: d.newStart, end: d.newEnd, title: d.el.dataset.title,
                                      project: d.el.dataset.project, category: d.el.dataset.category }])
-      .then(error => { if (error) showSaveError(`No se ha guardado el cambio: ${error}`); });
+      .then(error => {
+        if (error === null) {   // no se ha guardado a propósito: el bloque vuelve a su sitio
+          d.el.style.transition = "";
+          d.el.style.top = (d.start - GRID_START) * PPM + "px";
+          d.el.style.height = (d.end - d.start) * PPM + "px";
+        } else if (error) showSaveError(`No se ha guardado el cambio: ${error}`);
+      });
   }
   document.addEventListener("pointerup", () => endDrag(true));
   document.addEventListener("pointercancel", () => endDrag(false));
