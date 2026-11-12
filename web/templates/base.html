@@ -202,7 +202,7 @@
       if (e.target.matches("textarea[data-guard]")) e.target.dataset.dirty = "1";
     });
     document.body.addEventListener("htmx:beforeRequest", function (e) {
-      var scope = e.target.closest("#panel-standup, #panel-notes, .ts-day");
+      var scope = e.target.closest("#panel-standup, #panel-notes, #weekly, .ts-day");
       if (scope && scope.querySelector("textarea[data-dirty]")
           && !confirm("Has editado el texto y se perderá al regenerarlo. ¿Continuar?")) e.preventDefault();
     });
@@ -357,7 +357,7 @@
         // Tras leer una tarjeta, «Actualizado hace…» vuelve a contar desde ahora
         var since = document.getElementById("last-sync");
         if (since && path.indexOf("/refresh/") === 0) since.dataset.since = new Date().toISOString();
-        if (cfg.verb === "post" && /^\/(standup|journal-notes|timesheet\/day)\//.test(path)) el.classList.add("just-generated");
+        if (cfg.verb === "post" && /^\/(standup|journal-notes|weekly|timesheet\/day)\//.test(path)) el.classList.add("just-generated");
         if (path.indexOf("/refresh/") === 0 && before && before.id === el.id) {
           el.querySelectorAll("li").forEach(function (li) {
             if (before.rows.indexOf(rowKey(li)) === -1) li.classList.add("is-new");

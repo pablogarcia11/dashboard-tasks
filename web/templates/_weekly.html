@@ -1,0 +1,28 @@
+{% from "_macros.html" import copy_button, regen_button %}
+{# Resumen de la semana (parte de horas): lo conseguido por proyecto, para la Sprint Review #}
+<section class="card weekly" id="weekly" aria-labelledby="weekly-title">
+  <div class="card-head">
+    <h2 id="weekly-title">Resumen de la semana</h2>
+    {% if text %}{{ regen_button("/weekly/" ~ monday.isoformat() ~ "?force=true", "Regenerar resumen", target="#weekly") }}{% endif %}
+  </div>
+  <p class="muted">Lo conseguido en cada proyecto, a partir de tu diario y tus commits de la semana. Para la Sprint Review o para tu responsable.</p>
+  {% if error %}<p class="notice error">No se pudo generar: {{ error }}<span class="hint">{{ claude_hint }}</span></p>{% endif %}
+  {% if not has_data %}
+  <p class="muted small">Aún no hay notas ni commits esta semana.</p>
+  {% elif text %}
+  {% if stale %}<p class="notice small">Tu diario o tus commits han cambiado desde que se generó: pulsa el icono de regenerar para incluirlos.</p>{% endif %}
+  <div class="copy-wrap">
+    <textarea id="weekly-text" rows="14" spellcheck="false" aria-label="Resumen de la semana" data-guard>{{ text }}</textarea>
+    {{ copy_button("weekly-text", inline=True) }}
+  </div>
+  {% else %}
+  <div class="actions">
+    <button type="button" class="btn" hx-post="/weekly/{{ monday.isoformat() }}" hx-target="#weekly"
+            hx-swap="outerHTML" hx-indicator="#gen-weekly" hx-disabled-elt="this">Generar resumen</button>
+    <span id="gen-weekly" class="htmx-indicator muted">Redactando con Claude…</span>
+  </div>
+  <div class="writing" aria-hidden="true">
+    {% for w in (40, 88, 76, 82, 32, 71) %}<i style="--w: {{ w }}%; --i: {{ loop.index0 }}"></i>{% endfor %}
+  </div>
+  {% endif %}
+</section>

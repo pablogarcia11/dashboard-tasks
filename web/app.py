@@ -35,7 +35,7 @@ from collectors.slack import fetch_channel_messages, own_standups
 from core.timesheet import as_text, build_blocks, fmt, parse_tasks
 from core.timesheet import edited_json, parse_edited, short_day_warning
 from core.views import (day_data, journal_notes_context, standup_markdown, standup_context, timesheet_inputs,
-                        unnoted_days, week_overview)
+                        unnoted_days, week_overview, weekly_context)
 from jobs.collect_all import run_collect
 from llm.claude_cli import ClaudeError, generate, input_hash
 
@@ -607,6 +607,7 @@ def timesheet_week(request: Request, d: str):
         "grid_height": (GRID_END - GRID_START) * PPM, "sync": db.sync_states(db.connect()),
         "collect_end": min(days[-1], today()),
         "is_current_week": monday == today() - timedelta(days=today().weekday()),
+        "weekly": weekly_state(db.connect(), monday),
         "categories": cfg["timesheet"]["categories"], "category_class": CATEGORY_CLASS,
         "step": cfg["timesheet"].get("block_step_minutes", 15), "grid_end": GRID_END,
     })
@@ -713,6 +714,29 @@ def standup(request: Request, d: str, force: bool = False):
         text = last["content_md"] if last else ""
     return templates.TemplateResponse(request, "_standup.html", {
         "day": day, "prev": previous_workday(day, holidays()), "text": standup_markdown(text), "error": error})
+
+
+def weekly_state(con, monday: date) -> dict:
+    """Resumen de la semana guardado y si los datos han cambiado desde que se generó."""
+    ctx = weekly_context(con, monday, today(), holidays())
+    saved = db.get_summary(con, monday.isoformat(), "weekly_summary")
+    return {"context": ctx, "has_data": bool(ctx), "text": saved["content_md"] if saved else None,
+            "stale": bool(saved and ctx) and saved["input_hash"] != input_hash(cfg, "weekly_summary", ctx)}
+
+
+@app.post("/weekly/{d}", response_class=HTMLResponse)
+def weekly_summary(request: Request, d: str, force: bool = False):
+    """Redacta (o devuelve guardado) el resumen de la semana de `d` a partir del diario y los commits."""
+    monday = date.fromisoformat(d) - timedelta(days=date.fromisoformat(d).weekday())
+    con = db.connect()
+    state, error = weekly_state(con, monday), None
+    if state["has_data"]:
+        try:
+            state["text"], _ = generate(con, cfg, "weekly_summary", monday.isoformat(), state["context"], force=force)
+            state["stale"] = False
+        except ClaudeError as e:
+            error = str(e)   # se conserva el último resumen guardado
+    return templates.TemplateResponse(request, "_weekly.html", {"monday": monday, **state, "error": error})
 
 
 def journal_notes_state(con, day: date) -> dict:

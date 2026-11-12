@@ -51,12 +51,14 @@
   </div>
 </div>
 
-<div class="legend">
+<div class="legend" id="legend">
   {% for c, cls in [("Desarrollo de negocio", "dev"), ("Reunión", "meet"), ("Documentación", "doc"),
                     ("Tareas administrativas", "admin"), ("Formación", "learn")] %}
   <span><i class="ts-block cat-{{ cls }}"></i>{{ c }} <b class="cat-total" data-category="{{ c }}"></b></span>
   {% endfor %}
 </div>
+
+{% with monday=days[0], text=weekly.text, stale=weekly.stale, has_data=weekly.has_data, error=None %}{% include "_weekly.html" %}{% endwith %}
 
 <dialog class="task-dialog" id="task-dialog" aria-labelledby="task-dialog-title">
   <form class="dialog-body" id="task-form" autocomplete="off">

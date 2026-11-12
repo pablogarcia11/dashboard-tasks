@@ -3,7 +3,7 @@ from datetime import date
 from collectors.base import Activity
 from core import db
 from core.views import (standup_markdown, unnoted_days, unpushed_by_repo, visible_git, week_overview,
-                        written_journal_md)
+                        weekly_context, written_journal_md)
 
 
 def test_written_journal_md_conserva_proyectos_subvinetas_y_pendientes(tmp_path):
@@ -95,3 +95,25 @@ def test_unnoted_days_commits_sin_notas(tmp_path):
     ])
     days = unnoted_days(con, date(2026, 11, 12), holidays=("2026-11-10",))
     assert days == [date(2026, 11, 11), date(2026, 11, 6)]
+
+
+def test_weekly_context_por_dia_con_lo_ultimo_pendiente(tmp_path):
+    con = db.connect(tmp_path / "t.db")
+    def item(source, kind, day, ext, title, project="AI Risk"):
+        return Activity(source=source, kind=kind, external_id=ext, ts=f"{day}T10:00:00+01:00", work_date=day,
+                        title=title, project=project, extra={"repo": "api"} if source == "git" else {})
+    db.upsert_activities(con, [
+        item("notion", "note", "2026-11-09", "n1", "Corregí permisos"),
+        item("notion", "task_plan", "2026-11-09", "p1", "Probar el flujo"),
+        item("git", "commit", "2026-11-10", "c1", "fix: roles"),
+        item("gcal", "meeting", "2026-11-10", "m1", "Sprint Review", project="1MB"),
+        item("notion", "task_plan", "2026-11-11", "p2", "Subir a producción"),
+        item("notion", "note", "2026-11-13", "n2", "Futuro"),
+    ])
+    ctx = weekly_context(con, date(2026, 11, 9), today=date(2026, 11, 12), holidays=())
+    assert ctx["semana"] == "del lunes 9 al viernes 13 de noviembre de 2026"
+    assert [d["dia"] for d in ctx["dias"]] == ["Lunes 09/11/2026", "Martes 10/11/2026"]   # el 11 solo tiene pendientes
+    assert ctx["dias"][0]["notas"] == {"AI Risk": ["Corregí permisos"]}
+    assert ctx["dias"][1]["reuniones"] == [{"reunion": "Sprint Review", "proyecto": "1MB"}]
+    assert ctx["pendiente"] == {"AI Risk": ["Subir a producción"]}                         # el último día con pendientes
+    assert weekly_context(con, date(2026, 11, 16), today=date(2026, 11, 12)) == {}

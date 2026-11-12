@@ -189,6 +189,46 @@ def journal_notes_context(con: sqlite3.Connection, day: date, tz: str) -> dict:
     return {"encabezado_dia": journal_heading(day), "ya_escrito": written_journal_md(con, day), "commits": by_project}
 
 
+def weekly_context(con: sqlite3.Connection, monday: date, today: date, holidays=()) -> dict:
+    """Contexto del resumen de la semana: por día, notas del diario (lo hecho), commits y reuniones;
+    y lo último que quedó pendiente. Solo días laborables hasta hoy."""
+    friday = monday + timedelta(days=4)
+    days = [d for d in (monday + timedelta(days=i) for i in range(5))
+            if d <= today and d.isoformat() not in holidays]
+    if not days:
+        return {}
+    settings = db.repo_settings(con)
+    acts = visible_git(db.activities(con, days[0].isoformat(), days[-1].isoformat()), settings)
+    by_day = []
+    pending: dict[str, list[str]] = {}
+    for d in days:
+        iso = d.isoformat()
+        mine = [a for a in acts if a["work_date"] == iso]
+        notes = group_by_project([a for a in mine if a["kind"] == "note"])
+        commits = group_by_project([a for a in mine if a["kind"] == "commit"])
+        plans = group_by_project([a for a in mine if a["kind"] == "task_plan"])
+        if plans:
+            pending = {p: [a["title"] for a in items] for p, items in plans.items()}
+        if not (notes or commits):
+            continue
+        by_day.append({
+            "dia": journal_heading(d),
+            "notas": {p: [a["title"] + (f" ({a['body'][:300]})" if a["body"] else "") for a in items]
+                      for p, items in notes.items()},
+            "commits": {p: [a["title"] for a in items] for p, items in commits.items()},
+            "reuniones": [{"reunion": a["title"], "proyecto": a["project"]} for a in mine if a["kind"] == "meeting"],
+        })
+    if not by_day:
+        return {}
+    return {"semana": f"del {WEEKDAYS[0].lower()} {monday.day} al {WEEKDAYS[4].lower()} {friday.day} de "
+                      f"{MONTHS[friday.month - 1]} de {friday.year}",
+            "dias": by_day, "pendiente": pending}
+
+
+MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre",
+          "octubre", "noviembre", "diciembre"]
+
+
 def standup_context(con: sqlite3.Connection, today: date, holidays=()) -> dict:
     """Contexto recortado para el stand-up: solo títulos, nunca diffs."""
     yesterday = previous_workday(today, holidays)
