@@ -322,7 +322,7 @@ El parte se construye en dos partes:
 |---|---|
 | `GET /` → `GET /day/{d}` | Vista Día |
 | `POST /collect/{d}`, `POST /collect-range/{a}/{b}` | Recogida completa (responde `HX-Refresh`) |
-| `POST /refresh/{d}/{notes\|commits}` | Recoge una fuente y devuelve solo su tarjeta |
+| `POST /refresh/{d}/{notes\|commits}` | Recoge una fuente y devuelve solo su tarjeta. La de commits incluye también «Para no perder» (`_keep_safe.html`) como `hx-swap-oob`, porque sale de los mismos datos de git |
 | `POST /standup/{d}`, `POST /journal-notes/{d}` | Generan (o devuelven de caché) el texto; `?force=true` regenera |
 | `GET /timesheet` → `GET /timesheet/week/{d}` | Parte de horas semanal |
 | `GET`/`POST /timesheet/day/{d}` | Columna de un día: ver o generar |

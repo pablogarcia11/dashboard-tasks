@@ -180,9 +180,12 @@ def refresh_card(request: Request, d: str, card: str):
     collect(day, day, only={source})
     con = db.connect()
     error = db.sync_states(con).get(source, {}).get("last_error")
+    is_today = day == effective_today(today(), HOLIDAYS)[0]
     return templates.TemplateResponse(request, template, {
-        "day": day, "is_today": day == effective_today(today(), HOLIDAYS)[0],
+        "day": day, "is_today": is_today,
         "data": day_data(con, day, HOLIDAYS), "refresh_error": error, "refreshed": not error,
+        # "Para no perder" solo existe en la vista de hoy
+        "keep_safe_oob": card == "commits" and is_today,
     })
 
 

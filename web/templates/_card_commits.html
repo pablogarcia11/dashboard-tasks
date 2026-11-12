@@ -20,3 +20,5 @@
   {% endfor %}
   <script>restoreCollapsed("card-commits");{% if refreshed %} announce("Commits actualizados");{% endif %}</script>
 </section>
+{# Al actualizar solo esta tarjeta, "Para no perder" (que sale de los mismos datos de git) se actualiza a la vez #}
+{% if keep_safe_oob %}{% with oob=True %}{% include "_keep_safe.html" %}{% endwith %}{% endif %}

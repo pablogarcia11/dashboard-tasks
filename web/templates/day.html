@@ -54,13 +54,7 @@
       <h3>Reuniones <span class="tag">Calendar</span></h3>
       <ul>{% for m in data.meetings %}<li>{{ m.extra.start | hhmm }}–{{ m.extra.end | hhmm }} {{ m.title }}</li>{% endfor %}</ul>
       {% endif %}
-      {% if data.wip or data.unpushed %}
-      <h3>Para no perder <span class="tag">git</span></h3>
-      <ul>
-        {% for w in data.wip %}<li>{{ w.extra.repo }} <span class="muted">({{ w.extra.branch }})</span>: {{ w.title }}</li>{% endfor %}
-        {% for c in data.unpushed %}<li><span class="badge">solo local</span> {{ c.extra.repo }}: {{ c.title }}</li>{% endfor %}
-      </ul>
-      {% endif %}
+      {% include "_keep_safe.html" %}
     </section>
     {% endif %}
 
