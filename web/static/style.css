@@ -744,7 +744,6 @@ a.week-day:hover { background: var(--hover-bg); color: var(--text); }
 }
 
 .btn:disabled:not(.htmx-request) { opacity: .5; cursor: not-allowed; }
-.notice.unnoted a { font-weight: 700; }
 
 /* «Actualizado hace 5 min», junto al botón */
 .since { white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -939,6 +938,33 @@ body.is-dragging-block { user-select: none; cursor: grabbing; }
 .cat-option:has(input:checked) .cat-swatch { background: var(--c-line); box-shadow: none; }
 .cat-option:has(input:focus-visible) { outline: 2px solid var(--red-text); outline-offset: 2px; }
 
+/* Días con commits sin apuntar: una línea discreta bajo la tira semanal */
+.unnoted { display: flex; align-items: baseline; gap: 8px; margin: -10px 0 18px; color: var(--muted); }
+.unnoted .week-mark { align-self: center; }
+.unnoted a { color: var(--text); text-decoration-color: color-mix(in srgb, var(--coral) 70%, transparent); text-decoration-thickness: 1.5px; }
+.unnoted a:hover { color: var(--red-text); text-decoration-color: currentColor; }
+/* «y N más»: al pasar el puntero o con el foco se despliega la lista del resto de días (también enlaces) */
+.more {
+  position: relative; display: inline-block; color: var(--text); font-weight: 700; cursor: default;
+  text-decoration: underline dotted; text-underline-offset: 3px; border-radius: var(--r-sm);
+}
+.more:focus-visible { outline: 2px solid var(--red-text); outline-offset: 2px; }
+.more-menu {
+  position: absolute; left: -10px; top: 100%; z-index: 30; display: flex; flex-direction: column; min-width: 220px;
+  padding: 6px; margin-top: 6px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface);
+  box-shadow: 0 1px 2px rgb(0 0 0 / .08), 0 10px 28px rgb(0 0 0 / .16); font-weight: 500;
+  opacity: 0; visibility: hidden; transform: translateY(-4px) scale(.98); transform-origin: top left;
+  /* al salir, espera un momento: da tiempo a llevar el puntero hasta el menú */
+  transition: opacity 120ms ease 120ms, transform 120ms ease 120ms, visibility 0s linear 240ms;
+}
+.more-menu::before { content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 8px; }   /* puente: no se cierra al cruzar el hueco */
+.more:hover .more-menu, .more:focus-within .more-menu {
+  opacity: 1; visibility: visible; transform: none;
+  transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out), visibility 0s;
+}
+.more-menu a { padding: 6px 10px; border-radius: var(--r-sm); text-decoration: none; white-space: nowrap; }
+.more-menu a:hover, .more-menu a:focus-visible { background: var(--hover-bg); color: var(--red-text); }
+
 /* Menos movimiento: fuera desplazamientos y escalas; se mantienen fundidos breves */
 @media (prefers-reduced-motion: reduce) {
   .btn:active, .nav-current:active, .nav-arrow:active, .icon-btn:active, .theme-toggle:active, .icon-link:active,
@@ -976,5 +1002,6 @@ body.is-dragging-block { user-select: none; cursor: grabbing; }
   .ts-now::after { animation: none; opacity: 0; }
   .ts-day .ts-block.is-dragging { transition: none; }
   .cat-option:active { transform: none; }
+  .more-menu, .more:hover .more-menu, .more:focus-within .more-menu { transform: none; }
   .just-generated textarea, .ts-day.just-generated .ts-block { animation: fade 200ms ease both; animation-delay: 0s; }
 }

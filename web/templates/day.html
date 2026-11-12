@@ -43,7 +43,7 @@
     </li>
     {% endfor %}
   </ol>
-  {% if week | selectattr("state", "equalto", "missing") | list %}
+  {% if week | selectattr("state", "equalto", "missing") | list and not (is_today and unnoted) %}
   <p class="week-legend muted small"><i class="week-mark is-missing" aria-hidden="true"></i>Días con commits sin apuntar en {{ journal_title() }}</p>
   {% endif %}
 </nav>
@@ -54,10 +54,24 @@
 {% endif %}
 {# Días anteriores con commits y sin notas en el diario: enlace a cada uno, donde se generan sus notas #}
 {% if is_today and unnoted %}
-<p class="notice unnoted">Tienes {{ unnoted | length }} día{{ "s" if unnoted | length > 1 }} con commits sin apuntar en {{ journal_title() }}:
-  {% for d in unnoted[:4] %}<a href="/day/{{ d.isoformat() }}">{{ d | long_date }}</a>{% if not loop.last %}{{ " y " if loop.revindex == 2 and unnoted | length <= 4 else ", " }}{% endif %}{% endfor %}
-  {%- if unnoted | length > 4 %} y {{ unnoted | length - 4 }} más{% endif %}.
-  <span class="hint">Abre el día y genera sus notas a partir de los commits.</span></p>
+{# Discreto: una línea pequeña. Cada día lleva a su vista, donde se generan sus notas; si son más de 3,
+   «y N más» despliega el resto al pasar el puntero o al recibir el foco #}
+{% set shown = unnoted[:3] %}{% set rest = unnoted[3:] %}
+<p class="unnoted small">
+  <i class="week-mark is-missing" aria-hidden="true"></i>
+  <span>{{ unnoted | length }} día{{ "s" if unnoted | length > 1 }} con commits sin apuntar en {{ journal_title() }}:
+  {% for d in shown -%}
+    <a href="/day/{{ d.isoformat() }}" title="Ver el {{ d | long_date }} y generar sus notas">{{ d | long_date }}</a>
+    {%- if not loop.last %}{{ " y " if loop.revindex == 2 and not rest else ", " }}{% endif %}
+  {%- endfor %}
+  {%- if rest %} y
+    <span class="more" tabindex="0" aria-describedby="unnoted-more">{{ rest | length }} más
+      <span class="more-menu" id="unnoted-more" role="tooltip">
+        {% for d in rest %}<a href="/day/{{ d.isoformat() }}">{{ d | long_date | capitalize }}</a>{% endfor %}
+      </span>
+    </span>
+  {%- endif %}.</span>
+</p>
 {% endif %}
 {% if weekend %}
 <p class="notice">Hoy no es día laborable: se muestra el último día laborable.</p>
