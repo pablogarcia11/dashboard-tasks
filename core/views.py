@@ -1,4 +1,5 @@
 """Consultas que preparan los datos de cada vista y el contexto que se envía a Claude."""
+import re
 import sqlite3
 from collections import defaultdict
 from datetime import date
@@ -13,6 +14,30 @@ def group_by_project(items: list[dict]) -> dict[str, list[dict]]:
     for a in items:
         groups[a["project"] or "Sin proyecto"].append(a)
     return dict(groups)
+
+
+LIST_ITEM = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s")
+SLACK_BULLET = re.compile(r"^([ \t]*)([•◦▪▫‣])\s+")
+SLACK_BOLD = re.compile(r"(?<![*\w])\*(?![\s*])([^*\n]+?)(?<!\s)\*(?![*\w])")   # *texto*, no **texto**
+
+
+def standup_markdown(text: str) -> str:
+    """Deja el stand-up en Markdown estándar, que es lo que Slack convierte en formato al pegarlo:
+    - restos del formato interno de Slack: `*negrita*` → `**negrita**`, viñetas • / ◦ → `- `
+      (◦ o sangría = subviñeta, 4 espacios por nivel);
+    - línea en blanco entre el final de una lista y el texto siguiente; sin ella, Markdown trata ese
+      texto como continuación del último elemento de la lista."""
+    out: list[str] = []
+    for line in text.replace("\r\n", "\n").split("\n"):
+        m = SLACK_BULLET.match(line)
+        if m:
+            level = max(len(m.group(1).replace("\t", "    ")) // 4, 1 if m.group(2) in "◦▫" else 0)
+            line = "    " * level + "- " + line[m.end():]
+        line = SLACK_BOLD.sub(r"**\1**", line)
+        if line.strip() and not LIST_ITEM.match(line) and out and LIST_ITEM.match(out[-1]):
+            out.append("")
+        out.append(line)
+    return "\n".join(out)
 
 
 def visible_git(items: list[dict], settings: dict) -> list[dict]:
@@ -128,13 +153,13 @@ def standup_context(con: sqlite3.Connection, today: date, holidays=()) -> dict:
             "notas_im_back": {p: [{"tarea": n["title"], "detalle": n["body"][:600]} for n in notes]
                               for p, notes in y["notes"].items()},
             "commits": {p: [c["title"] for c in cs] for p, cs in y["commits"].items()},
-            "reuniones": [m["title"] for m in y["meetings"]],
+            "reuniones": [{"reunion": m["title"], "proyecto": m["project"]} for m in y["meetings"]],
         },
         "hoy": {
             "fecha": today.isoformat(),
             "pendientes_de_ayer": {p: [n["title"] for n in ns] for p, ns in t["pending_from_prev"].items()},
             "tareas_activas": [{"tarea": a["title"], "estado": a["status"]} for a in t["tasks"]],
-            "reuniones": [m["title"] for m in t["meetings"]],
+            "reuniones": [{"reunion": m["title"], "proyecto": m["project"]} for m in t["meetings"]],
             "trabajo_sin_terminar": [f"{w['project']}: {w['title']}" for w in t["wip"]]
                                     + [f"{c['project']}: commit sin subir «{c['title']}»" for c in t["unpushed"]],
         },

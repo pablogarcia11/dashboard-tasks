@@ -284,8 +284,10 @@ claude -p <prompts/<kind>.md> --output-format json --model <claude.model> --tool
   - `ayer`: notas del diario del día laborable anterior (fuente principal), commits y reuniones.
   - `hoy`: pendientes de ayer, tareas activas, reuniones de hoy y trabajo sin terminar.
   - `ejemplos_formato`: los stand-ups aprendidos de Slack (7.5).
-- **Formato:** imita los ejemplos (saludo, emojis, títulos, viñetas, sangrías, longitud de cada tarea). Sin ejemplos, se usa el formato por defecto del prompt: markdown de Slack con `*Sección*`, `• Proyecto` y `◦ tarea` sangrada 4 espacios.
-- **Copiar:** el botón escribe en el portapapeles `text/plain` y `text/html`. `slackToHtml()` (en `base.html`) convierte el markdown de Slack en HTML con negritas y listas anidadas reales, para que el editor de Slack conserve el formato al pegar. Se activa con `data-copy-as="slack"` en el campo.
+  - Las reuniones llegan con su proyecto (`{reunion, proyecto}`, ver 7.4), y cada una va bajo ese proyecto. Las de empresa (Sprint Review, Seguimiento Sprint, Monthly Review…) forman su propio apartado «1MB».
+- **Formato:** el texto sale siempre en **Markdown estándar** (`**Sección**`, `- Proyecto` y `- tarea` sangrada 4 espacios), que es lo que el editor de Slack convierte en negritas y listas al pegarlo. Imita la forma de los ejemplos (saludo, emojis, títulos, niveles de viñeta, longitud de cada tarea); como los ejemplos llegan en el formato interno de Slack (`*negrita*`, `•`, `◦`), el prompt indica cómo traducirlos a Markdown. Sin ejemplos se usa el formato por defecto del prompt.
+- **Normalización** (`core/views.py · standup_markdown`, aplicada al texto nuevo y al guardado): traduce los restos del formato de Slack que Claude pueda dejar (`*negrita*` → `**negrita**`, `•`/`◦` → `- ` con 4 espacios por nivel) e inserta una línea en blanco tras cada lista. Sin esa línea, Markdown pega el título siguiente al último elemento de la lista.
+- **Copiar:** el botón copia el texto plano tal cual (Markdown).
 
 ### 11.3 Notas para el diario (`prompts/journal_notes.md`, `journal_notes_context`)
 

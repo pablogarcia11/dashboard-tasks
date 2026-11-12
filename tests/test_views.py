@@ -2,7 +2,7 @@ from datetime import date
 
 from collectors.base import Activity
 from core import db
-from core.views import visible_git, written_journal_md
+from core.views import standup_markdown, visible_git, written_journal_md
 
 
 def test_written_journal_md_conserva_proyectos_subvinetas_y_pendientes(tmp_path):
@@ -42,3 +42,17 @@ def test_visible_git_oculta_repo_entero_o_solo_wip():
                 "ibh/ibh-api": {"visible": True, "show_wip": False}}
     kept = [(a["kind"], a["extra"].get("repo")) for a in visible_git(items, settings)]
     assert kept == [("commit", "airisk-api"), ("wip", "airisk-api"), ("note", None)]
+
+
+def test_standup_markdown_pone_linea_en_blanco_tras_cada_lista():
+    md = ("Buenos días!\n**Ayer**\n- AI Risk\n    - Corregir permisos\n**Hoy**\n- 1MB\n    - Sprint review\n")
+    assert standup_markdown(md) == ("Buenos días!\n**Ayer**\n- AI Risk\n    - Corregir permisos\n\n**Hoy**\n"
+                                  "- 1MB\n    - Sprint review\n")
+    ya_separado = "- a\n\n**Hoy**\n- b"
+    assert standup_markdown(ya_separado) == ya_separado   # no duplica líneas en blanco
+
+
+def test_standup_markdown_traduce_restos_del_formato_de_slack():
+    slack = "Hola :wave:\n*Ayer*\n• AI Risk\n    ◦ Subir **ya negrita** y 2*3*4\n◦ Sin sangría\n*Hoy*"
+    assert standup_markdown(slack) == ("Hola :wave:\n**Ayer**\n- AI Risk\n    - Subir **ya negrita** y 2*3*4\n"
+                                       "    - Sin sangría\n\n**Hoy**")

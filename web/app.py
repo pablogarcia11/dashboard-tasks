@@ -32,7 +32,7 @@ from collectors.notion import NotionClient, journal_candidates, journal_preview
 from collectors.claude_connector import ConnectorError
 from collectors.slack import fetch_channel_messages, own_standups
 from core.timesheet import as_text, build_blocks, fmt, parse_tasks
-from core.views import day_data, journal_notes_context, standup_context, timesheet_inputs
+from core.views import day_data, journal_notes_context, standup_markdown, standup_context, timesheet_inputs
 from jobs.collect_all import run_collect
 from llm.claude_cli import ClaudeError, generate, input_hash
 
@@ -607,7 +607,7 @@ def standup(request: Request, d: str, force: bool = False):
         last = db.get_summary(con, d, "standup")  # conserva el último resultado
         text = last["content_md"] if last else ""
     return templates.TemplateResponse(request, "_standup.html", {
-        "day": day, "prev": previous_workday(day, HOLIDAYS), "text": text, "error": error})
+        "day": day, "prev": previous_workday(day, HOLIDAYS), "text": standup_markdown(text), "error": error})
 
 
 def journal_notes_state(con, day: date) -> dict:

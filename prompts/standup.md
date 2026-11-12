@@ -9,19 +9,24 @@ Contenido:
 - Usa solo la información proporcionada. Si algo no está claro, dilo en vez de inventarlo.
 - Lo hecho el día anterior sale sobre todo de `ayer.notas_im_back`. Usa los commits solo para completar algo hecho que no esté en las notas. Si no hay notas, resume desde los commits y reuniones.
 - Lo que hará hoy: pendientes de ayer, tareas activas en curso, reuniones de hoy y trabajo sin terminar. No repitas tareas equivalentes. Si no hay nada, indícalo con una sola línea breve.
-- Ignora proyectos sin tareas. Las reuniones van bajo su proyecto.
+- Ignora proyectos sin tareas.
+- Cada reunión va bajo el proyecto que indica su campo `proyecto`, nunca en otro. Las reuniones de empresa (Sprint Review, Seguimiento Sprint, Monthly Review…) llegan con el proyecto «1MB»: van en su propio apartado «1MB», como un proyecto más.
 
-Formato: **imita a la persona**.
-- Si hay `ejemplos_formato`, copia EXACTAMENTE su forma: saludo y emojis, títulos de las secciones (texto, negritas, dos puntos), si agrupa por proyecto, tipo de viñetas y sangrías, si hay líneas en blanco, longitud y estilo de cada tarea (infinitivo, frase corta…) y cuántas tareas suele poner por proyecto. Si en los ejemplos junta lo subido a producción en una sola tarea, hazlo igual.
+Formato: **imita a la persona**, escrito siempre en **Markdown estándar**.
+- Si hay `ejemplos_formato`, copia EXACTAMENTE su forma: saludo y emojis, títulos de las secciones (texto, dos puntos), si agrupa por proyecto, niveles de viñetas, si hay líneas en blanco, longitud y estilo de cada tarea (infinitivo, frase corta…) y cuántas tareas suele poner por proyecto. Si en los ejemplos junta lo subido a producción en una sola tarea, hazlo igual.
+- Los ejemplos vienen en el formato interno de Slack: tradúcelo a Markdown estándar. `*texto*` (negrita de Slack) → `**texto**`; `_texto_` → `*texto*`; `~texto~` → `~~texto~~`; viñeta `•` → `- `; subviñeta `◦` (u otra viñeta sangrada) → `- ` con 4 espacios delante por nivel. Los emojis se quedan como `:nombre:`.
+- Nunca uses los caracteres `•` ni `◦` como viñetas: siempre `- `.
+- Deja una línea en blanco entre el final de una lista y el título de sección siguiente; si no, Markdown pega el título al último elemento de la lista.
 - No copies el contenido de los ejemplos: solo su forma. Las tareas salen del JSON.
-- Si no hay ejemplos, usa este formato (markdown de Slack; las subviñetas llevan 4 espacios delante), con tareas cortas en infinitivo, como mucho 8 por proyecto:
+- Si no hay ejemplos, usa este formato, con tareas cortas en infinitivo, como mucho 8 por proyecto:
 
 Buenos días!
-*Tareas realizadas el último día*
-• <Proyecto>
-    ◦ <tarea>
-*Tareas que haré durante hoy*
-• <Proyecto>
-    ◦ <tarea>
+**Tareas realizadas el último día**
+- <Proyecto>
+    - <tarea>
+
+**Tareas que haré durante hoy**
+- <Proyecto>
+    - <tarea>
 
 Responde SOLO con el mensaje, sin explicaciones ni bloques de código.
