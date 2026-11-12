@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from core.timesheet import (build_blocks, edited_json, fmt, free_intervals, hm, parse_edited, parse_tasks,
-                            place_lunch, short_day_warning)
+from core.timesheet import (Block, build_blocks, edited_json, fmt, free_intervals, hm, lanes, parse_edited,
+                            parse_tasks, place_lunch, short_day_warning)
 
 CFG = {"day_start": "08:30", "day_end": "17:30", "lunch_start": "14:00", "lunch_end": "15:00",
        "min_daily_hours": 8}
@@ -168,3 +168,13 @@ def test_parse_edited_respeta_las_reuniones_tal_como_vienen():
 def test_parse_edited_rechaza(blocks, message):
     with pytest.raises(ValueError, match=message):
         parse_edited(json.dumps(blocks), CATS)
+
+
+def test_lanes_reparte_los_solapes_y_deja_el_resto_a_todo_el_ancho():
+    def b(start, end, title):
+        return Block(hm(start), hm(end), title, "", "Reunión", "meeting")
+    blocks = [b("09:00", "10:00", "A"), b("09:30", "10:30", "B"), b("10:00", "11:00", "C"),
+              b("12:00", "13:00", "D"), b("08:00", "09:00", "E")]
+    # A y B se pisan; C cabe en el carril de A cuando acaba; D y E no se solapan con nada
+    assert lanes(blocks) == [(0, 2), (1, 2), (0, 2), (0, 1), (0, 1)]
+    assert lanes([]) == []

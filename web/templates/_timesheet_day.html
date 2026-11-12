@@ -4,23 +4,27 @@
   <div class="ts-grid" style="height: {{ grid_height }}px; --hour: {{ 60 * ppm }}px">
     {# Línea de la hora actual (solo hoy): la coloca timesheet.html y la mueve cada minuto #}
     {% if is_today %}<div class="ts-now" data-grid-start="{{ grid_start }}" data-ppm="{{ ppm }}" aria-hidden="true" hidden></div>{% endif %}
+    {# Bloques que se solapan (reuniones a la vez): se reparten el ancho en carriles, como en el calendario #}
+    {% set layout = blocks | lanes %}
     {% for b in blocks %}
+    {% set lane, nlanes = layout[loop.index0] %}
     {% set span = (b.start | fmt) ~ "–" ~ (b.end | fmt) %}
     {# Líneas que caben (≈13,5 px cada una): el título se recorta con "…" y el horario solo si hay sitio.
        Los bloques bajos (< 20 px) van en una sola línea compacta. #}
     {% set height = b.minutes * ppm %}
     {% set lines = ((height - 6) / 13.5) | int %}
     <button type="button" aria-haspopup="dialog"
-            class="ts-block cat-{{ b.category | cat_class }}{% if b.title == 'Por definir' %} is-empty{% endif %}{% if height < 20 %} is-tiny{% endif %}"
-            style="top: {{ (b.start - grid_start) * ppm }}px; height: {{ height }}px; --i: {{ loop.index0 }}"
+            class="ts-block cat-{{ b.category | cat_class }}{% if b.title == 'Por definir' %} is-empty{% endif %}{% if height < 20 %} is-tiny{% endif %}{% if nlanes > 1 %} in-lane{% endif %}"
+            style="top: {{ (b.start - grid_start) * ppm }}px; height: {{ height }}px; --i: {{ loop.index0 }}{% if nlanes > 1 %}; --lane: {{ lane }}; --lanes: {{ nlanes }}{% endif %}"
             data-title="{{ b.title }}" data-time="{{ span }}" data-minutes="{{ b.minutes }}"
             data-start="{{ b.start }}" data-end="{{ b.end }}"
             data-category="{{ b.category }}" data-project="{{ b.project }}"
             aria-label="{{ b.title }}, {{ span }}, {{ b.category }}">
       <span class="ts-title" style="--lines: {{ [lines - 1, 1] | max }}">{{ b.title }}</span>
       {% if lines >= 2 %}<span class="ts-meta">{{ span }} · {{ b.category }}</span>{% endif %}
-      {# Borde inferior: se arrastra para alargar o acortar la tarea (timesheet.html) #}
-      {% if b.title != 'Por definir' %}<span class="ts-resize" aria-hidden="true"></span>{% endif %}
+      {# Borde inferior: se arrastra para alargar o acortar la tarea (timesheet.html). En bloques de menos de
+         12 px taparía el bloque entero y arrastrarlo lo alargaría en vez de moverlo: su duración, en el formulario #}
+      {% if b.title != 'Por definir' and height >= 12 %}<span class="ts-resize" aria-hidden="true"></span>{% endif %}
     </button>
     {% endfor %}
     {% if state == "pending" %}

@@ -35,7 +35,7 @@ from collectors.notion import NotionClient, journal_candidates, journal_preview
 from collectors.claude_connector import ConnectorError
 from collectors.slack import fetch_channel_messages, own_standups
 from core.timesheet import as_text, build_blocks, fmt, parse_tasks
-from core.timesheet import edited_json, parse_edited, short_day_warning
+from core.timesheet import edited_json, lanes, parse_edited, short_day_warning
 from core.views import (day_data, journal_notes_context, standup_markdown, standup_context, timesheet_inputs,
                         unnoted_days, week_overview, weekly_context)
 from jobs.collect_all import run_collect
@@ -608,6 +608,7 @@ CATEGORY_CLASS = {"Desarrollo de negocio": "dev", "Reunión": "meet", "Documenta
                   "Tareas administrativas": "admin", "Formación": "learn"}
 templates.env.filters["fmt"] = fmt
 templates.env.filters["cat_class"] = lambda c: CATEGORY_CLASS.get(c, "dev")
+templates.env.filters["lanes"] = lanes
 
 
 @app.get("/timesheet")

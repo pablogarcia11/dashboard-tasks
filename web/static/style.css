@@ -502,6 +502,12 @@ table.settings { margin: 0; }
   border-left: 4px solid var(--dev-line); background: var(--dev-bg); color: var(--cat-text);
   font-size: .74em; line-height: 1.25; display: flex; flex-direction: column;
 }
+/* Bloques solapados (reuniones a la vez): cada uno en su carril, con 2 px entre ellos */
+.ts-block.in-lane[data-title] {   /* [data-title]: gana al ancho de los bloques pulsables (más abajo) */
+  right: auto; padding-left: 5px; padding-right: 4px;
+  left: calc(4px + (100% - 8px) * var(--lane) / var(--lanes));
+  width: calc((100% - 8px) / var(--lanes) - 2px);
+}
 .ts-block.cat-meet { background: var(--meet-bg); border-left-color: var(--meet-line); }
 .ts-block.cat-doc { background: var(--doc-bg); border-left-color: var(--doc-line); }
 .ts-block.cat-admin { background: var(--admin-bg); border-left-color: var(--admin-line); }

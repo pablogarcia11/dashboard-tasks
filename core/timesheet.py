@@ -268,5 +268,33 @@ def short_day_warning(blocks: list[Block], ts_cfg: dict) -> list[str]:
     return []
 
 
+def lanes(blocks: list[Block]) -> list[tuple[int, int]]:
+    """Carril de cada bloque para pintarlo: (carril, carriles de su grupo). Los bloques que se solapan
+    (reuniones a la vez) se reparten el ancho de la columna, como en el calendario; el resto va a (0, 1)."""
+    out = [(0, 1)] * len(blocks)
+    group: list[tuple[int, int]] = []   # (índice, carril) del grupo de solapes en curso
+    ends: list[int] = []                # fin del último bloque de cada carril del grupo
+    group_end = -1
+
+    def close():
+        for i, lane in group:
+            out[i] = (lane, len(ends))
+
+    for i in sorted(range(len(blocks)), key=lambda i: (blocks[i].start, blocks[i].end)):
+        b = blocks[i]
+        if b.start >= group_end:   # empieza un grupo nuevo
+            close()
+            group, ends = [], []
+        lane = next((n for n, e in enumerate(ends) if e <= b.start), len(ends))
+        if lane == len(ends):
+            ends.append(b.end)
+        else:
+            ends[lane] = b.end
+        group.append((i, lane))
+        group_end = max(group_end, b.end)
+    close()
+    return out
+
+
 def as_text(blocks: list[Block]) -> str:
     return "\n".join(f"{fmt(b.start)}–{fmt(b.end)}  {b.title}  ({b.category})" for b in blocks)
