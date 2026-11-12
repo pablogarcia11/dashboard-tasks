@@ -23,9 +23,49 @@
       if (location.pathname === "/settings" && from !== "/settings") document.documentElement.classList.add("gear-arrive");
     })();
 
+    // Cambio de día o de semana: el contenido entra desde el lado hacia el que se navega (tipos "forward" /
+    // "back" de la View Transition; los estilos, en style.css). Si se navegó con el teclado, no se anima.
+    function navDate(url) {
+      var m = new URL(url, location.href).pathname.match(/^\/(day|timesheet\/week)\/(\d{4}-\d{2}-\d{2})/);
+      return m && { kind: m[1], date: m[2] };
+    }
+    function navDirection(activation) {
+      if (!activation || !activation.from || !activation.entry) return null;
+      var a = navDate(activation.from.url), b = navDate(activation.entry.url);
+      if (!a || !b || a.kind !== b.kind || a.date === b.date) return null;
+      return a.date < b.date ? "forward" : "back";
+    }
+    function keyboardNav(clear) {
+      try {
+        var k = sessionStorage.getItem("nav-kbd");
+        if (clear) sessionStorage.removeItem("nav-kbd");
+        return !!k;
+      } catch (e) { return false; }
+    }
+    window.addEventListener("pageswap", function (e) {
+      if (!e.viewTransition) return;
+      if (keyboardNav(false)) return e.viewTransition.skipTransition();
+      var dir = navDirection(e.activation);
+      if (dir) e.viewTransition.types.add(dir);
+    });
+    window.addEventListener("pagereveal", function (e) {
+      var kbd = keyboardNav(true);
+      if (!e.viewTransition) return;
+      if (kbd) return e.viewTransition.skipTransition();
+      var dir = navDirection(window.navigation && navigation.activation);
+      if (dir) e.viewTransition.types.add(dir);
+    });
+
+    // Dónde se pulsó por última vez: el cambio de tema se abre en círculo desde ahí
+    var lastPointer = null;
+    document.addEventListener("pointerdown", function (e) {
+      lastPointer = { x: e.clientX, y: e.clientY, at: Date.now() };
+    }, true);
+
     // Tema claro/oscuro: el interruptor está en Ajustes › Apariencia. Sin elección guardada se sigue al
     // sistema, también en caliente. Cada cambio avisa con el evento "themechange" para que Ajustes se actualice.
-    // Cambio con fundido suave: View Transitions si existe; si no, transición de colores
+    // Con View Transitions: círculo que se abre desde el interruptor (si se pulsó con el puntero) o fundido
+    // (teclado, cambio del sistema). Sin View Transitions: transición de colores
     function setTheme(theme) {
       var root = document.documentElement;
       var apply = function () {
@@ -34,7 +74,19 @@
         document.dispatchEvent(new CustomEvent("themechange"));
       };
       if (root.dataset.theme === theme) return apply();
-      if (document.startViewTransition) { document.startViewTransition(apply); return; }
+      if (document.startViewTransition) {
+        var vt = null, p = lastPointer && Date.now() - lastPointer.at < 800 ? lastPointer : null;
+        root.classList.add("theme-switching");   // toda la página como una sola imagen (ver style.css)
+        if (p) {
+          root.style.setProperty("--theme-x", p.x + "px");
+          root.style.setProperty("--theme-y", p.y + "px");
+          root.style.setProperty("--theme-r", Math.hypot(Math.max(p.x, innerWidth - p.x), Math.max(p.y, innerHeight - p.y)) + "px");
+          try { vt = document.startViewTransition({ update: apply, types: ["theme"] }); } catch (e) { vt = null; }
+        }
+        if (!vt) vt = document.startViewTransition(apply);
+        vt.finished.finally(function () { root.classList.remove("theme-switching"); });
+        return;
+      }
       root.classList.add("theme-fading");
       apply();
       setTimeout(function () { root.classList.remove("theme-fading"); }, 400);
@@ -106,6 +158,24 @@
   <main class="wrap" id="main" tabindex="-1">
     {% block content %}{% endblock %}
   </main>
+  <footer class="wrap page-foot">
+    <button type="button" class="link-btn muted small" id="shortcuts-open" aria-haspopup="dialog">Atajos de teclado
+      <kbd aria-hidden="true">?</kbd></button>
+  </footer>
+  <dialog class="task-dialog" id="shortcuts-dialog" aria-labelledby="shortcuts-title">
+    <div class="dialog-body">
+      <button type="button" class="dialog-close" aria-label="Cerrar" data-close>×</button>
+      <h2 id="shortcuts-title">Atajos de teclado</h2>
+      <dl class="shortcuts">
+        <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Día o semana anterior y siguiente</dd>
+        <dt><kbd>T</kbd></dt><dd>Volver a hoy</dd>
+        <dt><kbd>D</kbd> <kbd>P</kbd></dt><dd>Ir a Día o a Parte de horas</dd>
+        <dt><kbd>R</kbd></dt><dd>Actualizar los datos</dd>
+        <dt><kbd>C</kbd></dt><dd>Copiar el texto visible (stand-up o notas)</dd>
+        <dt><kbd>?</kbd></dt><dd>Abrir esta ayuda</dd>
+      </dl>
+    </div>
+  </dialog>
   <div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
   <script>
 
@@ -253,6 +323,75 @@
       setInterval(tick, 30000);
       document.addEventListener("visibilitychange", function () { if (!document.hidden) tick(); });
       document.body.addEventListener("htmx:afterSettle", tick);
+    })();
+
+    // Actividad: mientras haya peticiones de HTMX en curso, el filete de la barra superior se anima
+    (function () {
+      var pending = 0, body = document.body;
+      body.addEventListener("htmx:beforeSend", function () { pending++; body.classList.add("is-busy"); });
+      body.addEventListener("htmx:afterRequest", function () {
+        pending = Math.max(0, pending - 1);
+        if (!pending) body.classList.remove("is-busy");
+      });
+
+      // Texto o parte recién generado por Claude: se descubre (clase just-generated).
+      // Tarjeta actualizada con ↻: las filas que no estaban antes se señalan un momento (clase is-new).
+      var before = null;
+      var rowKey = function (li) { return li.textContent.replace(/\s+/g, " ").trim(); };
+      body.addEventListener("htmx:beforeRequest", function (e) {
+        var path = (e.detail.requestConfig || {}).path || "", card = e.target.closest && e.target.closest("section.card");
+        if (path.indexOf("/refresh/") === 0 && card) {
+          before = { id: card.id, rows: Array.prototype.map.call(card.querySelectorAll("li"), rowKey) };
+        }
+      });
+      body.addEventListener("htmx:afterSwap", function (e) {
+        var cfg = e.detail.requestConfig || {}, path = cfg.path || "";
+        var el = e.detail.target && e.detail.target.id && document.getElementById(e.detail.target.id);
+        if (!el || !e.detail.xhr || e.detail.xhr.status !== 200) return;
+        if (cfg.verb === "post" && /^\/(standup|journal-notes|timesheet\/day)\//.test(path)) el.classList.add("just-generated");
+        if (path.indexOf("/refresh/") === 0 && before && before.id === el.id) {
+          el.querySelectorAll("li").forEach(function (li) {
+            if (before.rows.indexOf(rowKey(li)) === -1) li.classList.add("is-new");
+          });
+          before = null;
+        }
+      });
+    })();
+
+    // Atajos de teclado (ayuda con la tecla ?). No actúan mientras se escribe, con Ctrl/Alt/Cmd pulsado
+    // ni con un diálogo o el calendario abiertos. La navegación por teclado no se anima (ver pagereveal).
+    (function () {
+      var help = document.getElementById("shortcuts-dialog");
+      document.getElementById("shortcuts-open").addEventListener("click", function () { help.showModal(); });
+      help.addEventListener("click", function (e) {
+        if (e.target === help || e.target.closest("[data-close]")) help.close();
+      });
+      function go(link) {
+        if (!link) return;
+        try { sessionStorage.setItem("nav-kbd", "1"); } catch (err) {}
+        link.click();
+      }
+      document.addEventListener("keydown", function (e) {
+        if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+        var t = e.target;
+        if (t.closest("input, textarea, select, [contenteditable], [role=tab], summary")) return;
+        if (document.querySelector("dialog[open], .picker-toggle[aria-expanded=true]")) return;
+        var arrows = document.querySelectorAll(".date-nav a.nav-arrow");   // [anterior, siguiente] (o solo anterior)
+        var key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+        if (key === "ArrowLeft") go(arrows[0]);
+        else if (key === "ArrowRight") go(arrows.length > 1 ? arrows[1] : null);
+        else if (key === "t") go(document.querySelector(".date-nav .nav-current:not(.is-current)"));
+        else if (key === "d") go(document.querySelector('.appnav .nav-link[href="/"]:not([aria-current])'));
+        else if (key === "p") go(document.querySelector('.appnav .nav-link[href="/timesheet"]:not([aria-current])'));
+        else if (key === "r") { var b = document.getElementById("collect-btn"); if (b && !b.disabled) b.click(); }
+        else if (key === "c") {
+          var copy = document.querySelector(".tab-panel:not([hidden]) .copy-inline");
+          if (copy) copy.click();
+        }
+        else if (key === "?") help.showModal();
+        else return;
+        e.preventDefault();
+      });
     })();
 
     // Mensajes para lectores de pantalla (región role="status")

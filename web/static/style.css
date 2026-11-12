@@ -753,6 +753,98 @@ a.week-day:hover { background: var(--hover-bg); color: var(--text); }
 [id] { scroll-margin-top: 16px; }
 @media (pointer: fine) { html { overscroll-behavior: none; } }
 
+/* ---------- Parte de horas: hora actual y horas por categoría ---------- */
+
+/* Línea de la hora actual en la columna de hoy. El aro late tres veces al cargar y se queda quieto */
+.ts-now {
+  position: absolute; left: -1px; right: 0; top: 0; z-index: 2; height: 0; pointer-events: none;
+  border-top: 2px solid var(--red-text);
+}
+.ts-now::before, .ts-now::after {
+  content: ""; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--red-text);
+}
+.ts-now::after { animation: now-pulse 2.2s var(--ease-out) 3 both; }
+@keyframes now-pulse { from { opacity: .55; transform: scale(1); } to { opacity: 0; transform: scale(3); } }
+.cat-total { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.cat-total:not(:empty) { margin-left: 2px; }
+
+/* ---------- Atajos de teclado ---------- */
+.page-foot { margin-top: -40px; padding-top: 0; padding-bottom: 24px; text-align: right; }
+.link-btn { border: 0; background: none; padding: 4px 0; cursor: pointer; font-family: inherit; font-weight: 500; transition: color var(--fast) ease; }
+.link-btn:hover { color: var(--text); }
+kbd {
+  display: inline-grid; place-items: center; min-width: 1.75em; height: 1.75em; padding: 0 .4em; margin-left: 4px;
+  border: 1px solid var(--line); border-bottom-width: 2px; border-radius: var(--r-sm); background: var(--bg);
+  font: 700 .8em var(--font); color: var(--text);
+}
+.shortcuts { align-items: center; row-gap: 10px !important; }
+.shortcuts dt { white-space: nowrap; }
+.shortcuts dt kbd { margin-left: 0; }
+.task-dialog .shortcuts dd { font-weight: 500; }
+
+/* ---------- Movimiento con propósito ---------- */
+
+/* 1. Cambiar de día o de semana: el contenido sale y entra hacia el lado al que se navega, como al pasar
+      la hoja de un calendario. La barra superior y los controles de fecha no se mueven (el ratón sigue
+      sobre la flecha). El sentido lo pone base.html (pageswap/pagereveal); con el teclado no se anima. */
+.appbar { view-transition-name: appbar; }
+.date-nav { view-transition-name: date-nav; }
+html:active-view-transition-type(forward)::view-transition-old(root) { animation: 150ms var(--ease-out) both page-out-left; }
+html:active-view-transition-type(forward)::view-transition-new(root) { animation: 280ms var(--ease-out) 40ms both page-in-right; }
+html:active-view-transition-type(back)::view-transition-old(root) { animation: 150ms var(--ease-out) both page-out-right; }
+html:active-view-transition-type(back)::view-transition-new(root) { animation: 280ms var(--ease-out) 40ms both page-in-left; }
+@keyframes page-out-left { to { opacity: 0; transform: translateX(-18px); } }
+@keyframes page-in-right { from { opacity: 0; transform: translateX(18px); } }
+@keyframes page-out-right { to { opacity: 0; transform: translateX(18px); } }
+@keyframes page-in-left { from { opacity: 0; transform: translateX(-18px); } }
+
+/* 2. El filete rojo de la barra es también el indicador de actividad: mientras hay una petición en curso
+      (recoger datos, redactar con Claude) lo recorre un destello. Solo transform y opacity. */
+.appbar { position: relative; overflow: clip; border-bottom: 0; padding-bottom: 3px; box-shadow: inset 0 -3px 0 var(--red); }
+.appbar::after {
+  content: ""; position: absolute; left: 0; bottom: 0; width: 38%; height: 3px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--white) 70%, var(--coral)) 50%, transparent);
+  opacity: 0; transform: translateX(-100%); transition: opacity 200ms ease;
+}
+body.is-busy .appbar::after { opacity: 1; transition-delay: 150ms; animation: busy-sweep 1.2s var(--ease-in-out) infinite; }
+@keyframes busy-sweep { from { transform: translateX(-100%); } to { transform: translateX(264%); } }
+
+/* 3. Lo que redacta Claude tarda unos segundos: mientras, unas líneas marcan dónde caerá el texto; al
+      llegar, el texto se descubre de arriba abajo y los bloques del parte se colocan uno tras otro. */
+.writing { display: none; margin-top: 16px; }
+.tab-panel:has(.btn.htmx-request) .writing { display: grid; gap: 10px; }
+.writing i {
+  width: var(--w); height: 9px; border-radius: var(--r-pill); background: var(--line);
+  animation: writing 1.4s ease-in-out infinite; animation-delay: calc(var(--i) * 110ms);
+}
+.tab-panel:has(.regen.htmx-request) textarea { animation: writing 1.4s ease-in-out infinite; }
+@keyframes writing { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
+.just-generated textarea { animation: write-in 600ms var(--ease-out) both; }
+@keyframes write-in { from { clip-path: inset(0 0 100% 0); opacity: .3; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+.ts-day.just-generated .ts-block { animation: block-in 340ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 28ms); }
+@keyframes block-in { from { clip-path: inset(0 0 100% 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+
+/* 4. Al actualizar una tarjeta, lo que es nuevo se señala un momento con un fondo que se desvanece */
+.is-new { position: relative; isolation: isolate; }
+.is-new::before {
+  content: ""; position: absolute; inset: -3px -8px; z-index: -1; border-radius: var(--r-md);
+  background: var(--red-tint); animation: new-row 2.4s ease-out both;
+}
+@keyframes new-row { 0%, 30% { opacity: 1; } 100% { opacity: 0; } }
+
+/* 5. Cambio de tema desde el interruptor: el tema nuevo se abre en círculo desde donde se pulsó.
+      (El cambio que viene del sistema sigue siendo un fundido.) */
+html.theme-switching * { view-transition-name: none !important; }
+html:active-view-transition-type(theme)::view-transition-old(root) { animation: none; mix-blend-mode: normal; }
+html:active-view-transition-type(theme)::view-transition-new(root) {
+  animation: 520ms var(--ease-out) both theme-reveal; mix-blend-mode: normal;
+}
+@keyframes theme-reveal {
+  from { clip-path: circle(0 at var(--theme-x, 50%) var(--theme-y, 0)); }
+  to { clip-path: circle(var(--theme-r, 150vmax) at var(--theme-x, 50%) var(--theme-y, 0)); }
+}
+
 /* Menos movimiento: fuera desplazamientos y escalas; se mantienen fundidos breves */
 @media (prefers-reduced-motion: reduce) {
   .btn:active, .nav-current:active, .nav-arrow:active, .icon-btn:active, .theme-toggle:active, .icon-link:active,
@@ -776,4 +868,17 @@ a.week-day:hover { background: var(--hover-bg); color: var(--text); }
   .project-group::details-content, .guide::details-content {
     transition: opacity 150ms ease, content-visibility 150ms allow-discrete;
   }
+  /* Navegación entre días y cambio de tema: sin desplazamiento ni círculo, solo un fundido breve */
+  html:active-view-transition-type(forward)::view-transition-old(root),
+  html:active-view-transition-type(back)::view-transition-old(root),
+  html:active-view-transition-type(theme)::view-transition-old(root) { animation: none; }
+  html:active-view-transition-type(forward)::view-transition-new(root),
+  html:active-view-transition-type(back)::view-transition-new(root),
+  html:active-view-transition-type(theme)::view-transition-new(root) { animation: 150ms ease both fade; }
+  ::view-transition-group(week-indicator) { animation-duration: 0s; }
+  /* Actividad: el filete entero se aclara, sin barrido; las líneas de espera y el aro de la hora, quietos */
+  body.is-busy .appbar::after { width: 100%; transform: none; animation: none; opacity: .6; }
+  .writing i, .tab-panel:has(.regen.htmx-request) textarea { animation: none; opacity: .6; }
+  .ts-now::after { animation: none; opacity: 0; }
+  .just-generated textarea, .ts-day.just-generated .ts-block { animation: fade 200ms ease both; animation-delay: 0s; }
 }

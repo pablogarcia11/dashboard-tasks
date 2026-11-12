@@ -21,5 +21,8 @@
             hx-swap="outerHTML" hx-indicator="#gen-notes" hx-disabled-elt="this">Generar notas</button>
     <span id="gen-notes" class="htmx-indicator muted">Redactando con Claude…</span>
   </div>
+  <div class="writing" aria-hidden="true">
+    {% for w in (64, 88, 76, 82, 47, 71) %}<i style="--w: {{ w }}%; --i: {{ loop.index0 }}"></i>{% endfor %}
+  </div>
   {% endif %}
 </div>
