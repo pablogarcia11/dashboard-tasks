@@ -809,6 +809,9 @@ kbd {
       sobre la flecha). El sentido lo pone base.html (pageswap/pagereveal); con el teclado no se anima. */
 .appbar { view-transition-name: appbar; }
 .date-nav { view-transition-name: date-nav; }
+/* view-transition-name crea un contexto de apilamiento: sin esto, el calendario que despliega (z-index 20)
+   quedaba encerrado en él y lo que viene después en la página (tira semanal, bloques del parte) se pintaba encima */
+.date-nav { position: relative; z-index: 20; }
 html:active-view-transition-type(forward)::view-transition-old(root) { animation: 150ms var(--ease-out) both page-out-left; }
 html:active-view-transition-type(forward)::view-transition-new(root) { animation: 280ms var(--ease-out) 40ms both page-in-right; }
 html:active-view-transition-type(back)::view-transition-old(root) { animation: 150ms var(--ease-out) both page-out-right; }
