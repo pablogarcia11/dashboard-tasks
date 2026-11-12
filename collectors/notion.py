@@ -84,6 +84,13 @@ def is_pending_marker(text: str) -> bool:
     return normalize(text) in PENDING_MARKERS
 
 
+def inline_pending(text: str) -> str | None:
+    """Texto del pendiente escrito en la misma línea que su marca («Pendiente: probar el flujo»),
+    o None si la línea no es eso. Hacen falta los dos puntos: «Pendiente de revisar…» es una nota."""
+    head, sep, rest = text.partition(":")
+    return rest.strip() if sep and rest.strip() and is_pending_marker(head) else None
+
+
 class NotionClient:
     def __init__(self):
         load_dotenv(ROOT / ".env")
@@ -254,7 +261,7 @@ def parse_day_blocks(client: NotionClient, blocks: list[dict], project: str = ""
     - Proyecto: un encabezado (lo que le sigue es de ese proyecto) o un desplegable/encabezado
       desplegable con el proyecto como título y sus tareas dentro. Sin proyecto: «General».
     - Pendiente: un apartado «Pendiente:» / «Para mañana:»… (sus hijos o, si no tiene, lo que le sigue
-      hasta el siguiente proyecto) y las casillas sin marcar. Las casillas marcadas son trabajo hecho.
+      hasta el siguiente proyecto), una línea «Pendiente: lo que sea» y las casillas sin marcar. Las casillas marcadas son trabajo hecho.
     """
     out, current, pending_mode = [], project, False
     for b in blocks:
@@ -276,8 +283,9 @@ def parse_day_blocks(client: NotionClient, blocks: list[dict], project: str = ""
             continue
         if t not in LIST_TYPES or not text:
             continue
-        pending = pending_mode or (t == "to_do" and not b["to_do"].get("checked"))
-        out.append((b["id"], current or GENERAL, text, subtree_text(client, b), pending))
+        inline = inline_pending(text)
+        pending = pending_mode or inline is not None or (t == "to_do" and not b["to_do"].get("checked"))
+        out.append((b["id"], current or GENERAL, inline or text, subtree_text(client, b), pending))
     return out
 
 

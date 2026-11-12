@@ -1,6 +1,7 @@
 from datetime import date
 
-from collectors.notion import block_date, day_sections, is_pending_marker, parse_day, parse_day_blocks
+from collectors.notion import (block_date, day_sections, inline_pending, is_pending_marker, parse_day,
+                               parse_day_blocks)
 
 
 def block(id_, type_, text="", children=None, checked=None):
@@ -73,6 +74,18 @@ def test_is_pending_marker():
     assert is_pending_marker("  PENDIENTES ")
     assert is_pending_marker("Para mañana:")
     assert not is_pending_marker("Pendiente de revisar el informe")
+
+
+def test_pendiente_en_la_misma_linea():
+    assert inline_pending("Pendiente: probar el flujo completo") == "probar el flujo completo"
+    assert inline_pending("Para mañana: revisar el plan") == "revisar el plan"
+    assert inline_pending("Pendiente de revisar el informe") is None      # sin dos puntos es una nota
+    assert inline_pending("Reunión: revisión del kit") is None
+    blocks = register(block("i1", "bulleted_list_item", "Corregí el texto"),
+                      block("i2", "bulleted_list_item", "Pendiente: probar el flujo completo"),
+                      block("i3", "bulleted_list_item", "Añadí el aviso"))
+    rows = [(text, pending) for _, _, text, _, pending in parse_day_blocks(FakeClient(), blocks)]
+    assert rows == [("Corregí el texto", False), ("probar el flujo completo", True), ("Añadí el aviso", False)]
 
 
 def test_parse_day_blocks_proyectos_y_pendientes():
