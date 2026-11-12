@@ -51,6 +51,8 @@
   </div>
 </div>
 
+<p class="notice error small ts-save-error" id="ts-save-error" role="alert" hidden></p>
+
 <div class="legend" id="legend">
   {% for c, cls in [("Desarrollo de negocio", "dev"), ("Reunión", "meet"), ("Documentación", "doc"),
                     ("Tareas administrativas", "admin"), ("Formación", "learn")] %}
@@ -169,6 +171,7 @@
   // arrastrar su borde inferior la alarga o acorta (en tramos de STEP min, sin solapar otras tareas;
   // las reuniones sí pueden solaparse entre ellas, como en el calendario).
   // Cada cambio guarda el día entero (POST /timesheet/day/{d}/blocks) y vuelve a pintar su columna.
+  // Si el servidor lo rechaza, la columna vuelve a lo guardado y se explica el motivo.
   const CATEGORY_CLASS = {{ category_class | tojson }};
   const STEP = {{ step }}, GRID_START = {{ grid_start }}, GRID_END = {{ grid_end }}, PPM = {{ ppm }};
   const dialog = document.getElementById("task-dialog"), form = document.getElementById("task-form");
@@ -186,13 +189,35 @@
   const MEETING = "Reunión";
   const overlaps = (a, b) => a.start < b.end && b.start < a.end && !(a.category === MEETING && b.category === MEETING);
 
+  // Guarda el día. La promesa devuelve el motivo del error ("" si se ha guardado): el texto del servidor
+  // (422) o un aviso de conexión. Si falla, la columna se vuelve a pedir para que se vea lo guardado.
+  const OFFLINE = "No se pudo guardar. Comprueba que el dashboard sigue en marcha y vuelve a intentarlo.";
   function saveDay(dayEl, blocks) {
-    const week = document.querySelector(".ts-week");
+    const week = document.querySelector(".ts-week"), day = dayEl.id.slice(3), path = `/timesheet/day/${day}/blocks`;
     week.classList.add("is-editing");   // la columna se repinta sin el fundido de «contenido nuevo»
-    return htmx.ajax("POST", `/timesheet/day/${dayEl.id.slice(3)}/blocks`, {
+    let error = "";
+    const onDone = event => {
+      if ((event.detail.requestConfig || {}).path !== path || event.detail.successful) return;
+      const xhr = event.detail.xhr;
+      error = (xhr && xhr.status >= 400 && xhr.status < 500 && xhr.responseText) || OFFLINE;
+    };
+    document.body.addEventListener("htmx:afterRequest", onDone);
+    return htmx.ajax("POST", path, {
       target: "#" + dayEl.id, swap: "outerHTML",
       values: { blocks: JSON.stringify(blocks.map(({ el, ...b }) => b)) },
+    }).catch(() => { error = error || OFFLINE; }).then(() => {
+      document.body.removeEventListener("htmx:afterRequest", onDone);
+      if (!error) return "";
+      return htmx.ajax("GET", `/timesheet/day/${day}`, { target: "#" + dayEl.id, swap: "outerHTML" })
+        .catch(() => {}).then(() => error);
     }).finally(() => week.classList.remove("is-editing"));
+  }
+
+  // Aviso de un cambio rechazado al arrastrar (el formulario tiene el suyo): visible bajo la semana y anunciado
+  function showSaveError(text) {
+    const box = document.getElementById("ts-save-error");
+    box.textContent = text;
+    box.hidden = !text;
   }
 
   function showTaskError(text) {
@@ -221,13 +246,37 @@
     field.project.value = task.project || "";
     document.getElementById("task-delete").hidden = isNew;
     editing.from = isNew ? null : { start: task.start, end: task.end };   // para saber qué horas se cambian
+    setSaving(false);
     showTaskError("");
     paintTask();
     dialog.showModal();
   }
 
+  // Mientras se guarda, el formulario sigue abierto con lo escrito y sus botones desactivados.
+  // Se cierra cuando el servidor lo acepta; si no, se queda abierto con el motivo
+  function setSaving(on) {
+    form.querySelectorAll(".task-actions button").forEach(b => { b.disabled = on; });
+    form.querySelector("button[type=submit]").classList.toggle("htmx-request", on);
+  }
+  function saveFromDialog(blocks) {
+    setSaving(true);
+    showTaskError("");
+    saveDay(editing.dayEl, blocks).then(error => {
+      setSaving(false);
+      if (!error) return dialog.close();
+      if (!dialog.open) return showSaveError(`No se ha guardado el cambio: ${error}`);   // se cerró con Esc mientras tanto
+      // La columna se ha vuelto a pintar: la tarea abierta es otro elemento, con las mismas horas
+      editing.dayEl = document.getElementById(editing.dayEl.id);
+      if (editing.el && editing.from) {
+        editing.el = editing.dayEl.querySelector(`.ts-block[data-start="${editing.from.start}"][data-end="${editing.from.end}"]`);
+      }
+      showTaskError(error);
+    });
+  }
+
   form.addEventListener("submit", event => {
     event.preventDefault();
+    if (form.querySelector("button[type=submit]").disabled) return;
     const start = toMinutes(field.start.value), end = toMinutes(field.end.value);
     if (!(end > start)) return showTaskError("La hora de fin tiene que ser posterior a la de inicio.");
     // Las horas que se cambian van en tramos de STEP min; las que ya tenía (una reunión a las 10:25) se respetan
@@ -241,12 +290,10 @@
     const others = dayBlocks(editing.dayEl).filter(b => b.el !== editing.el);
     const clash = others.find(b => overlaps(mine, b));
     if (clash) return showTaskError(`Se solapa con «${clash.title}» (${toTime(clash.start)}–${toTime(clash.end)}).`);
-    dialog.close();
-    saveDay(editing.dayEl, [...others, mine]);
+    saveFromDialog([...others, mine]);
   });
   document.getElementById("task-delete").addEventListener("click", () => {
-    dialog.close();
-    saveDay(editing.dayEl, dayBlocks(editing.dayEl).filter(b => b.el !== editing.el));
+    saveFromDialog(dayBlocks(editing.dayEl).filter(b => b.el !== editing.el));
   });
 
   let dragEndedAt = 0;
@@ -323,8 +370,10 @@
     d.el.style.transform = "";
     d.el.style.top = (d.newStart - GRID_START) * PPM + "px";
     d.el.style.height = (d.newEnd - d.newStart) * PPM + "px";
+    showSaveError("");
     saveDay(d.dayEl, [...d.others, { el: null, start: d.newStart, end: d.newEnd, title: d.el.dataset.title,
-                                     project: d.el.dataset.project, category: d.el.dataset.category }]);
+                                     project: d.el.dataset.project, category: d.el.dataset.category }])
+      .then(error => { if (error) showSaveError(`No se ha guardado el cambio: ${error}`); });
   }
   document.addEventListener("pointerup", () => endDrag(true));
   document.addEventListener("pointercancel", () => endDrag(false));

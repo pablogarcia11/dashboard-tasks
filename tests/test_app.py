@@ -65,6 +65,21 @@ def blocks_form(*blocks):
     return {"blocks": json.dumps([dict(zip(("start", "end", "title", "category"), b)) for b in blocks])}
 
 
+def test_guardar_bloques_rechazados_no_cambia_nada(client):
+    con = db.connect()
+    ok = client.post(f"/timesheet/day/{DAY}/blocks", data=blocks_form((540, 600, "A", "Documentación")))
+    assert ok.status_code == 200 and "Editado a mano" in ok.text
+    saved = db.get_summary(con, DAY, web.TIMESHEET_EDIT)["content_md"]
+
+    bad = client.post(f"/timesheet/day/{DAY}/blocks",
+                      data=blocks_form((540, 600, "A", "Documentación"), (570, 630, "B", "Documentación")))
+    assert bad.status_code == 422 and bad.text == "«B» se solapa con «A»."   # el motivo, para mostrarlo tal cual
+    assert db.get_summary(con, DAY, web.TIMESHEET_EDIT)["content_md"] == saved
+    # La columna se puede volver a pedir y sigue siendo lo guardado
+    again = client.get(f"/timesheet/day/{DAY}")
+    assert again.status_code == 200 and 'data-start="540" data-end="600"' in again.text
+
+
 def test_guardar_dia_con_reuniones_solapadas_y_cortas(client):
     r = client.post(f"/timesheet/day/{DAY}/blocks", data=blocks_form(
         (600, 660, "Daily", "Reunión"), (630, 690, "Cliente", "Reunión"), (720, 725, "Llamada", "Reunión"),
