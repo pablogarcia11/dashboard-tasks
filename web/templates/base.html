@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Dashboard{% endblock %}</title>
   <meta name="theme-color" content="#FFFFFF">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23CD3434'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11.5' fill='none' stroke='%23fff' stroke-width='3.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
   <script>
     // Tema antes de pintar (sin parpadeo): elección guardada o, si no hay, la del sistema
     var THEME_COLORS = { light: "#FFFFFF", dark: "#2C2C2C" };  // color de la barra superior
@@ -222,6 +223,36 @@
           if (btn.getAttribute("aria-expanded") === "true" && !e.target.closest(".picker-wrap")) close(picker, btn);
         });
       });
+    })();
+
+    // Tiempos relativos, siempre al día: «Actualizado hace 5 min» (data-since) y, en las reuniones de hoy,
+    // «dentro de 25 min» / «ahora»; las que ya han pasado se apagan
+    (function () {
+      var rtf = new Intl.RelativeTimeFormat("es", { numeric: "auto", style: "short" });
+      function relative(minutes) {   // minutos respecto a ahora (negativo = pasado)
+        var abs = Math.abs(minutes);
+        if (abs < 1) return "ahora mismo";
+        if (abs < 60) return rtf.format(Math.round(minutes), "minute");
+        if (abs < 60 * 24) return rtf.format(Math.round(minutes / 60), "hour");
+        return rtf.format(Math.round(minutes / 1440), "day");
+      }
+      function tick() {
+        var now = Date.now();
+        document.querySelectorAll("[data-since]").forEach(function (el) {
+          el.textContent = "Actualizado " + relative((new Date(el.dataset.since) - now) / 60000);
+        });
+        document.querySelectorAll(".meetings li[data-start]").forEach(function (li) {
+          var start = new Date(li.dataset.start), end = new Date(li.dataset.end), when = li.querySelector(".meeting-when");
+          var toStart = (start - now) / 60000;
+          li.classList.toggle("is-past", now >= end);
+          li.classList.toggle("is-now", now >= start && now < end);
+          when.textContent = now >= start && now < end ? "ahora" : toStart > 0 && toStart <= 90 ? relative(toStart) : "";
+        });
+      }
+      tick();
+      setInterval(tick, 30000);
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) tick(); });
+      document.body.addEventListener("htmx:afterSettle", tick);
     })();
 
     // Mensajes para lectores de pantalla (región role="status")

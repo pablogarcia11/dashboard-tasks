@@ -12,11 +12,41 @@
     <h1>{{ day | title_date }}</h1>
   </div>
   <div class="actions">
-    <button type="button" class="btn" hx-post="/collect/{{ day.isoformat() }}" hx-swap="none"
+    {# «Actualizado hace 5 min»: lo calcula base.html a partir de data-since y lo mantiene al día #}
+    {% if last_sync %}<span class="muted small since" data-since="{{ last_sync }}" id="last-sync"></span>{% endif %}
+    <span id="collecting" class="htmx-indicator muted small">Recogiendo…</span>
+    <button type="button" class="btn" hx-post="/collect/{{ day.isoformat() }}" hx-swap="none" id="collect-btn"
             hx-indicator="#collecting" hx-disabled-elt="this">Actualizar datos</button>
-    <span id="collecting" class="htmx-indicator muted">Recogiendo…</span>
   </div>
 </header>
+
+{# Semana del día mostrado: salta a otro día y enseña en cuáles falta apuntar el diario #}
+{% set state_text = {"notes": "con notas en " ~ journal_title(), "missing": "con commits y sin notas en " ~ journal_title(),
+                     "empty": "sin actividad", "future": "aún no ha llegado", "holiday": "festivo"} %}
+<nav class="week-strip" aria-label="Días de esta semana">
+  <ol>
+    {% for w in week %}
+    {% set label = (w.date | long_date | capitalize) ~ ": " ~ state_text[w.state] %}
+    <li>
+      {% if w.state in ("future", "holiday") %}
+      <span class="week-day is-off" title="{{ label }}"><span class="week-wd" aria-hidden="true">{{ (w.date | long_date)[:3] | capitalize }}</span>
+        <span class="week-num">{{ w.date.day }}</span><span class="sr-only">{{ label }}</span></span>
+      {% else %}
+      <a class="week-day is-{{ w.state }}{% if w.today %} is-today{% endif %}" href="/day/{{ w.date.isoformat() }}" title="{{ label }}"
+         {% if w.selected %}aria-current="date"{% endif %}>
+        <span class="week-wd" aria-hidden="true">{{ (w.date | long_date)[:3] | capitalize }}</span>
+        <span class="week-num" aria-hidden="true">{{ w.date.day }}</span>
+        <i class="week-mark" aria-hidden="true"></i><span class="sr-only">{{ label }}</span>
+        {% if w.selected %}<span class="week-indicator" aria-hidden="true"></span>{% endif %}
+      </a>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+  {% if week | selectattr("state", "equalto", "missing") | list %}
+  <p class="week-legend muted small"><i class="week-mark is-missing" aria-hidden="true"></i>Días con commits sin apuntar en {{ journal_title() }}</p>
+  {% endif %}
+</nav>
 
 {% if pending_steps %}
 <p class="notice">Te falta{{ "n" if pending_steps > 1 }} {{ pending_steps }} paso{{ "s" if pending_steps > 1 }} para dejar el dashboard listo.
@@ -52,7 +82,11 @@
       {% else %}<p class="muted">Sin tareas activas.</p>{% endif %}
       {% if data.meetings %}
       <h3>Reuniones <span class="tag">Calendar</span></h3>
-      <ul>{% for m in data.meetings %}<li>{{ m.extra.start | hhmm }}–{{ m.extra.end | hhmm }} {{ m.title }}</li>{% endfor %}</ul>
+      {# data-start/end: base.html añade «en 25 min» / «ahora» y apaga las que ya han pasado #}
+      <ul class="meetings">{% for m in data.meetings %}
+        <li data-start="{{ m.extra.start }}" data-end="{{ m.extra.end }}"><span class="time">{{ m.extra.start | hhmm }}–{{ m.extra.end | hhmm }}</span>
+          {{ m.title }} <span class="meeting-when" aria-live="off"></span></li>
+      {% endfor %}</ul>
       {% endif %}
       {% include "_keep_safe.html" %}
     </section>
@@ -73,7 +107,7 @@
     {% include "_card_commits.html" %}
   </div>
 
-  <div class="col">
+  <div class="col col-side">
     {# Textos para copiar: stand-up y notas para el diario, en pestañas dentro de la misma tarjeta #}
     <section class="card writer" id="card-writer" aria-label="Textos para copiar">
       <div class="tabs" role="tablist" aria-label="Textos para copiar">

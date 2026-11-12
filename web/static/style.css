@@ -698,6 +698,61 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   transition: background-color 350ms ease, color 350ms ease, border-color 350ms ease, fill 350ms ease !important;
 }
 
+/* ---------- Vista Día: semana, frescura de los datos y reuniones ---------- */
+
+/* Tira de la semana: salta a otro día y marca en cuáles falta apuntar el diario */
+.week-strip { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; margin: -8px 0 18px; }
+.week-strip ol { list-style: none; display: flex; flex-wrap: wrap; gap: 2px; margin: 0 0 0 -10px; padding: 0; }
+.week-strip li { margin: 0; }
+.week-day {
+  position: relative; display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 10px 8px;
+  border-radius: var(--r-md); color: var(--muted); text-decoration: none; white-space: nowrap;
+  transition: background-color var(--fast) ease, color var(--fast) ease;
+}
+.week-wd { font-size: .85em; font-weight: 500; }
+.week-num { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); }
+a.week-day:hover { background: var(--hover-bg); color: var(--text); }
+.week-day[aria-current="date"] { color: var(--red-text); }
+.week-day[aria-current="date"] .week-num, .week-day.is-today .week-num { color: var(--red-text); }
+.week-day.is-off { opacity: .45; }
+/* Marca del diario: punto discreto si hay notas; coral con aro si hay commits sin apuntar */
+.week-mark { width: 6px; height: 6px; border-radius: 50%; align-self: center; flex: none; }
+.is-notes > .week-mark { background: var(--doc-line); }
+.is-missing > .week-mark, .week-mark.is-missing {
+  background: var(--coral); box-shadow: 0 0 0 2px color-mix(in srgb, var(--coral) 30%, transparent);
+}
+.week-legend { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+/* Barra del día mostrado: se desliza entre días (mismo lenguaje que la de la barra superior) */
+.week-indicator {
+  position: absolute; left: 10px; right: 10px; bottom: 2px; height: 2px; border-radius: var(--r-pill);
+  background: var(--red-text); view-transition-name: week-indicator;
+}
+::view-transition-group(week-indicator) { animation-duration: 280ms; animation-timing-function: var(--ease-in-out); }
+
+/* «Actualizado hace 5 min», junto al botón */
+.since { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.htmx-request ~ .since, .since:has(~ .htmx-request) { display: none; }
+
+/* Reuniones de hoy: la siguiente dice cuánto falta; las pasadas se apagan */
+.meetings { list-style: none; padding: 0; }
+.meetings li { transition: opacity 200ms ease; }
+.meetings .time { margin-right: 6px; }
+.meetings .is-past { opacity: .5; }
+.meeting-when:not(:empty) {
+  margin-left: 4px; font-size: .72em; font-weight: 700; border-radius: var(--r-pill); padding: 1px 8px;
+  background: var(--meet-bg); color: var(--cat-text); white-space: nowrap; vertical-align: middle;
+}
+.is-now > .meeting-when { background: var(--red); color: var(--white); }
+
+/* Escritorio: la tarjeta de textos acompaña al desplazamiento (la columna izquierda es mucho más larga) */
+@media (min-width: 900px) {
+  .col-side { position: sticky; top: 16px; }
+}
+
+/* Los enlaces con ancla (Ajustes#notion…) no dejan el título pegado al borde */
+[id] { scroll-margin-top: 16px; }
+@media (pointer: fine) { html { overscroll-behavior: none; } }
+
 /* Menos movimiento: fuera desplazamientos y escalas; se mantienen fundidos breves */
 @media (prefers-reduced-motion: reduce) {
   .btn:active, .nav-current:active, .nav-arrow:active, .icon-btn:active, .theme-toggle:active, .icon-link:active,

@@ -32,7 +32,8 @@ from collectors.notion import NotionClient, journal_candidates, journal_preview
 from collectors.claude_connector import ConnectorError
 from collectors.slack import fetch_channel_messages, own_standups
 from core.timesheet import as_text, build_blocks, fmt, parse_tasks
-from core.views import day_data, journal_notes_context, standup_markdown, standup_context, timesheet_inputs
+from core.views import (day_data, journal_notes_context, standup_markdown, standup_context, timesheet_inputs,
+                        week_overview)
 from jobs.collect_all import run_collect
 from llm.claude_cli import ClaudeError, generate, input_hash
 
@@ -160,10 +161,17 @@ def day_view(request: Request, d: str):
         "today": today(),
         "prev": previous_workday(shown, HOLIDAYS), "next": nxt if nxt <= today() else None,
         "data": day_data(con, shown, HOLIDAYS), "sync": db.sync_states(con),
+        "week": week_overview(con, shown, today(), HOLIDAYS), "last_sync": last_sync(con),
         "standup": db.get_summary(con, shown.isoformat(), "standup"),
         "journal_notes": journal_notes_state(con, shown),
         "pending_steps": sum(not s["done"] for s in setup_steps(con)),
     })
+
+
+def last_sync(con) -> str | None:
+    """Última vez que alguna fuente se recogió bien (ISO), para mostrar «Actualizado hace…»."""
+    stamps = [s["last_ok"] for s in db.sync_states(con).values() if s.get("last_ok")]
+    return max(stamps) if stamps else None
 
 
 # Tarjetas de la vista Día que se pueden actualizar por separado: plantilla y fuente que la alimenta
