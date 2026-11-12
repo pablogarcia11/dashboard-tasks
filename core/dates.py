@@ -52,3 +52,15 @@ def workdays_between(start: date, end: date, holidays=()) -> list[date]:
             days.append(d)
         d += timedelta(days=1)
     return days
+
+
+def date_ranges(days: list[str]) -> list[tuple[date, date]]:
+    """Agrupa fechas ISO en rangos (inicio, fin) de días seguidos; un fin de semana en medio no corta
+    el rango (unas vacaciones de lunes a viernes de la semana siguiente son un solo rango)."""
+    ranges: list[list[date]] = []
+    for d in sorted({date.fromisoformat(x) for x in days}):
+        if ranges and d <= next_workday(ranges[-1][1]):
+            ranges[-1][1] = d
+        else:
+            ranges.append([d, d])
+    return [(a, b) for a, b in ranges]

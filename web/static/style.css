@@ -434,6 +434,12 @@ pre.example {
 }
 .chip-remove:hover { background: var(--hover-bg); color: var(--red-text); }
 
+/* Festivos y vacaciones: «desde – hasta» y el botón en una línea */
+.days-off-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; margin-top: 14px; }
+.days-off-form label { display: flex; flex-direction: column; }
+.days-off-form .field { width: 11em; font-variant-numeric: tabular-nums; }
+.chip.is-past { color: var(--muted); }
+
 /* Desplegables de ayuda */
 .guide { margin-top: 14px; }
 .guide > summary { cursor: pointer; color: var(--red-text); font-weight: 700; width: fit-content; }

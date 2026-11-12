@@ -23,7 +23,7 @@ from fastapi.templating import Jinja2Templates
 from collectors.git_local import GitLocalCollector
 from core import db
 from core.config import ROOT, load_config
-from core.dates import effective_today, is_workday, next_workday, previous_workday
+from core.dates import date_ranges, effective_today, is_workday, next_workday, previous_workday
 from core import identity, settings
 from core.identity import avatar_path, display_name, initials, notion_owner
 from core.settings import effective_config
@@ -42,8 +42,13 @@ MONTHS = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agost
           "octubre", "noviembre", "diciembre"]
 
 cfg = load_config()
-HOLIDAYS = cfg["schedule"].get("holidays", [])
 collect_lock = threading.Lock()
+
+
+def holidays() -> tuple[str, ...]:
+    """Días no laborables: los de la empresa (config.yaml) y los festivos y vacaciones de la persona (Ajustes)."""
+    company = [str(d) for d in cfg["schedule"].get("holidays") or []]
+    return tuple(sorted(set(company) | set(settings.days_off(db.connect()))))
 
 
 def today() -> date:
@@ -60,7 +65,7 @@ def collect(start: date, end: date, only=None) -> list[str]:
 async def lifespan(app: FastAPI):
     # Al arrancar, refresca el día laborable anterior y hoy sin bloquear el servidor
     t = today()
-    threading.Thread(target=collect, args=(previous_workday(t, HOLIDAYS), t), daemon=True).start()
+    threading.Thread(target=collect, args=(previous_workday(t, holidays()), t), daemon=True).start()
     yield
 
 
@@ -70,6 +75,7 @@ templates = Jinja2Templates(directory=ROOT / "web" / "templates")
 templates.env.filters["long_date"] = lambda d: f"{WEEKDAYS[d.weekday()]} {d.day} de {MONTHS[d.month - 1]}"
 templates.env.filters["title_date"] = lambda d: f"{WEEKDAYS[d.weekday()].capitalize()} {d.day} de {MONTHS[d.month - 1]} {d.year}"
 templates.env.filters["hhmm"] = lambda ts: ts[11:16]
+templates.env.filters["short_date"] = lambda d: f"{d.day} {MONTHS[d.month - 1][:3]}"
 # Qué hacer cuando falla cada fuente (se muestra junto al error)
 templates.env.globals["sync_hints"] = {
     "git": "Comprueba que el repo existe y que git funciona en él; si el aviso habla de «dubious ownership», revisa la configuración de git del repo.",
@@ -144,24 +150,24 @@ def avatar():
 
 @app.get("/")
 def index():
-    shown, _ = effective_today(today(), HOLIDAYS)
+    shown, _ = effective_today(today(), holidays())
     return RedirectResponse(f"/day/{shown.isoformat()}")
 
 
 @app.get("/day/{d}", response_class=HTMLResponse)
 def day_view(request: Request, d: str):
     requested = date.fromisoformat(d)
-    shown, weekend = effective_today(requested, HOLIDAYS)
+    shown, weekend = effective_today(requested, holidays())
     if shown != requested and requested != today():
         return RedirectResponse(f"/day/{shown.isoformat()}")
     con = db.connect()
-    nxt = next_workday(shown, HOLIDAYS)
+    nxt = next_workday(shown, holidays())
     return templates.TemplateResponse(request, "day.html", {
-        "day": shown, "is_today": shown == effective_today(today(), HOLIDAYS)[0], "weekend": weekend,
+        "day": shown, "is_today": shown == effective_today(today(), holidays())[0], "weekend": weekend,
         "today": today(),
-        "prev": previous_workday(shown, HOLIDAYS), "next": nxt if nxt <= today() else None,
-        "data": day_data(con, shown, HOLIDAYS), "sync": db.sync_states(con),
-        "week": week_overview(con, shown, today(), HOLIDAYS), "last_sync": last_sync(con),
+        "prev": previous_workday(shown, holidays()), "next": nxt if nxt <= today() else None,
+        "data": day_data(con, shown, holidays()), "sync": db.sync_states(con),
+        "week": week_overview(con, shown, today(), holidays()), "last_sync": last_sync(con),
         "standup": db.get_summary(con, shown.isoformat(), "standup"),
         "journal_notes": journal_notes_state(con, shown),
         "pending_steps": sum(not s["done"] for s in setup_steps(con)),
@@ -188,10 +194,10 @@ def refresh_card(request: Request, d: str, card: str):
     collect(day, day, only={source})
     con = db.connect()
     error = db.sync_states(con).get(source, {}).get("last_error")
-    is_today = day == effective_today(today(), HOLIDAYS)[0]
+    is_today = day == effective_today(today(), holidays())[0]
     return templates.TemplateResponse(request, template, {
         "day": day, "is_today": is_today,
-        "data": day_data(con, day, HOLIDAYS), "refresh_error": error, "refreshed": not error,
+        "data": day_data(con, day, holidays()), "refresh_error": error, "refreshed": not error,
         # "Para no perder" solo existe en la vista de hoy
         "keep_safe_oob": card == "commits" and is_today,
     })
@@ -222,6 +228,8 @@ def settings_view(request: Request, msg: str = ""):
                      "company": cfg["timesheet"]},
         "standup": {"channel": standup_channel(),
                     "stored": json.loads(saved.get(settings.STANDUP_EXAMPLES) or "{}")},
+        "days_off": {"company": date_ranges([str(d) for d in cfg["schedule"].get("holidays") or []]),
+                     "own": date_ranges(settings.days_off(con)), "today": today()},
         "authors": {"detected": sorted(git.detected_authors), "extra": [e for e in extra if e not in git.detected_authors]},
         "notion": {
             "has_credentials": all(notion_auth.client_credentials()),
@@ -279,7 +287,7 @@ JOURNAL_BACKFILL_DAYS = 60   # al cambiar de página diario se releen estos día
 def refresh_in_background(only: set, days: int | None = None) -> None:
     """Recoge en segundo plano el día laborable anterior y hoy (o los últimos `days` días)."""
     t = today()
-    start = t - timedelta(days=days) if days else previous_workday(t, HOLIDAYS)
+    start = t - timedelta(days=days) if days else previous_workday(t, holidays())
     threading.Thread(target=collect, args=(start, t, only), daemon=True).start()
 
 
@@ -454,6 +462,33 @@ async def timesheet_schedule(request: Request):
     return Response(headers={"HX-Redirect": "/settings?msg=timesheet-saved#timesheet"})
 
 
+@app.post("/settings/days-off")
+async def days_off(request: Request):
+    """Añade un festivo o unas vacaciones (un día o un rango) o quita un rango. Solo cuentan los días de L a V."""
+    form = await request.form()
+    con = db.connect()
+    days = set(settings.days_off(con))
+    try:
+        start = date.fromisoformat(form.get("start", ""))
+        end = date.fromisoformat(form.get("end") or form.get("start", ""))
+    except ValueError:
+        return Response("Elige una fecha.", status_code=422)
+    if end < start:
+        return Response("La fecha final no puede ser anterior a la inicial.", status_code=422)
+    if (end - start).days > 92:
+        return Response("Como mucho tres meses de una vez.", status_code=422)
+    span = {(start + timedelta(days=i)).isoformat() for i in range((end - start).days + 1)
+            if (start + timedelta(days=i)).weekday() < 5}
+    if form.get("action") == "remove":
+        days -= span
+    elif not span:
+        return Response("Ese día es fin de semana: ya es no laborable.", status_code=422)
+    else:
+        days |= span
+    settings.set_days_off(con, sorted(days))
+    return Response(headers={"HX-Redirect": "/settings#days-off"})
+
+
 @app.post("/settings/git-authors")
 async def git_authors(request: Request):
     """Añade o quita un email de autor manual (los de git config se detectan solos)."""
@@ -517,7 +552,7 @@ async def settings_repo(request: Request):
 @app.post("/collect/{d}")
 def collect_day(d: str):
     day = date.fromisoformat(d)
-    collect(previous_workday(day, HOLIDAYS), day)
+    collect(previous_workday(day, holidays()), day)
     return Response(headers={"HX-Refresh": "true"})
 
 
@@ -540,7 +575,7 @@ templates.env.filters["cat_class"] = lambda c: CATEGORY_CLASS.get(c, "dev")
 
 @app.get("/timesheet")
 def timesheet_index():
-    shown, _ = effective_today(today(), HOLIDAYS)
+    shown, _ = effective_today(today(), holidays())
     return RedirectResponse(f"/timesheet/week/{shown.isoformat()}")
 
 
@@ -562,7 +597,7 @@ def timesheet_column(request: Request, d: str, generate_now: bool = False, force
     day = date.fromisoformat(d)
     ctx = {"day": day, "ppm": PPM, "grid_start": GRID_START, "grid_height": (GRID_END - GRID_START) * PPM,
            "blocks": [], "warnings": [], "state": "ok", "error": None, "total": 0, "is_today": day == today()}
-    if day > today() or not is_workday(day, HOLIDAYS):
+    if day > today() or not is_workday(day, holidays()):
         ctx["state"] = "future" if day > today() else "holiday"
         return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
 
@@ -607,11 +642,11 @@ def timesheet_day_generate(request: Request, d: str, force: bool = False):
 @app.post("/standup/{d}", response_class=HTMLResponse)
 def standup(request: Request, d: str, force: bool = False):
     day = date.fromisoformat(d)
-    if day != effective_today(today(), HOLIDAYS)[0]:   # el stand-up es solo del día en curso
+    if day != effective_today(today(), holidays())[0]:   # el stand-up es solo del día en curso
         return Response("El stand-up solo se genera para hoy.", status_code=409)
     con = db.connect()
     error, cached = None, False
-    context = standup_context(con, day, HOLIDAYS)
+    context = standup_context(con, day, holidays())
     context["ejemplos_formato"] = standup_examples(con).get("examples") or []   # su formato, no uno fijo
     try:
         text, cached = generate(con, cfg, "standup", d, context, force=force)
@@ -620,7 +655,7 @@ def standup(request: Request, d: str, force: bool = False):
         last = db.get_summary(con, d, "standup")  # conserva el último resultado
         text = last["content_md"] if last else ""
     return templates.TemplateResponse(request, "_standup.html", {
-        "day": day, "prev": previous_workday(day, HOLIDAYS), "text": standup_markdown(text), "error": error})
+        "day": day, "prev": previous_workday(day, holidays()), "text": standup_markdown(text), "error": error})
 
 
 def journal_notes_state(con, day: date) -> dict:
@@ -646,7 +681,7 @@ def journal_notes(request: Request, d: str, force: bool = False):
             error = str(e)   # se conserva el último borrador guardado
     return templates.TemplateResponse(request, "_card_journal_notes.html", {
         "day": day, "text": state["text"], "stale": state["stale"], "has_commits": state["has_commits"],
-        "error": error, "is_today": day == effective_today(today(), HOLIDAYS)[0]})
+        "error": error, "is_today": day == effective_today(today(), holidays())[0]})
 
 
 def main():

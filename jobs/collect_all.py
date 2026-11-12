@@ -91,7 +91,7 @@ def main() -> None:
         start = date.fromisoformat(args.since)
         end = date.fromisoformat(args.until) if args.until else today
     else:
-        start, end = previous_workday(today, cfg["schedule"].get("holidays", [])), today
+        start, end = previous_workday(today, list(cfg["schedule"].get("holidays") or []) + settings.days_off(con)), today
 
     for line in run_collect(cfg, con, start, end):
         print(line)

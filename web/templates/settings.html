@@ -216,6 +216,50 @@
   </div>
 </section>
 
+{# ---------- Festivos y vacaciones ---------- #}
+<section class="card settings-card" id="days-off" aria-labelledby="days-off-title">
+  <header class="settings-card-head">
+    <div>
+      <h2 id="days-off-title">Festivos y vacaciones</h2>
+      <p class="muted small">Los días que no trabajas. No cuentan como «ayer» en el stand-up ni piden parte de horas.</p>
+    </div>
+  </header>
+  <div class="setting-row">
+    <div class="setting-label">
+      <h3>Tus días libres</h3>
+      <p class="muted small">Un día suelto o un rango. Los fines de semana ya no cuentan.</p>
+    </div>
+    <div class="setting-control">
+      {% if days_off.company or days_off.own %}
+      <ul class="chip-list">
+        {% for a, b in days_off.company %}
+        <li class="chip">{{ a | short_date }}{% if b != a %} – {{ b | short_date }}{% endif %} {{ b.year }}
+          <span class="muted small">de la empresa</span></li>
+        {% endfor %}
+        {% for a, b in days_off.own %}
+        {% set label = (a | short_date) ~ ((" – " ~ (b | short_date)) if b != a else "") ~ " " ~ b.year %}
+        <li class="chip{% if b < days_off.today %} is-past{% endif %}">{{ label }}
+          <button type="button" class="chip-remove" hx-post="/settings/days-off" hx-swap="none"
+                  hx-vals='{"action": "remove", "start": "{{ a.isoformat() }}", "end": "{{ b.isoformat() }}"}'
+                  aria-label="Quitar {{ label }}" title="Quitar">×</button></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">Aún no has apuntado ninguno.</p>
+      {% endif %}
+      <form class="days-off-form" hx-post="/settings/days-off" hx-swap="none">
+        <input type="hidden" name="action" value="add">
+        <label><span class="range-label">Desde</span>
+          <input type="date" class="field" name="start" required></label>
+        <label><span class="range-label">Hasta <span class="muted">(opcional)</span></span>
+          <input type="date" class="field" name="end"></label>
+        <button type="submit" class="btn ghost">Añadir</button>
+      </form>
+      <p class="notice error small form-error" role="alert" hidden></p>
+    </div>
+  </div>
+</section>
+
 {# ---------- Parte de horas ---------- #}
 <section class="card settings-card" id="timesheet" aria-labelledby="timesheet-settings-title">
   <header class="settings-card-head">

@@ -103,3 +103,12 @@ def test_borrar_un_ajuste(tmp_path):
     settings.set_value(con, settings.REPOS_ROOT, "X")
     settings.set_value(con, settings.REPOS_ROOT, None)
     assert settings.get_all(con) == {}
+
+
+def test_dias_libres(tmp_path):
+    con = connect(tmp_path)
+    assert settings.days_off(con) == []
+    settings.set_days_off(con, ["2026-12-25", "2026-12-08", "2026-12-25"])
+    assert settings.days_off(con) == ["2026-12-08", "2026-12-25"]
+    settings.set_days_off(con, [])
+    assert settings.days_off(con) == []

@@ -61,3 +61,11 @@ def test_to_work_date_usa_zona_del_usuario():
 
 def test_workdays_between_salta_fin_de_semana():
     assert workdays_between(date(2026, 11, 13), date(2026, 11, 16)) == [date(2026, 11, 13), date(2026, 11, 16)]
+
+
+def test_date_ranges_agrupa_dias_seguidos_saltando_fines_de_semana():
+    from core.dates import date_ranges
+    days = ["2026-12-24", "2026-12-25", "2026-12-28", "2026-12-08", "2026-12-30"]
+    assert date_ranges(days) == [(date(2026, 12, 8), date(2026, 12, 8)), (date(2026, 12, 24), date(2026, 12, 28)),
+                                 (date(2026, 12, 30), date(2026, 12, 30))]
+    assert date_ranges([]) == []

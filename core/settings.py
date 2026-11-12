@@ -23,6 +23,20 @@ TIMESHEET_KEYS = ("day_start", "day_end", "lunch_start", "lunch_end", "min_daily
 STANDUP_EXAMPLES = "standup.examples"  # JSON: sus últimos stand-ups del canal, para imitar su formato
 
 
+DAYS_OFF = "schedule.days_off"      # JSON: festivos y vacaciones de la persona (fechas ISO), además de los de config.yaml
+
+
+def days_off(con: sqlite3.Connection) -> list[str]:
+    try:
+        return sorted(set(json.loads(get_all(con).get(DAYS_OFF) or "[]")))
+    except ValueError:
+        return []
+
+
+def set_days_off(con: sqlite3.Connection, days: list[str]) -> None:
+    set_value(con, DAYS_OFF, json.dumps(sorted(set(days))) if days else None)
+
+
 def extra_authors(con: sqlite3.Connection) -> list[str]:
     try:
         return json.loads(get_all(con).get(EXTRA_AUTHORS) or "[]")
