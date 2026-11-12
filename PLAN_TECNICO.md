@@ -173,7 +173,7 @@ Todos los colectores producen `Activity` (`collectors/base.py`): `source`, `kind
   - en un diario que es base de datos, una página por día (fecha en una propiedad o en el título).
 - **Fechas** (`parse_day`): `10/11/2026`, `10-11-26`, `2026-11-10`, «10 de noviembre de 2026», abreviaturas y menciones de fecha de Notion.
 - **Proyectos** (`parse_day_blocks`): un encabezado (lo que le sigue es de ese proyecto) o un desplegable con el proyecto como título. Sin proyecto, el contenido va a «General». Las subviñetas se conservan en `body`.
-- **Pendientes** (`kind=task_plan`): lo que va bajo «Pendiente(s):», «Para mañana:», «Por hacer»…, más las casillas sin marcar. No es trabajo hecho: no entra en lo hecho, en el stand-up ni en el parte de horas, y se lleva a "Qué toca hoy" del día laborable siguiente. Las casillas marcadas son trabajo hecho.
+- **Pendientes** (`kind=task_plan`): lo que va bajo «Pendiente(s):», «Para mañana:», «Por hacer»…, una viñeta que empieza por la marca y dos puntos («Pendiente: probar el flujo») y las casillas sin marcar. No es trabajo hecho: no entra en lo hecho, en el stand-up ni en el parte de horas, y se lleva a "Qué toca hoy" del día laborable siguiente. Las casillas marcadas son trabajo hecho.
 - **Notas** (`kind=note`): el resto de elementos de lista y párrafos.
 - Las notas y pendientes de un rango **se reemplazan** en cada recogida, así que las ediciones y borrados en Notion se reflejan. El título del diario se refresca en cada recogida. Al cambiar de diario se borran los datos del anterior y se releen en segundo plano los últimos 60 días del nuevo.
 
@@ -364,12 +364,22 @@ Se calcula al arrancar y se recalcula al conectar o desconectar Notion.
 - **Tokens** (`web/static/style.css`):
   - radios `--r-sm` 4 px, `--r-md` 8 px, `--r-lg` 12 px y `--r-pill`;
   - curvas `--ease-out` y `--ease-in-out`, y duraciones `--press` y `--fast`.
-- **Movimiento:** solo `transform`, `opacity` y colores.
-  - escala al pulsar y spinner en botones con petición en curso;
-  - fundido del contenido que llega por HTMX, modal con `<dialog>` y View Transitions en el cambio de tema;
-  - barras de navegación y de pestañas que se deslizan;
-  - `prefers-reduced-motion` desactiva escalas y desplazamientos.
+- **Movimiento:** cada animación responde a una acción o señala un cambio; nada se anima al cargar la página ni de fondo. Solo se animan `transform`, `opacity`, `clip-path` y colores.
+  - **Microinteracciones:** escala al pulsar, spinner en botones con petición en curso, fundido del contenido que llega por HTMX, modal con `<dialog>`, barras de navegación, de pestañas y de la tira semanal que se deslizan, y plegables que animan su altura.
+  - **Cambio de día o de semana:** el contenido sale y entra hacia el lado al que se navega (View Transitions entre documentos con los tipos `forward` y `back`, que `base.html` añade en `pageswap` y `pagereveal` comparando las fechas de las dos URL). La barra superior y los controles de fecha tienen `view-transition-name` propio y no se mueven.
+  - **Actividad:** el filete rojo de la barra superior es el indicador global. Mientras hay peticiones de HTMX en curso (`body.is-busy`), lo recorre un destello.
+  - **Textos de Claude:** durante la espera, unas líneas marcan dónde caerá el texto. Al llegar, el texto se descubre de arriba abajo y los bloques del parte se colocan uno tras otro (clase `just-generated`, que `base.html` pone tras un `POST` de generación).
+  - **Filas nuevas:** al actualizar una tarjeta con ↻, las filas que no estaban antes se señalan con un fondo que se desvanece (clase `is-new`).
+  - **Tema:** al pulsar el interruptor, el tema nuevo se abre en círculo desde el punto pulsado. El cambio que viene del sistema o del teclado es un fundido.
+  - **Lo que no se anima:** la navegación con atajos de teclado (se salta la transición) y la carga inicial de las páginas.
+  - **`prefers-reduced-motion`:** se quitan desplazamientos, escalas, el círculo del tema y los bucles; quedan fundidos breves y los indicadores de carga, quietos.
 - **Componentes:**
+  - tira de la semana en la vista Día (`core/views.py · week_overview`): un enlace por día laborable con una marca según el diario: hay notas, hay commits sin notas (falta apuntar) o no hay actividad;
+  - «Actualizado hace…» junto al botón de actualizar (`sync_state.last_ok` más reciente) y, en las reuniones de hoy, cuánto falta para la siguiente; ambos se recalculan en el navegador cada 30 s con `Intl.RelativeTimeFormat`;
+  - «Para no perder» agrupa los commits sin subir por repo (`unpushed_by_repo`); el detalle está en la tarjeta Commits;
+  - en escritorio, la tarjeta de textos se queda fija al desplazar la página (`position: sticky`);
+  - parte de horas: línea de la hora actual en la columna de hoy, horas de la semana por categoría junto a la leyenda y, en pantallas estrechas, eje de horas fijo y desplazamiento inicial hasta hoy;
+  - atajos de teclado (`base.html`): ← → día o semana, T hoy, D y P secciones, R actualizar, C copiar el texto visible y ? para la ayuda. No actúan mientras se escribe ni con un diálogo abierto;
   - navegación por días al estilo Google Calendar (Hoy, ‹ ›, calendario mensual que no deja elegir fines de semana ni el futuro);
   - tarjetas con proyectos plegables (recordados en `localStorage`). Donde el navegador soporta `::details-content`, los plegables y las guías de ayuda se abren y se cierran animando la altura (`interpolate-size: allow-keywords`) y la opacidad. El contenido usa `display: flow-root` para que los márgenes no salten al terminar. En el resto de navegadores, y con movimiento reducido, solo hay fundido;
   - pestañas Stand-up / Notas para el diario;

@@ -76,12 +76,21 @@ Mientras falte algo, la vista Día te lo recuerda.
   - **Notas para tu diario**: borrador a partir de tus commits con el formato de tu diario. Respeta lo que ya hayas escrito ese día y añade solo lo que falta.
   - ↻ regenera el texto y el icono de copiar lo deja en el portapapeles. Te avisa si hay commits nuevos desde que se generó.
 
+- Bajo la fecha, la **semana**: pulsa un día para ir a él. Un punto verde indica que ese día tiene notas en tu diario; uno coral, que tiene commits pero aún no lo has apuntado.
+- Junto a «Actualizar datos» se ve hace cuánto se leyeron los datos, y en las reuniones de hoy, cuánto falta para la siguiente.
+
 ### Parte de horas
 
 - La semana en formato calendario, como en el hub: reuniones a su hora, tareas agrupadas y horas estimadas a partir de tus commits, en tramos de 15 minutos y con la comida respetada.
 - «Generar» por día o «Generar semana». Si los datos cambian, te avisa para regenerar.
 - Pulsa un bloque para ver la tarea completa (horario, duración, tipo y proyecto).
 - Cada día tiene su «Texto para copiar», editable. Revísalo y pásalo al hub. Avisa si un día baja de 8 h.
+
+- La columna de hoy marca la hora actual, y bajo la semana se ven las horas por categoría.
+
+### Atajos de teclado
+
+Pulsa **?** en cualquier pantalla para verlos: ← → cambian de día o de semana, **T** vuelve a hoy, **D** y **P** cambian de sección, **R** actualiza los datos y **C** copia el stand-up o las notas.
 
 ### Ajustes
 
