@@ -100,6 +100,12 @@
 </dialog>
 
 <script>
+  // Movimiento opcional (static/motion.js): si no ha cargado, todo funciona igual, sin animar
+  function motion(name, ...args) {
+    const m = window.Motion;
+    return m && m[name] ? m[name](...args) : undefined;
+  }
+
   function formatMinutes(total) {
     const h = Math.floor(total / 60), m = total % 60;
     return h ? `${h} h${m ? ` ${String(m).padStart(2, "0")} min` : ""}` : `${m} min`;
@@ -192,14 +198,19 @@
   // Guarda el día. La promesa devuelve el motivo del error ("" si se ha guardado): el texto del servidor
   // (422) o un aviso de conexión. Si falla, la columna se vuelve a pedir para que se vea lo guardado.
   // Devuelve null si no se ha enviado nada: la persona ha preferido no perder su «Texto para copiar» editado.
+  // `hint` cuenta a motion.js qué bloque cambia, para que se deslice a su sitio nuevo: { from, to, drop }
+  // o { leave } si se borra (se encoge antes de enviar el cambio y, si no se guarda, reaparece).
   const OFFLINE = "No se pudo guardar. Comprueba que el dashboard sigue en marcha y vuelve a intentarlo.";
-  function saveDay(dayEl, blocks) {
+  function saveDay(dayEl, blocks, hint) {
     if (dayEl.querySelector("textarea[data-dirty]")
         && !confirm("Has editado el «Texto para copiar» de este día y se perderá con este cambio. ¿Continuar?")) {
       return Promise.resolve(null);
     }
     const week = document.querySelector(".ts-week"), day = dayEl.id.slice(3), path = `/timesheet/day/${day}/blocks`;
     week.classList.add("is-editing");   // la columna se repinta sin el fundido de «contenido nuevo»
+    motion("expect", dayEl.id, hint);
+    const gone = hint && hint.leave;
+    const bringBack = () => { if (gone && gone.isConnected) motion("restore", gone); };
     let error = "", sent = false;
     const onDone = event => {
       if ((event.detail.requestConfig || {}).path !== path) return;
@@ -209,16 +220,19 @@
       error = (xhr && xhr.status >= 400 && xhr.status < 500 && xhr.responseText) || OFFLINE;
     };
     document.body.addEventListener("htmx:afterRequest", onDone);
-    return htmx.ajax("POST", path, {
+    return Promise.resolve(gone && motion("leave", gone)).then(() => htmx.ajax("POST", path, {
       target: "#" + dayEl.id, swap: "outerHTML",
       values: { blocks: JSON.stringify(blocks.map(({ el, ...b }) => b)) },
-    }).catch(() => { error = error || OFFLINE; }).then(() => {
+    })).catch(() => { error = error || OFFLINE; }).then(() => {
       document.body.removeEventListener("htmx:afterRequest", onDone);
-      if (!sent && !error) return null;   // htmx no llegó a enviarla (cancelada en htmx:beforeRequest)
+      if (!sent && !error) { bringBack(); return null; }   // htmx no llegó a enviarla (cancelada en htmx:beforeRequest)
       if (!error) return "";
       return htmx.ajax("GET", `/timesheet/day/${day}`, { target: "#" + dayEl.id, swap: "outerHTML" })
-        .catch(() => {}).then(() => error);
-    }).finally(() => week.classList.remove("is-editing"));
+        .catch(() => {}).then(() => { bringBack(); return error; });
+    }).finally(() => {
+      week.classList.remove("is-editing");
+      motion("expect", dayEl.id, null);
+    });
   }
 
   // Aviso de un cambio rechazado al arrastrar (el formulario tiene el suyo): visible sobre la semana, anunciado
@@ -245,7 +259,7 @@
   form.addEventListener("input", paintTask);
 
   function openTask(dayEl, task, isNew) {
-    editing = { dayEl, el: isNew ? null : task.el };
+    editing = { dayEl, el: isNew ? null : task.el, origin: task.el || null };   // origin: también el hueco que se rellena
     document.getElementById("task-dialog-title").textContent = isNew ? "Nueva tarea" : "Editar tarea";
     field.title.value = task.title;
     field.start.value = toTime(task.start);
@@ -269,11 +283,11 @@
     form.querySelectorAll(".task-actions button").forEach(b => { b.disabled = on; });
     form.querySelector("button[type=submit]").classList.toggle("htmx-request", on);
   }
-  function saveFromDialog(blocks) {
+  function saveFromDialog(blocks, hint) {
     setSaving(true);
     showTaskError("");
     showSaveError("");
-    saveDay(editing.dayEl, blocks).then(error => {
+    saveDay(editing.dayEl, blocks, hint).then(error => {
       setSaving(false);
       if (error === null) return;   // no se ha guardado a propósito: el formulario sigue abierto con lo escrito
       if (!error) return dialog.close();
@@ -303,10 +317,10 @@
     const others = dayBlocks(editing.dayEl).filter(b => b.el !== editing.el);
     const clash = others.find(b => overlaps(mine, b));
     if (clash) return showTaskError(`Se solapa con «${clash.title}» (${toTime(clash.start)}–${toTime(clash.end)}).`);
-    saveFromDialog([...others, mine]);
+    saveFromDialog([...others, mine], { from: editing.origin, to: { title: mine.title, start, end } });
   });
   document.getElementById("task-delete").addEventListener("click", () => {
-    saveFromDialog(dayBlocks(editing.dayEl).filter(b => b.el !== editing.el));
+    saveFromDialog(dayBlocks(editing.dayEl).filter(b => b.el !== editing.el), { leave: editing.el });
   });
 
   let dragEndedAt = 0;
@@ -385,7 +399,8 @@
     d.el.style.height = (d.newEnd - d.newStart) * PPM + "px";
     showSaveError("");
     saveDay(d.dayEl, [...d.others, { el: null, start: d.newStart, end: d.newEnd, title: d.el.dataset.title,
-                                     project: d.el.dataset.project, category: d.el.dataset.category }])
+                                     project: d.el.dataset.project, category: d.el.dataset.category }],
+            { from: d.el, to: { title: d.el.dataset.title, start: d.newStart, end: d.newEnd }, drop: true })
       .then(error => {
         if (error === null) {   // no se ha guardado a propósito: el bloque vuelve a su sitio
           d.el.style.transition = "";

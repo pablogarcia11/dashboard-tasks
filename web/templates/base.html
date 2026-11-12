@@ -42,6 +42,8 @@
         return !!k;
       } catch (e) { return false; }
     }
+    // Lo lee static/motion.js: quien llega con un atajo de teclado tampoco ve la entrada de la página
+    var arrivedByKeyboard = keyboardNav(false);
     window.addEventListener("pageswap", function (e) {
       if (!e.viewTransition) return;
       if (keyboardNav(false)) return e.viewTransition.skipTransition();
@@ -126,6 +128,7 @@
   {# GSAP + Flip (licencia estándar de GSAP, sin coste): solo secuencias, FLIP y contadores; ver static/motion.js #}
   <script src="/static/vendor/gsap-3.15.1.min.js" defer></script>
   <script src="/static/vendor/gsap-flip-3.15.1.min.js" defer></script>
+  <script src="/static/motion.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Saltar al contenido</a>

@@ -910,7 +910,10 @@ html:active-view-transition-type(theme)::view-transition-new(root) {
   font-variant-numeric: tabular-nums;
 }
 body.is-dragging-block { user-select: none; cursor: grabbing; }
-.ts-week.is-editing .ts-day.htmx-added { opacity: 1; }
+/* La columna que se repinta tras un cambio no hace su fundido de llegada: se mueven sus bloques (motion.js) */
+.ts-week:is(.is-editing, .is-flipping) .ts-day.htmx-added { opacity: 1; }
+.ts-block[data-gone] { pointer-events: none; }   /* el que se está borrando */
+.ts-title, .ts-meta { transform-origin: 0 0; }    /* motion.js les quita la escala de un bloque que cambia de duración */
 .ts-edit { display: flex; flex-wrap: wrap; gap: 0 14px; }
 .ts-edit .link-btn { color: var(--red-text); font-weight: 700; }
 .ts-edit .link-btn:hover { color: var(--text); }
