@@ -729,6 +729,13 @@ a.week-day:hover { background: var(--hover-bg); color: var(--text); }
 }
 ::view-transition-group(week-indicator) { animation-duration: 280ms; animation-timing-function: var(--ease-in-out); }
 
+/* Móvil: los cinco días caben en una línea */
+@media (max-width: 520px) {
+  .week-strip ol { flex-wrap: nowrap; margin-left: -6px; }
+  .week-day { gap: 4px; padding: 6px 6px 8px; }
+  .week-indicator { left: 6px; right: 6px; }
+}
+
 /* «Actualizado hace 5 min», junto al botón */
 .since { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .htmx-request ~ .since, .since:has(~ .htmx-request) { display: none; }
@@ -766,6 +773,8 @@ a.week-day:hover { background: var(--hover-bg); color: var(--text); }
 }
 .ts-now::after { animation: now-pulse 2.2s var(--ease-out) 3 both; }
 @keyframes now-pulse { from { opacity: .55; transform: scale(1); } to { opacity: 0; transform: scale(3); } }
+/* El eje de horas se queda a la vista al desplazar la semana en horizontal (pantallas estrechas) */
+.ts-axis, .ts-week > .ts-head:first-child { position: sticky; left: 0; z-index: 3; background: var(--surface); }
 .cat-total { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
 .cat-total:not(:empty) { margin-left: 2px; }
 
