@@ -30,6 +30,8 @@
   {% if sync_hints[source] %}<span class="hint">{{ sync_hints[source] }}</span>{% endif %}</p>
 {% endfor %}
 
+<p class="notice error small" id="ts-save-error" role="alert" hidden></p>
+
 <div class="ts-scroll">
   <div class="ts-week">
     <div class="ts-head"></div>
@@ -50,8 +52,6 @@
     {% endfor %}
   </div>
 </div>
-
-<p class="notice error small ts-save-error" id="ts-save-error" role="alert" hidden></p>
 
 <div class="legend" id="legend">
   {% for c, cls in [("Desarrollo de negocio", "dev"), ("Reunión", "meet"), ("Documentación", "doc"),
@@ -213,7 +213,7 @@
     }).finally(() => week.classList.remove("is-editing"));
   }
 
-  // Aviso de un cambio rechazado al arrastrar (el formulario tiene el suyo): visible bajo la semana y anunciado
+  // Aviso de un cambio rechazado al arrastrar (el formulario tiene el suyo): visible sobre la semana y anunciado
   function showSaveError(text) {
     const box = document.getElementById("ts-save-error");
     box.textContent = text;
@@ -261,6 +261,7 @@
   function saveFromDialog(blocks) {
     setSaving(true);
     showTaskError("");
+    showSaveError("");
     saveDay(editing.dayEl, blocks).then(error => {
       setSaving(false);
       if (!error) return dialog.close();
