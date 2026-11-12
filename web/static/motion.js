@@ -27,6 +27,11 @@
     function (ctx) { Motion.reduced = !!ctx.conditions.reduce; }
   );
 
+  // La página acaba de abrirse: lo que llega en este rato es su entrada, no un cambio (los totales cuentan
+  // desde cero una vez, sin salto final). Con atajo de teclado no hay entrada
+  var arriving = !Motion.quiet;
+  setTimeout(function () { arriving = false; }, 1600);
+
   var list = function (root, sel) { return Array.prototype.slice.call(root.querySelectorAll(sel)); };
   // GSAP deja estilos en línea (y pasa translate/rotate/scale a «none»): al acabar no queda ni rastro,
   // para que las clases de estado (arrastre, pulsación) sigan mandando
@@ -98,6 +103,11 @@
     if (!day || day === old) return;
     if (day.classList.contains("just-generated")) wave(day);
     else if (snap.state) flipBlocks(day, snap, hint);
+    // El total del día (al pie de la columna) viene ya escrito: si ha cambiado, rueda desde el anterior
+    var foot = day.querySelector(".ts-foot strong");
+    if (foot && day.dataset.minutes !== undefined && day.dataset.minutes !== snap.minutes) {
+      Motion.count(foot, Number(snap.minutes) || 0, Number(day.dataset.minutes), foot.textContent);
+    }
   });
   body.addEventListener("htmx:afterSettle", function (e) {
     list(document, ".ts-week.is-flipping").forEach(function (w) { w.classList.remove("is-flipping"); });
@@ -197,6 +207,35 @@
       day.style.removeProperty("--wave-delay");
     }, Math.max(total, 700) + 80);
   }
+
+  // ---- Totales (semana, día, categoría): ruedan hasta el valor nuevo en pasos de 15 min ----
+  // Mientras rueda se escriben siempre horas y minutos, para que el ancho no baile; al acabar, el texto final
+  function clock(minutes) {
+    var m = Math.round(minutes), rest = m % 60;
+    return Math.floor(m / 60) + " h " + (rest < 10 ? "0" : "") + rest + " min";
+  }
+  // from: valor anterior (undefined si es la primera vez que se escribe); text: cómo se lee el valor final
+  Motion.count = function (el, from, to, text) {
+    var running = el._count && el._count.tween.isActive() ? el._count : null, intro = false;
+    if (running) { from = running.v; running.tween.kill(); }
+    if (from === undefined && arriving && to) { from = 0; intro = true; }
+    if (Motion.reduced || from === undefined || from === to) { el.textContent = text; return true; }
+    var o = el._count = { v: from };
+    el.textContent = clock(from);
+    o.tween = gsap.to(o, {
+      v: to, duration: 0.6, ease: "power3.out", snap: { v: 15 },
+      delay: Math.max(0, Motion.countAfter - performance.now()) / 1000,
+      onUpdate: function () {
+        var now = clock(o.v);
+        if (now !== el.textContent) el.textContent = now;
+      },
+      onComplete: function () {
+        el.textContent = text;
+        if (!intro && !arriving) Motion.replay(el, "is-popped", 300);
+      },
+    });
+    return true;
+  };
 
   // El bloque que se borra se encoge antes de pedir el cambio; si el servidor no lo acepta, vuelve
   Motion.leave = function (el) {

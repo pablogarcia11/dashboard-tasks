@@ -111,19 +111,26 @@
     return h ? `${h} h${m ? ` ${String(m).padStart(2, "0")} min` : ""}` : `${m} min`;
   }
 
+  // Un total que cambia rueda hasta su valor nuevo (motion.js); la primera vez, o sin motion.js, se escribe sin más
+  function setTotal(el, minutes, text) {
+    const from = el._minutes;
+    el._minutes = minutes;
+    if (from !== minutes && !motion("count", el, from, minutes, text)) el.textContent = text;
+  }
+
   // Cada columna (_timesheet_day.html) avisa al insertarse: total de la semana y fin de "Generar semana"
   function onColumnLoaded() {
     let total = 0;
     document.querySelectorAll(".ts-day[data-minutes]").forEach(el => total += Number(el.dataset.minutes));
-    document.getElementById("week-total").textContent = total ? formatMinutes(total) : "—";
+    setTotal(document.getElementById("week-total"), total, total ? formatMinutes(total) : "—");
     // Horas de la semana por categoría, junto a la leyenda (es lo que pide el hub)
     const byCategory = {};
     document.querySelectorAll(".ts-day .ts-block[data-category]:not(.is-empty)").forEach(b => {
       byCategory[b.dataset.category] = (byCategory[b.dataset.category] || 0) + Number(b.dataset.minutes);
     });
     document.querySelectorAll(".cat-total").forEach(el => {
-      const minutes = byCategory[el.dataset.category];
-      el.textContent = minutes ? formatMinutes(minutes) : "";
+      const minutes = byCategory[el.dataset.category] || 0;
+      setTotal(el, minutes, minutes ? formatMinutes(minutes) : "");
     });
     placeNow();
     scrollToToday();

@@ -799,6 +799,10 @@ a.week-day:hover { background: var(--hover-bg); color: var(--text); }
 /* El eje de horas se queda a la vista al desplazar la semana en horizontal (pantallas estrechas) */
 .ts-axis, .ts-week > .ts-head:first-child { position: sticky; left: 0; z-index: 3; background: var(--surface); }
 .cat-total { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+/* Totales: al cambiar ruedan hasta el valor nuevo (motion.js) y, al llegar, dan un pequeño salto */
+#week-total, .ts-foot strong, .cat-total { display: inline-block; transform-origin: 0 60%; }
+.is-popped { animation: total-pop 250ms var(--ease-out); }
+@keyframes total-pop { 50% { transform: scale(1.08); } }
 .cat-total:not(:empty) { margin-left: 2px; }
 
 /* ---------- Atajos de teclado ---------- */
@@ -1105,6 +1109,7 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   body.is-busy .appbar::after { width: 100%; transform: none; animation: none; opacity: .6; }
   .writing i, .tab-panel:has(.regen.htmx-request) textarea, .weekly:has(.regen.htmx-request) textarea { animation: none; opacity: .6; }
   .ts-now::after { animation: none; opacity: 0; }
+  .is-popped { animation: none; }
   /* Arrastre: sin levantarse, sin muelle y sin negar con la cabeza; el aro rojo se queda quieto */
   .ts-day .ts-block:is(.is-dragging, .is-dropped) { scale: none; rotate: none; }
   .ts-day .ts-block.is-dragging, .ts-day .ts-block.is-settling { transition: none; }
