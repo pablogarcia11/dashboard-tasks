@@ -62,7 +62,13 @@
 
   // timesheet.html avisa de qué bloque está cambiando: { from: bloque de partida, to: {title, start, end},
   // drop: se acaba de soltar tras arrastrarlo, leave: bloque que se borra }
-  var expected = {}, pending = {};
+  var expected = {}, pending = {}, marks = {};
+  // Clases y variables que se ponen en la columna nueva: HTMX las borra al asentarla (le repone los atributos
+  // que traía del servidor), así que se vuelven a poner en ese mismo instante
+  function mark(day, fn) {
+    marks[day.id] = fn;
+    fn(day);
+  }
   Motion.expect = function (dayId, hint) {
     if (hint) expected[dayId] = hint; else delete expected[dayId];
   };
@@ -90,10 +96,14 @@
     var hint = expected[old.id], day = document.getElementById(old.id);
     delete expected[old.id];
     if (!day || day === old) return;
-    if (snap.state && !day.classList.contains("just-generated")) flipBlocks(day, snap, hint);
+    if (day.classList.contains("just-generated")) wave(day);
+    else if (snap.state) flipBlocks(day, snap, hint);
   });
-  body.addEventListener("htmx:afterSettle", function () {
+  body.addEventListener("htmx:afterSettle", function (e) {
     list(document, ".ts-week.is-flipping").forEach(function (w) { w.classList.remove("is-flipping"); });
+    var id = e.detail.target && e.detail.target.id, day = id && marks[id] && document.getElementById(id);
+    if (day) marks[id](day);
+    if (id) delete marks[id];
   });
 
   function flipBlocks(day, snap, hint) {
@@ -164,6 +174,28 @@
       gsap.fromTo(hold(gaps), { opacity: 0 },
         { opacity: 1, duration: 0.2, ease: "none", delay: delay, onComplete: function () { tidy(gaps); } });
     }
+  }
+
+  // «Generar»: los bloques caen en oleada (la animación es CSS, clase just-generated; aquí solo se reparte
+  // el tiempo). Las columnas de «Generar semana» que llegan a la vez salen con 60 ms entre una y otra
+  var waveFree = 0;
+  Motion.countAfter = 0;   // hasta cuándo esperan los totales para empezar a contar
+  function wave(day) {
+    var n = blocksOf(day).length, now = performance.now();
+    var step = n > 1 ? Math.min(35, 400 / (n - 1)) : 0, delay = Math.max(0, waveFree - now);
+    waveFree = now + delay + 60;
+    mark(day, function (el) {
+      el.style.setProperty("--wave-step", step + "ms");
+      el.style.setProperty("--wave-delay", delay + "ms");
+    });
+    var total = delay + step * (n - 1) + 380;
+    if (!Motion.reduced) Motion.countAfter = Math.max(Motion.countAfter, now + total - 160);
+    // Hecha la oleada, la clase se va: si se quedara, cualquier otra animación del bloque la relanzaría al acabar
+    setTimeout(function () {
+      day.classList.remove("just-generated");
+      day.style.removeProperty("--wave-step");
+      day.style.removeProperty("--wave-delay");
+    }, Math.max(total, 700) + 80);
   }
 
   // El bloque que se borra se encoge antes de pedir el cambio; si el servidor no lo acepta, vuelve

@@ -350,7 +350,7 @@
       // bloques editados a mano (…/blocks, …/blocks/reset) ni una generación que ha fallado.
       // Tarjeta actualizada con ↻ (o sola, cada pocos minutos): las filas que no estaban antes se señalan
       // un momento (clase is-new) y el foco, si estaba dentro, vuelve al mismo sitio.
-      var before = null, focusSpot = null;
+      var before = null, focusSpot = null, generated = {};
       var rowKey = function (li) { return li.textContent.replace(/\s+/g, " ").trim(); };
       var FOCUSABLE = "a[href], button, summary, input, textarea, select, [tabindex]";
       // Lo que se ve de una tarjeta (sin sus scripts), para saber si una lectura trae algo distinto
@@ -390,7 +390,10 @@
         var el = e.detail.target && e.detail.target.id && document.getElementById(e.detail.target.id);
         if (!el || !e.detail.xhr || e.detail.xhr.status !== 200) return;
         if (cfg.verb === "post" && /^\/(standup|journal-notes|weekly|timesheet\/day)\/[^/?]+(\?|$)/.test(path)
-            && !el.querySelector(".notice.error")) el.classList.add("just-generated");
+            && !el.querySelector(".notice.error")) {
+          el.classList.add("just-generated");
+          generated[el.id] = true;
+        }
         if (path.indexOf("/refresh/") !== 0) return;
         if (before && before.id === el.id) {
           el.querySelectorAll("li").forEach(function (li) {
@@ -405,6 +408,13 @@
           spot.focus({ preventScroll: true });
         }
         focusSpot = null;
+      });
+      // HTMX, al asentar el contenido nuevo (20 ms después de insertarlo), le devuelve las clases que traía del
+      // servidor y se lleva la recién puesta: se repone en ese mismo instante y la animación no se corta
+      body.addEventListener("htmx:afterSettle", function (e) {
+        var id = e.detail.target && e.detail.target.id, el = id && generated[id] && document.getElementById(id);
+        if (id) delete generated[id];
+        if (el) el.classList.add("just-generated");
       });
     })();
 

@@ -846,7 +846,7 @@ body.is-busy .appbar::after { opacity: 1; transition-delay: 150ms; animation: bu
 @keyframes busy-sweep { from { transform: translateX(-100%); } to { transform: translateX(264%); } }
 
 /* 3. Lo que redacta Claude tarda unos segundos: mientras, unas líneas marcan dónde caerá el texto; al
-      llegar, el texto se descubre de arriba abajo y los bloques del parte se colocan uno tras otro. */
+      llegar, el texto se descubre de arriba abajo y los bloques del parte caen en su sitio en oleada. */
 .writing { display: none; margin-top: 16px; }
 /* HTMX marca como «en curso» el indicador (hx-indicator) o, si no lo hay, el propio botón */
 .tab-panel:has(.btn.htmx-request, .htmx-indicator.htmx-request) .writing { display: grid; gap: 10px; }
@@ -858,8 +858,15 @@ body.is-busy .appbar::after { opacity: 1; transition-delay: 150ms; animation: bu
 @keyframes writing { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
 .just-generated textarea { animation: write-in 600ms var(--ease-out) both; }
 @keyframes write-in { from { clip-path: inset(0 0 100% 0); opacity: .3; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
-.ts-day.just-generated .ts-block { animation: block-in 340ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 28ms); }
-@keyframes block-in { from { clip-path: inset(0 0 100% 0); opacity: 0; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+/* Cada bloque cae desde un poco más arriba y rebota al llegar. motion.js reparte la oleada: --wave-step entre
+   bloques (35 ms, menos si son muchos: la oleada no pasa de 400 ms) y --wave-delay entre columnas que llegan
+   a la vez (60 ms); después quita la clase, y los totales empiezan a contar cuando aterrizan los últimos */
+.ts-day.just-generated .ts-block {
+  transform-origin: 50% 0;
+  animation: block-drop 380ms cubic-bezier(0.34, 1.4, 0.64, 1) both, fade 220ms ease both;
+  animation-delay: calc(var(--wave-delay, 0ms) + var(--i, 0) * var(--wave-step, 35ms));
+}
+@keyframes block-drop { from { transform: translateY(-14px) scaleY(0.92); } }
 
 /* 4. Al actualizar una tarjeta, lo que es nuevo se señala un momento con un fondo que se desvanece */
 .is-new { position: relative; isolation: isolate; }
