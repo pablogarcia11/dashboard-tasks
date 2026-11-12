@@ -512,18 +512,24 @@ async def days_off(request: Request):
         return Response("Elige una fecha.", status_code=422)
     if end < start:
         return Response("La fecha final no puede ser anterior a la inicial.", status_code=422)
-    if (end - start).days > 92:
+    action = form.get("action")
+    remove = action == "remove"
+    # El límite es para lo que se añade a mano: un rango ya guardado (varios rangos seguidos se ven como uno)
+    # se quita entero, y «Deshacer» (restore) lo recupera igual
+    if action not in ("remove", "restore") and (end - start).days > 92:
         return Response("Como mucho tres meses de una vez.", status_code=422)
     span = {(start + timedelta(days=i)).isoformat() for i in range((end - start).days + 1)
             if (start + timedelta(days=i)).weekday() < 5}
-    if form.get("action") == "remove":
+    undo = None
+    if remove:   # se ofrece deshacer: vuelve a añadir justo esos días
+        undo = {"start": start, "end": end} if days & span else None
         days -= span
     elif not span:
         return Response("Ese día es fin de semana: ya es no laborable.", status_code=422)
     else:
         days |= span
     settings.set_days_off(con, sorted(days))
-    return templates.TemplateResponse(request, "_days_off.html", {"days_off": days_off_state(con)})
+    return templates.TemplateResponse(request, "_days_off.html", {"days_off": days_off_state(con), "undo": undo})
 
 
 @app.post("/settings/git-authors")

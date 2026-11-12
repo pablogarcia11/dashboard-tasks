@@ -513,7 +513,8 @@
     const done = event.detail.requestConfig.elt.dataset.done;
     if (done) announce(done);
     if (!document.activeElement || document.activeElement === document.body) {
-      document.getElementById("days-off-start").focus({ preventScroll: true });
+      // Tras quitar un día, el foco va a «Deshacer» (Intro lo recupera); si no, al campo «Desde»
+      (document.getElementById("days-off-undo") || document.getElementById("days-off-start")).focus({ preventScroll: true });
     }
   });
 </script>

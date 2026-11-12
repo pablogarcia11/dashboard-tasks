@@ -439,6 +439,8 @@ pre.example {
 .days-off-form label { display: flex; flex-direction: column; }
 .days-off-form .field { width: 11em; font-variant-numeric: tabular-nums; }
 .chip.is-past { color: var(--muted); }
+.undo-bar { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 0; color: var(--muted); }
+.undo-bar .link-btn { color: var(--red-text); font-weight: 700; }
 
 /* Desplegables de ayuda */
 .guide { margin-top: 14px; }

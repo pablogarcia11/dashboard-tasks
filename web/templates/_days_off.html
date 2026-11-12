@@ -28,5 +28,13 @@
       <input type="date" class="field" name="end"></label>
     <button type="submit" class="btn ghost">Añadir</button>
   </form>
+  {# Quitar un día no pide confirmación: se puede deshacer hasta el siguiente cambio #}
+  {% if undo %}
+  {% set label = (undo.start | short_date) ~ ((" – " ~ (undo.end | short_date)) if undo.end != undo.start else "") ~ " " ~ undo.end.year %}
+  <p class="undo-bar small">Quitado: {{ label }}
+    <button type="button" class="link-btn" id="days-off-undo" hx-post="/settings/days-off" hx-target="#days-off-control"
+            hx-swap="outerHTML" data-done="Recuperado: {{ label }}"
+            hx-vals='{"action": "restore", "start": "{{ undo.start.isoformat() }}", "end": "{{ undo.end.isoformat() }}"}'>Deshacer</button></p>
+  {% endif %}
   <p class="notice error small form-error" role="alert" hidden></p>
 </div>

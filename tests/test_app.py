@@ -39,6 +39,25 @@ def test_dias_libres_devuelve_la_lista_actualizada(client):
     assert settings.days_off(db.connect()) == []
 
 
+def test_quitar_dia_libre_se_puede_deshacer(client):
+    client.post("/settings/days-off", data={"action": "add", "start": "2026-12-07", "end": "2026-12-08"})
+    r = client.post("/settings/days-off", data={"action": "remove", "start": "2026-12-07", "end": "2026-12-08"})
+    assert 'id="days-off-undo"' in r.text and '"action": "restore"' in r.text
+    r = client.post("/settings/days-off", data={"action": "restore", "start": "2026-12-07", "end": "2026-12-08"})
+    assert r.status_code == 200 and 'id="days-off-undo"' not in r.text
+    assert settings.days_off(db.connect()) == ["2026-12-07", "2026-12-08"]
+
+
+def test_rango_largo_se_puede_quitar_aunque_no_anadir_de_una_vez(client):
+    # Dos tramos seguidos se ven como un solo rango de más de tres meses: su × tiene que funcionar
+    client.post("/settings/days-off", data={"action": "add", "start": "2027-01-01", "end": "2027-03-01"})
+    client.post("/settings/days-off", data={"action": "add", "start": "2027-03-02", "end": "2027-05-03"})
+    r = client.post("/settings/days-off", data={"action": "add", "start": "2027-01-01", "end": "2027-05-03"})
+    assert r.status_code == 422
+    r = client.post("/settings/days-off", data={"action": "remove", "start": "2027-01-01", "end": "2027-05-03"})
+    assert r.status_code == 200 and settings.days_off(db.connect()) == []
+
+
 @pytest.mark.parametrize("form, message", [
     ({"action": "add", "start": ""}, "Elige una fecha"),
     ({"action": "add", "start": "2026-11-14"}, "fin de semana"),
