@@ -22,6 +22,12 @@
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --press: 160ms;
   --fast: 150ms;
+  --slow: 420ms;    /* momentos poco frecuentes: llegadas, celebraciones */
+  /* Con rebote, para lo que llega o se celebra (nunca en lo que se usa a cada momento) */
+  --ease-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Muelle (rigidez 170, amortiguación 18): pasa un 5 % del destino y se asienta */
+  --ease-spring: linear(0, 0.064 4%, 0.21 8%, 0.388 12%, 0.562 16%, 0.715 20%, 0.838 24%, 0.928 28%, 0.989 32%,
+    1.026 36%, 1.044 40%, 1.05 44%, 1.047 48%, 1.04 52%, 1.027 58%, 1.015 64%, 1.004 72%, 0.999 80%, 0.998 90%, 1);
 
   /* Categorías del parte de horas: mismos tonos en los dos temas (claros aquí, más oscuros en el tema oscuro) */
   --cat-text: #1D1D1D;      --cat-meta: #3F3F3F;
