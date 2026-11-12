@@ -26,6 +26,7 @@ from core.config import ROOT, load_config
 from core.dates import date_ranges, effective_today, is_workday, next_workday, previous_workday
 from core import identity, settings
 from core.identity import avatar_path, display_name, initials, notion_owner
+from core.search import KINDS as SEARCH_KINDS, highlight, search
 from core.settings import effective_config
 from collectors import notion_auth
 from collectors.notion import NotionClient, journal_candidates, journal_preview
@@ -76,6 +77,7 @@ templates = Jinja2Templates(directory=ROOT / "web" / "templates")
 templates.env.filters["long_date"] = lambda d: f"{WEEKDAYS[d.weekday()]} {d.day} de {MONTHS[d.month - 1]}"
 templates.env.filters["title_date"] = lambda d: f"{WEEKDAYS[d.weekday()].capitalize()} {d.day} de {MONTHS[d.month - 1]} {d.year}"
 templates.env.filters["hhmm"] = lambda ts: ts[11:16]
+templates.env.globals["highlight"] = highlight
 templates.env.filters["short_date"] = lambda d: f"{d.day} {MONTHS[d.month - 1][:3]}"
 # Qué hacer cuando falla cada fuente (se muestra junto al error)
 templates.env.globals["sync_hints"] = {
@@ -204,6 +206,18 @@ def refresh_card(request: Request, d: str, card: str):
         # "Para no perder" solo existe en la vista de hoy
         "keep_safe_oob": card == "commits" and is_today,
     })
+
+
+@app.get("/search", response_class=HTMLResponse)
+def search_view(request: Request, q: str = ""):
+    """Busca en el historial guardado. Con HTMX (al escribir) solo devuelve la lista de resultados."""
+    hits, total = search(db.connect(), q)
+    by_day: dict[date, list[dict]] = {}
+    for h in hits:
+        by_day.setdefault(date.fromisoformat(h["work_date"]), []).append(h)
+    ctx = {"q": q.strip(), "by_day": by_day, "total": total, "shown": len(hits), "kinds": SEARCH_KINDS}
+    template = "_search_results.html" if request.headers.get("HX-Request") else "search.html"
+    return templates.TemplateResponse(request, template, ctx)
 
 
 @app.get("/settings", response_class=HTMLResponse)

@@ -1,0 +1,30 @@
+{# Resultados del buscador, agrupados por día (más reciente primero). Cada día enlaza a su vista. #}
+{% macro marked(text) -%}
+  {%- for part, on in highlight(text, q) %}{% if on %}<mark>{{ part }}</mark>{% else %}{{ part }}{% endif %}{% endfor -%}
+{%- endmacro %}
+<section id="search-results" class="search-results" aria-live="polite">
+  {% if not q %}
+  <p class="muted">Escribe una o varias palabras: aparecen los días en los que salen todas.</p>
+  {% elif not total %}
+  <p class="muted">Nada con «{{ q }}». Prueba con menos palabras o con otra forma de decirlo.</p>
+  {% else %}
+  <p class="muted small search-count">{{ total }} resultado{{ "s" if total != 1 }}{% if shown < total %}, se muestran los {{ shown }} más recientes{% endif %}.</p>
+  {% for day, items in by_day.items() %}
+  <article class="search-day">
+    <h2><a href="/day/{{ day.isoformat() }}">{{ day | title_date }}</a></h2>
+    <ul>
+      {% for h in items %}
+      <li class="search-hit">
+        <span class="search-kind kind-{{ h.kind }}">{{ kinds[h.kind] }}</span>
+        <span class="search-text">{{ marked(h.title) }}
+          {% if h.kind == "commit" %}<span class="repo" translate="no">{{ marked(h.extra.repo or "") }}</span>
+          {% elif h.project %}<span class="repo">{{ marked(h.project) }}</span>{% endif %}
+          {% if h.body and h.kind != "commit" %}<pre class="sub">{{ marked(h.body) }}</pre>{% endif %}
+        </span>
+      </li>
+      {% endfor %}
+    </ul>
+  </article>
+  {% endfor %}
+  {% endif %}
+</section>

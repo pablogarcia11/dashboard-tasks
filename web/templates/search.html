@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% set section = "search" %}
+{% block title %}Buscar · Dashboard{% endblock %}
+{% block content %}
+<header class="search-head">
+  <h1>Buscar</h1>
+  <p class="muted">En tus commits, tus notas y pendientes de {{ journal_title() }} y tus reuniones. Sin distinguir tildes ni mayúsculas.</p>
+  {# Sin JavaScript también funciona (envía el formulario); con HTMX, los resultados se actualizan al escribir #}
+  <form class="search-form" action="/search" method="get" role="search"
+        hx-get="/search" hx-target="#search-results" hx-swap="outerHTML" hx-push-url="true"
+        hx-trigger="input changed delay:250ms from:#search-q, submit">
+    <label class="sr-only" for="search-q">Buscar en el historial</label>
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25"
+         stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input type="search" id="search-q" name="q" class="field" value="{{ q }}" placeholder="permisos de roles…"
+           autocomplete="off" spellcheck="false" autofocus>
+  </form>
+</header>
+{% include "_search_results.html" %}
+{% endblock %}

@@ -144,6 +144,11 @@
           {% if section == key %}<span class="nav-indicator" aria-hidden="true"></span>{% endif %}
         </a>
         {% endfor %}
+        <a class="icon-link search-link" href="/search" title="Buscar (/)" aria-label="Buscar en el historial"
+           {% if section == "search" %}aria-current="page"{% endif %}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+               stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        </a>
         <a class="icon-link" href="/settings" title="Ajustes" aria-label="Ajustes"
            {% if section == "settings" %}aria-current="page"{% endif %}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -170,6 +175,7 @@
         <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Día o semana anterior y siguiente</dd>
         <dt><kbd>T</kbd></dt><dd>Volver a hoy</dd>
         <dt><kbd>D</kbd> <kbd>P</kbd></dt><dd>Ir a Día o a Parte de horas</dd>
+        <dt><kbd>/</kbd></dt><dd>Buscar en el historial</dd>
         <dt><kbd>R</kbd></dt><dd>Actualizar los datos</dd>
         <dt><kbd>C</kbd></dt><dd>Copiar el texto visible (stand-up o notas)</dd>
         <dt><kbd>?</kbd></dt><dd>Abrir esta ayuda</dd>
@@ -385,6 +391,7 @@
         else if (key === "ArrowRight") go(arrows.length > 1 ? arrows[1] : null);
         else if (key === "t") go(document.querySelector(".date-nav .nav-current:not(.is-current)"));
         else if (key === "d") go(document.querySelector('.appnav .nav-link[href="/"]:not([aria-current])'));
+        else if (key === "/") go(document.querySelector('.appnav .search-link:not([aria-current])'));
         else if (key === "p") go(document.querySelector('.appnav .nav-link[href="/timesheet"]:not([aria-current])'));
         else if (key === "r") { var b = document.getElementById("collect-btn"); if (b && !b.disabled) b.click(); }
         else if (key === "c") {
