@@ -17,6 +17,7 @@
   <div class="actions">
     <button type="button" class="btn ghost" id="collect-btn" hx-post="/collect-range/{{ days[0].isoformat() }}/{{ collect_end.isoformat() }}"
             hx-swap="none" hx-indicator="#collecting" hx-disabled-elt="this">Actualizar datos de la semana</button>
+    <button type="button" class="btn ghost" id="copy-week" onclick="copyWeek(this)" disabled>Copiar semana</button>
     <button type="button" class="btn" id="generate-week" onclick="generateWeek(this)">Generar semana</button>
     <span id="collecting" class="htmx-indicator muted">Recogiendo…</span>
   </div>
@@ -92,6 +93,7 @@
     });
     placeNow();
     scrollToToday();
+    document.getElementById("copy-week").disabled = !document.querySelector(".ts-day textarea");
     if (!document.querySelector(".ts-day .htmx-request")) {
       document.getElementById("generate-week").classList.remove("htmx-request");
     }
@@ -116,6 +118,19 @@
     if (scrolledToToday || !head || scroller.scrollWidth <= scroller.clientWidth) return;
     scrolledToToday = true;
     scroller.scrollLeft = head.offsetLeft - 56;   // 56 px: deja visible el eje de horas
+  }
+
+  // Copia el parte de toda la semana: cada día con su nombre y sus tareas (lo que haya en su «Texto para copiar»)
+  function copyWeek(btn) {
+    const days = [...document.querySelectorAll(".ts-day")].filter(d => d.querySelector("textarea"));
+    const text = days.map(d => d.dataset.label + "\n" + d.querySelector("textarea").value.trim()).join("\n\n");
+    navigator.clipboard.writeText(text).then(() => {
+      days.forEach(d => delete d.querySelector("textarea").dataset.dirty);
+      btn.textContent = "Semana copiada";
+      announce(`Parte de ${days.length} día${days.length === 1 ? "" : "s"} copiado al portapapeles`);
+      clearTimeout(btn._reset);
+      btn._reset = setTimeout(() => { btn.textContent = "Copiar semana"; }, 1800);
+    });
   }
 
   function generateWeek(btn) {
