@@ -219,5 +219,47 @@ def build_blocks(ts_cfg: dict, meetings: list[dict], commits: list[dict], tasks:
     return merged, warnings
 
 
+def parse_edited(raw: str, categories: list[str], step: int = 15) -> list[Block]:
+    """Valida los bloques de un día editados a mano en la rejilla (JSON: [{start, end, title, project,
+    category}], en minutos desde medianoche). Lanza ValueError con un mensaje para la persona."""
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        raise ValueError("No se han podido leer los cambios.")
+    if not isinstance(data, list):
+        raise ValueError("No se han podido leer los cambios.")
+    blocks = []
+    for item in data:
+        try:
+            start, end = snap(float(item["start"]), step), snap(float(item["end"]), step)
+        except (KeyError, TypeError, ValueError):
+            raise ValueError("Falta el horario de una tarea.")
+        title = str(item.get("title") or "").strip()[:200]
+        if not title:
+            raise ValueError("Escribe el nombre de la tarea.")
+        if not (0 <= start < end <= 24 * 60):
+            raise ValueError(f"«{title}»: la hora de fin tiene que ser posterior a la de inicio.")
+        category = item.get("category") if item.get("category") in categories else DEFAULT_CATEGORY
+        blocks.append(Block(start, end, title, str(item.get("project") or "").strip()[:80], category,
+                            kind="meeting" if category == "Reunión" else "task"))
+    blocks.sort(key=lambda b: b.start)
+    for prev, nxt in zip(blocks, blocks[1:]):
+        if nxt.start < prev.end:
+            raise ValueError(f"«{nxt.title}» se solapa con «{prev.title}».")
+    return blocks
+
+
+def edited_json(blocks: list[Block]) -> str:
+    return json.dumps([{"start": b.start, "end": b.end, "title": b.title, "project": b.project,
+                        "category": b.category} for b in blocks], ensure_ascii=False)
+
+
+def short_day_warning(blocks: list[Block], ts_cfg: dict) -> list[str]:
+    total, minimum = sum(b.minutes for b in blocks), ts_cfg.get("min_daily_hours", 8)
+    if total < minimum * 60:
+        return [f"El día suma {total // 60} h {total % 60:02d} min, menos de {minimum} h"]
+    return []
+
+
 def as_text(blocks: list[Block]) -> str:
     return "\n".join(f"{fmt(b.start)}–{fmt(b.end)}  {b.title}  ({b.category})" for b in blocks)

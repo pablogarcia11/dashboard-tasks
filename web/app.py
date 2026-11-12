@@ -32,6 +32,7 @@ from collectors.notion import NotionClient, journal_candidates, journal_preview
 from collectors.claude_connector import ConnectorError
 from collectors.slack import fetch_channel_messages, own_standups
 from core.timesheet import as_text, build_blocks, fmt, parse_tasks
+from core.timesheet import edited_json, parse_edited, short_day_warning
 from core.views import (day_data, journal_notes_context, standup_markdown, standup_context, timesheet_inputs,
                         unnoted_days, week_overview)
 from jobs.collect_all import run_collect
@@ -592,19 +593,32 @@ def timesheet_week(request: Request, d: str):
         "grid_height": (GRID_END - GRID_START) * PPM, "sync": db.sync_states(db.connect()),
         "collect_end": min(days[-1], today()),
         "is_current_week": monday == today() - timedelta(days=today().weekday()),
+        "categories": cfg["timesheet"]["categories"], "category_class": CATEGORY_CLASS,
+        "step": cfg["timesheet"].get("block_step_minutes", 15), "grid_end": GRID_END,
     })
 
 
 def timesheet_column(request: Request, d: str, generate_now: bool = False, force: bool = False):
     day = date.fromisoformat(d)
     ctx = {"day": day, "ppm": PPM, "grid_start": GRID_START, "grid_height": (GRID_END - GRID_START) * PPM,
-           "blocks": [], "warnings": [], "state": "ok", "error": None, "total": 0, "is_today": day == today()}
+           "blocks": [], "warnings": [], "state": "ok", "error": None, "total": 0, "is_today": day == today(),
+           "edited": False}
     if day > today() or not is_workday(day, holidays()):
         ctx["state"] = "future" if day > today() else "holiday"
         return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
 
     con = db.connect()
     ts_cfg = effective_config(cfg, con)["timesheet"]   # con el horario de la persona si lo ha cambiado
+    ctx["step"] = ts_cfg.get("block_step_minutes", 15)
+    if generate_now and force:
+        db.delete_summary(con, d, TIMESHEET_EDIT)        # regenerar descarta lo editado a mano
+    edit = db.get_summary(con, d, TIMESHEET_EDIT)
+    if edit:   # la persona ha movido o cambiado bloques: mandan sobre lo calculado
+        blocks = parse_edited(edit["content_md"], ts_cfg["categories"], ctx["step"])
+        ctx.update(blocks=blocks, edited=True, total=sum(b.minutes for b in blocks), text=as_text(blocks),
+                   warnings=short_day_warning(blocks, ts_cfg))
+        return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
+
     inputs = timesheet_inputs(con, day, cfg)
     commits, cats = inputs["commits"], ts_cfg["categories"]
     text = None
@@ -629,6 +643,33 @@ def timesheet_column(request: Request, d: str, generate_now: bool = False, force
         ctx["total"] = sum(b.minutes for b in ctx["blocks"] if b.title != "Por definir")
         ctx["text"] = as_text([b for b in ctx["blocks"] if b.title != "Por definir"])
     return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
+
+
+TIMESHEET_EDIT = "timesheet_edit"   # summaries.kind de los bloques de un día editados a mano (JSON)
+
+
+@app.post("/timesheet/day/{d}/blocks", response_class=HTMLResponse)
+async def timesheet_day_edit(request: Request, d: str):
+    """Guarda los bloques de un día tal como los ha dejado la persona en la rejilla."""
+    day = date.fromisoformat(d)
+    if day > today():
+        return Response("Ese día aún no ha llegado.", status_code=422)
+    form = await request.form()
+    con = db.connect()
+    ts_cfg = effective_config(cfg, con)["timesheet"]
+    try:
+        blocks = parse_edited(form.get("blocks", ""), ts_cfg["categories"], ts_cfg.get("block_step_minutes", 15))
+    except ValueError as e:
+        return Response(str(e), status_code=422)
+    db.save_summary(con, d, TIMESHEET_EDIT, edited_json(blocks), "")
+    return timesheet_column(request, d)
+
+
+@app.post("/timesheet/day/{d}/blocks/reset", response_class=HTMLResponse)
+def timesheet_day_reset(request: Request, d: str):
+    """Descarta lo editado a mano: el día vuelve a la propuesta calculada."""
+    db.delete_summary(db.connect(), d, TIMESHEET_EDIT)
+    return timesheet_column(request, d)
 
 
 @app.get("/timesheet/day/{d}", response_class=HTMLResponse)

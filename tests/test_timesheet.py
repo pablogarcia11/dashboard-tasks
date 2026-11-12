@@ -1,6 +1,9 @@
 import json
 
-from core.timesheet import build_blocks, fmt, free_intervals, hm, parse_tasks, place_lunch
+import pytest
+
+from core.timesheet import (build_blocks, edited_json, fmt, free_intervals, hm, parse_edited, parse_tasks,
+                            place_lunch, short_day_warning)
 
 CFG = {"day_start": "08:30", "day_end": "17:30", "lunch_start": "14:00", "lunch_end": "15:00",
        "min_daily_hours": 8}
@@ -116,3 +119,30 @@ def test_parse_tasks_valida_y_completa():
         ("t3", [], "Documentación"),
         ("c-c", ["c"], "Desarrollo de negocio"),  # commit sin asignar: tarea propia
     ]
+
+
+CATS = ["Desarrollo de negocio", "Reunión", "Documentación", "Tareas administrativas", "Formación"]
+
+
+def test_parse_edited_ordena_redondea_y_valida():
+    raw = json.dumps([
+        {"start": 600, "end": 652, "title": " Informe ", "project": "AI Risk", "category": "Documentación"},
+        {"start": 510, "end": 600, "title": "Permisos", "category": "Inventada"},
+    ])
+    blocks = parse_edited(raw, CATS)
+    assert [(b.start, b.end, b.title, b.category) for b in blocks] == [
+        (510, 600, "Permisos", "Desarrollo de negocio"), (600, 645, "Informe", "Documentación")]
+    assert parse_edited(edited_json(blocks), CATS) == blocks        # ida y vuelta
+    assert short_day_warning(blocks, {"min_daily_hours": 8}) == ["El día suma 2 h 15 min, menos de 8 h"]
+    assert short_day_warning(blocks, {"min_daily_hours": 2}) == []
+
+
+@pytest.mark.parametrize("blocks, message", [
+    ([{"start": 540, "end": 600, "title": "A"}, {"start": 570, "end": 630, "title": "B"}], "se solapa"),
+    ([{"start": 600, "end": 540, "title": "A"}], "posterior"),
+    ([{"start": 540, "end": 600, "title": "  "}], "nombre"),
+    ([{"end": 600, "title": "A"}], "horario"),
+])
+def test_parse_edited_rechaza(blocks, message):
+    with pytest.raises(ValueError, match=message):
+        parse_edited(json.dumps(blocks), CATS)

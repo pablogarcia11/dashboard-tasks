@@ -864,6 +864,51 @@ html:active-view-transition-type(theme)::view-transition-new(root) {
   to { clip-path: circle(var(--theme-r, 150vmax) at var(--theme-x, 50%) var(--theme-y, 0)); }
 }
 
+/* ---------- Parte de horas editable ---------- */
+
+/* Mover y redimensionar con el ratón: la tarea se levanta, enseña su nuevo horario y, si pisa a otra, lo avisa */
+.ts-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; }
+.ts-block.is-tiny .ts-resize { height: 4px; }
+@media (hover: hover) and (pointer: fine) {
+  .ts-day .ts-block[data-title]:not(.is-empty) { cursor: grab; }
+  .ts-resize { cursor: ns-resize; }
+  .ts-resize::after {
+    content: ""; position: absolute; left: 50%; bottom: 2px; width: 18px; height: 2px; margin-left: -9px;
+    border-radius: var(--r-pill); background: currentColor; opacity: 0; transition: opacity var(--fast) ease;
+  }
+  .ts-block:not(.is-tiny):hover .ts-resize::after { opacity: .5; }
+}
+.ts-day .ts-block.is-dragging {
+  z-index: 5; overflow: visible; cursor: grabbing;
+  box-shadow: 0 0 0 2px var(--text), 0 8px 20px rgb(0 0 0 / .25);
+  transition: transform 90ms var(--ease-out), box-shadow var(--fast) ease;   /* el salto entre tramos, suavizado */
+}
+/* Mientras se arrastra, el texto no se sale del bloque (solo la etiqueta del horario) */
+.ts-block.is-dragging .ts-title { max-height: 100%; }
+.ts-block.is-dragging .ts-meta { display: none; }
+.ts-day .ts-block.is-clash { box-shadow: 0 0 0 2px var(--red-text); opacity: .7; }
+.ts-block[data-live]::after {
+  content: attr(data-live); position: absolute; right: 0; top: -22px; padding: 1px 8px; border-radius: var(--r-pill);
+  background: var(--text); color: var(--bg); font-size: 11px; font-weight: 700; line-height: 1.6; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+body.is-dragging-block { user-select: none; cursor: grabbing; }
+.ts-week.is-editing .ts-day.htmx-added { opacity: 1; }
+.ts-edit { display: flex; flex-wrap: wrap; gap: 0 14px; }
+.ts-edit .link-btn { color: var(--red-text); font-weight: 700; }
+.ts-edit .link-btn:hover { color: var(--text); }
+
+/* Formulario de una tarea */
+.task-field { display: flex; flex-direction: column; gap: 5px; margin-top: 12px; font-size: .85em; font-weight: 700; }
+.task-dialog textarea, .task-dialog .field { font: 500 1rem/1.4 var(--font); }
+.task-dialog textarea { resize: none; }
+.task-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0 12px; }
+.task-row .field { width: 9.5em; font-variant-numeric: tabular-nums; }
+.task-duration { margin: 0 0 10px; color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.task-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.task-actions .spacer { flex: 1; }
+#task-error { margin: 14px 0 0; }
+
 /* Menos movimiento: fuera desplazamientos y escalas; se mantienen fundidos breves */
 @media (prefers-reduced-motion: reduce) {
   .btn:active, .nav-current:active, .nav-arrow:active, .icon-btn:active, .theme-toggle:active, .icon-link:active,
@@ -899,5 +944,6 @@ html:active-view-transition-type(theme)::view-transition-new(root) {
   body.is-busy .appbar::after { width: 100%; transform: none; animation: none; opacity: .6; }
   .writing i, .tab-panel:has(.regen.htmx-request) textarea { animation: none; opacity: .6; }
   .ts-now::after { animation: none; opacity: 0; }
+  .ts-day .ts-block.is-dragging { transition: none; }
   .just-generated textarea, .ts-day.just-generated .ts-block { animation: fade 200ms ease both; animation-delay: 0s; }
 }

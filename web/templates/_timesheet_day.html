@@ -14,10 +14,13 @@
             class="ts-block cat-{{ b.category | cat_class }}{% if b.title == 'Por definir' %} is-empty{% endif %}{% if height < 20 %} is-tiny{% endif %}"
             style="top: {{ (b.start - grid_start) * ppm }}px; height: {{ height }}px; --i: {{ loop.index0 }}"
             data-title="{{ b.title }}" data-time="{{ span }}" data-minutes="{{ b.minutes }}"
+            data-start="{{ b.start }}" data-end="{{ b.end }}"
             data-category="{{ b.category }}" data-project="{{ b.project }}"
             aria-label="{{ b.title }}, {{ span }}, {{ b.category }}">
       <span class="ts-title" style="--lines: {{ [lines - 1, 1] | max }}">{{ b.title }}</span>
       {% if lines >= 2 %}<span class="ts-meta">{{ span }} · {{ b.category }}</span>{% endif %}
+      {# Borde inferior: se arrastra para alargar o acortar la tarea (timesheet.html) #}
+      {% if b.title != 'Por definir' %}<span class="ts-resize" aria-hidden="true"></span>{% endif %}
     </button>
     {% endfor %}
     {% if state == "pending" %}
@@ -35,10 +38,21 @@
     {% if state in ("ok", "empty") %}
       <p><strong>{{ total // 60 }} h {{ "%02d" | format(total % 60) }} min</strong></p>
       {% if state == "empty" %}<p class="muted small">Sin commits ni notas ese día: completa a mano.</p>{% endif %}
+      {% if edited %}<p class="muted small">Editado a mano.</p>{% endif %}
       {% if stale %}<p class="notice small">Los datos han cambiado desde que se generó.</p>{% endif %}
       {% for w in warnings %}<p class="notice small">{{ w }}</p>{% endfor %}
     {% endif %}
     {% if error %}<p class="notice error small">{{ error }}<span class="hint">{{ claude_hint }}</span></p>{% endif %}
+    {% if state in ("ok", "empty", "pending") %}
+    <p class="ts-edit">
+      <button type="button" class="link-btn small" data-add-block>Añadir tarea</button>
+      {% if edited %}
+      <button type="button" class="link-btn small" hx-post="/timesheet/day/{{ day.isoformat() }}/blocks/reset"
+              hx-target="#{{ id }}" hx-swap="outerHTML"
+              hx-confirm="Se perderán los cambios que has hecho a mano en este día. ¿Volver a la propuesta?">Deshacer mis cambios</button>
+      {% endif %}
+    </p>
+    {% endif %}
     {% if state == "ok" %}
       <details>
         <summary>Texto para copiar</summary>
@@ -46,7 +60,8 @@
         {{ copy_button(id ~ "-text", small=True) }}
       </details>
       {{ regen_button("/timesheet/day/" ~ day.isoformat() ~ "?force=true", "Regenerar el parte del " ~ (day | long_date),
-                      target="#" ~ id, trigger="click, generate-week from:body" if stale else "click") }}
+                      target="#" ~ id, trigger="click, generate-week from:body" if stale else "click",
+                      confirm="Se perderán los cambios que has hecho a mano en este día. ¿Regenerar?" if edited else "") }}
     {% endif %}
   </div>
   <script>setTimeout(() => window.onColumnLoaded && onColumnLoaded());</script>

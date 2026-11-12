@@ -88,6 +88,11 @@ def get_summary(con: sqlite3.Connection, work_date: str, kind: str) -> dict | No
     return dict(r) if r else None
 
 
+def delete_summary(con: sqlite3.Connection, work_date: str, kind: str) -> None:
+    con.execute("DELETE FROM summaries WHERE work_date = ? AND kind = ?", (work_date, kind))
+    con.commit()
+
+
 def save_summary(con: sqlite3.Connection, work_date: str, kind: str, content: str, input_hash: str) -> None:
     now = datetime.now().astimezone().isoformat(timespec="seconds")
     con.execute("""INSERT INTO summaries (work_date, kind, content_md, input_hash, created_at) VALUES (?, ?, ?, ?, ?)

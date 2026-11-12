@@ -59,16 +59,32 @@
 </div>
 
 <dialog class="task-dialog" id="task-dialog" aria-labelledby="task-dialog-title">
-  <div class="dialog-body">
+  <form class="dialog-body" id="task-form" autocomplete="off">
     <button type="button" class="dialog-close" aria-label="Cerrar" data-close>×</button>
-    <h2 id="task-dialog-title"></h2>
-    <dl>
-      <dt>Horario</dt><dd id="task-dialog-time"></dd>
-      <dt>Duración</dt><dd id="task-dialog-duration"></dd>
-      <dt>Tipo</dt><dd><span class="chip" id="task-dialog-chip"></span><span id="task-dialog-category"></span></dd>
-      <dt>Proyecto</dt><dd id="task-dialog-project"></dd>
-    </dl>
-  </div>
+    <h2 id="task-dialog-title">Editar tarea</h2>
+    <label class="task-field"><span>Tarea</span>
+      <textarea name="title" rows="2" maxlength="200" required spellcheck="true"></textarea></label>
+    <div class="task-row">
+      <label class="task-field"><span>Desde</span>
+        <input type="time" class="field" name="start" step="{{ step * 60 }}" required></label>
+      <label class="task-field"><span>Hasta</span>
+        <input type="time" class="field" name="end" step="{{ step * 60 }}" required></label>
+      <p class="task-duration" id="task-duration" aria-live="polite"></p>
+    </div>
+    <label class="task-field"><span>Tipo</span>
+      <select class="field" name="category">
+        {% for c in categories %}<option>{{ c }}</option>{% endfor %}
+      </select></label>
+    <label class="task-field"><span>Proyecto</span>
+      <input type="text" class="field" name="project" maxlength="80" spellcheck="false"></label>
+    <p class="notice error small" id="task-error" role="alert" hidden></p>
+    <div class="task-actions">
+      <button type="button" class="btn ghost" id="task-delete">Eliminar</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn ghost" data-close>Cancelar</button>
+      <button type="submit" class="btn">Guardar</button>
+    </div>
+  </form>
 </dialog>
 
 <script>
@@ -139,24 +155,159 @@
     if (document.querySelector(".ts-day .htmx-request")) btn.classList.add("htmx-request");
   }
 
-  // Detalle de una tarea al pulsarla (nombre completo, horario, duración, tipo)
-  const dialog = document.getElementById("task-dialog");
+  // ---- Editar el parte: pulsar una tarea abre el formulario; con el ratón, arrastrarla la mueve y
+  // arrastrar su borde inferior la alarga o acorta (en tramos de STEP min, sin solapar otras tareas).
+  // Cada cambio guarda el día entero (POST /timesheet/day/{d}/blocks) y vuelve a pintar su columna.
+  const CATEGORY_CLASS = {{ category_class | tojson }};
+  const STEP = {{ step }}, GRID_START = {{ grid_start }}, GRID_END = {{ grid_end }}, PPM = {{ ppm }};
+  const dialog = document.getElementById("task-dialog"), form = document.getElementById("task-form");
+  const field = form.elements;
+  let editing = null;   // { dayEl, el } de la tarea abierta en el formulario (el = null: tarea nueva)
+
+  const toTime = m => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const toMinutes = t => { const [h, m] = t.split(":").map(Number); return h * 60 + m; };
+
+  function dayBlocks(dayEl) {
+    return [...dayEl.querySelectorAll(".ts-block[data-title]")].filter(b => b.dataset.title !== "Por definir")
+      .map(b => ({ el: b, start: Number(b.dataset.start), end: Number(b.dataset.end), title: b.dataset.title,
+                   project: b.dataset.project, category: b.dataset.category }));
+  }
+  const overlaps = (a, b) => a.start < b.end && b.start < a.end;
+
+  function saveDay(dayEl, blocks) {
+    const week = document.querySelector(".ts-week");
+    week.classList.add("is-editing");   // la columna se repinta sin el fundido de «contenido nuevo»
+    return htmx.ajax("POST", `/timesheet/day/${dayEl.id.slice(3)}/blocks`, {
+      target: "#" + dayEl.id, swap: "outerHTML",
+      values: { blocks: JSON.stringify(blocks.map(({ el, ...b }) => b)) },
+    }).finally(() => week.classList.remove("is-editing"));
+  }
+
+  function showTaskError(text) {
+    const box = document.getElementById("task-error");
+    box.textContent = text;
+    box.hidden = !text;
+  }
+  function paintTask() {   // duración y color de la categoría, al día mientras se edita
+    const start = toMinutes(field.start.value || "0:0"), end = toMinutes(field.end.value || "0:0");
+    document.getElementById("task-duration").textContent = end > start ? formatMinutes(end - start) : "";
+    const cls = CATEGORY_CLASS[field.category.value] || "dev";
+    dialog.style.setProperty("--dialog-line", getComputedStyle(document.documentElement).getPropertyValue(`--${cls}-line`));
+  }
+  form.addEventListener("input", paintTask);
+
+  function openTask(dayEl, task, isNew) {
+    editing = { dayEl, el: isNew ? null : task.el };
+    document.getElementById("task-dialog-title").textContent = isNew ? "Nueva tarea" : "Editar tarea";
+    field.title.value = task.title;
+    field.start.value = toTime(task.start);
+    field.end.value = toTime(task.end);
+    field.category.value = task.category;
+    field.project.value = task.project || "";
+    document.getElementById("task-delete").hidden = isNew;
+    showTaskError("");
+    paintTask();
+    dialog.showModal();
+  }
+
+  form.addEventListener("submit", event => {
+    event.preventDefault();
+    const start = toMinutes(field.start.value), end = toMinutes(field.end.value);
+    if (!(end > start)) return showTaskError("La hora de fin tiene que ser posterior a la de inicio.");
+    if (start % STEP || end % STEP) return showTaskError(`Usa horas en tramos de ${STEP} minutos (por ejemplo, 09:${String(STEP).padStart(2, "0")}).`);
+    const mine = { el: null, start, end, title: field.title.value.trim(), project: field.project.value.trim(),
+                   category: field.category.value };
+    if (!mine.title) return showTaskError("Escribe el nombre de la tarea.");
+    const others = dayBlocks(editing.dayEl).filter(b => b.el !== editing.el);
+    const clash = others.find(b => overlaps(mine, b));
+    if (clash) return showTaskError(`Se solapa con «${clash.title}» (${toTime(clash.start)}–${toTime(clash.end)}).`);
+    dialog.close();
+    saveDay(editing.dayEl, [...others, mine]);
+  });
+  document.getElementById("task-delete").addEventListener("click", () => {
+    dialog.close();
+    saveDay(editing.dayEl, dayBlocks(editing.dayEl).filter(b => b.el !== editing.el));
+  });
+
+  let dragEndedAt = 0;
   document.addEventListener("click", event => {
-    const block = event.target.closest(".ts-block[data-title]");
+    if (Date.now() - dragEndedAt < 350) return;   // el clic que cierra un arrastre no abre el formulario
+    const add = event.target.closest("[data-add-block]");
+    if (add) {   // tarea nueva de una hora tras la última del día (o a primera hora)
+      const dayEl = add.closest(".ts-day"), last = Math.max(0, ...dayBlocks(dayEl).map(b => b.end));
+      const start = last && last + STEP <= GRID_END ? last : 9 * 60;
+      return openTask(dayEl, { start, end: Math.min(start + 60, GRID_END), title: "", project: "",
+                               category: field.category.options[0].value }, true);
+    }
+    const block = event.target.closest(".ts-day .ts-block[data-title]");
     if (block) {
-      const d = block.dataset, color = getComputedStyle(block).borderLeftColor;
-      document.getElementById("task-dialog-title").textContent = d.title;
-      document.getElementById("task-dialog-time").textContent = d.time;
-      document.getElementById("task-dialog-duration").textContent = formatMinutes(Number(d.minutes));
-      document.getElementById("task-dialog-category").textContent = d.category;
-      document.getElementById("task-dialog-project").textContent = d.project || "—";
-      document.getElementById("task-dialog-chip").style.background = color;
-      dialog.style.setProperty("--dialog-line", color);
-      dialog.showModal();
+      const d = block.dataset, empty = d.title === "Por definir";   // un hueco «Por definir» se rellena como tarea nueva
+      return openTask(block.closest(".ts-day"), { el: block, start: Number(d.start), end: Number(d.end),
+                      title: empty ? "" : d.title, project: d.project, category: d.category }, empty);
+    }
+    // Cerrar con la ×, Cancelar, o pulsando fuera (el propio <dialog> es el fondo)
+    if (event.target === dialog || event.target.closest("#task-dialog [data-close]")) dialog.close();
+  });
+
+  // Arrastre con ratón o lápiz (en pantallas táctiles se edita con el formulario, para no pelear con el scroll)
+  let drag = null;
+  document.addEventListener("pointerdown", event => {
+    if (event.button !== 0 || event.pointerType === "touch") return;
+    const el = event.target.closest(".ts-day .ts-block[data-title]");
+    if (!el || el.dataset.title === "Por definir") return;
+    const start = Number(el.dataset.start), end = Number(el.dataset.end);
+    drag = { el, dayEl: el.closest(".ts-day"), resize: !!event.target.closest(".ts-resize"), y: event.clientY,
+             id: event.pointerId, start, end, newStart: start, newEnd: end, moved: false, clash: false };
+  });
+  document.addEventListener("pointermove", event => {
+    if (!drag || event.pointerId !== drag.id) return;
+    const dy = event.clientY - drag.y;
+    if (!drag.moved) {
+      if (Math.abs(dy) < 4) return;   // hasta 4 px es un clic
+      drag.moved = true;
+      drag.others = dayBlocks(drag.dayEl).filter(b => b.el !== drag.el);
+      drag.el.setPointerCapture(drag.id);
+      drag.el.classList.add("is-dragging");
+      document.body.classList.add("is-dragging-block");
+    }
+    const delta = Math.round(dy / PPM / STEP) * STEP, length = drag.end - drag.start;
+    if (drag.resize) {
+      drag.newEnd = Math.min(GRID_END, Math.max(drag.start + STEP, drag.end + delta));
+      drag.el.style.height = (drag.newEnd - drag.start) * PPM + "px";
+    } else {
+      drag.newStart = Math.min(GRID_END - length, Math.max(GRID_START, drag.start + delta));
+      drag.newEnd = drag.newStart + length;
+      drag.el.style.transform = `translateY(${(drag.newStart - drag.start) * PPM}px)`;
+    }
+    drag.clash = drag.others.some(b => overlaps({ start: drag.newStart, end: drag.newEnd }, b));
+    drag.el.classList.toggle("is-clash", drag.clash);
+    drag.el.dataset.live = `${toTime(drag.newStart)}–${toTime(drag.newEnd)}`;
+  });
+  function endDrag(commit) {
+    const d = drag;
+    drag = null;
+    if (!d || !d.moved) return;
+    dragEndedAt = Date.now();
+    d.el.classList.remove("is-dragging", "is-clash");
+    document.body.classList.remove("is-dragging-block");
+    delete d.el.dataset.live;
+    const changed = d.newStart !== d.start || d.newEnd !== d.end;
+    if (!commit || d.clash || !changed) {   // vuelve a su sitio
+      d.el.style.transform = "";
+      d.el.style.height = (d.end - d.start) * PPM + "px";
+      if (commit && d.clash) announce("No cabe ahí: se solapa con otra tarea.");
       return;
     }
-    // Cerrar con la ×, o pulsando fuera (el propio <dialog> es el fondo)
-    if (event.target === dialog || event.target.closest("[data-close]")) dialog.close();
-  });
+    // Se queda donde se soltó mientras llega la columna repintada
+    d.el.style.transition = "none";
+    d.el.style.transform = "";
+    d.el.style.top = (d.newStart - GRID_START) * PPM + "px";
+    d.el.style.height = (d.newEnd - d.newStart) * PPM + "px";
+    saveDay(d.dayEl, [...d.others, { el: null, start: d.newStart, end: d.newEnd, title: d.el.dataset.title,
+                                     project: d.el.dataset.project, category: d.el.dataset.category }]);
+  }
+  document.addEventListener("pointerup", () => endDrag(true));
+  document.addEventListener("pointercancel", () => endDrag(false));
+  document.addEventListener("keydown", event => { if (event.key === "Escape" && drag && drag.moved) endDrag(false); });
 </script>
 {% endblock %}

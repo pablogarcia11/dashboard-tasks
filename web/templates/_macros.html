@@ -20,9 +20,10 @@
 {%- endmacro %}
 
 {# Botón con icono de reinicio (una flecha en círculo) en la esquina de una tarjeta: vuelve a generar con Claude #}
-{% macro regen_button(url, label, target="closest section", trigger="click") -%}
+{% macro regen_button(url, label, target="closest section", trigger="click", confirm="") -%}
 <button type="button" class="icon-btn regen" hx-post="{{ url }}" hx-target="{{ target }}" hx-swap="outerHTML"
         hx-trigger="{{ trigger }}" hx-disabled-elt="this" data-busy="{{ label }}…"
+        {% if confirm %}hx-confirm="{{ confirm }}"{% endif %}
         aria-label="{{ label }}" title="{{ label }}">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
        stroke-linejoin="round" aria-hidden="true">
