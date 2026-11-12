@@ -696,7 +696,7 @@ async def timesheet_day_edit(request: Request, d: str):
     con = db.connect()
     ts_cfg = effective_config(cfg, con)["timesheet"]
     try:
-        blocks = parse_edited(form.get("blocks", ""), ts_cfg["categories"], ts_cfg.get("block_step_minutes", 15))
+        blocks = parse_edited(form.get("blocks", ""), ts_cfg["categories"])
     except ValueError as e:
         return Response(str(e), status_code=422)
     db.save_summary(con, d, TIMESHEET_EDIT, edited_json(blocks), "")

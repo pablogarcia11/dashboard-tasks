@@ -124,9 +124,9 @@ def test_parse_tasks_valida_y_completa():
 CATS = ["Desarrollo de negocio", "Reunión", "Documentación", "Tareas administrativas", "Formación"]
 
 
-def test_parse_edited_ordena_redondea_y_valida():
+def test_parse_edited_ordena_y_valida():
     raw = json.dumps([
-        {"start": 600, "end": 652, "title": " Informe ", "project": "AI Risk", "category": "Documentación"},
+        {"start": 600, "end": 645, "title": " Informe ", "project": "AI Risk", "category": "Documentación"},
         {"start": 510, "end": 600, "title": "Permisos", "category": "Inventada"},
     ])
     blocks = parse_edited(raw, CATS)
@@ -137,8 +137,30 @@ def test_parse_edited_ordena_redondea_y_valida():
     assert short_day_warning(blocks, {"min_daily_hours": 2}) == []
 
 
+def test_parse_edited_respeta_las_reuniones_tal_como_vienen():
+    """Cada cambio reenvía el día entero: las reuniones del calendario (solapadas, de 5 min, a las 10:25)
+    y las tareas que acaban donde empiezan tienen que poder guardarse sin cambios."""
+    raw = json.dumps([
+        {"start": 540, "end": 600, "title": "Daily", "category": "Reunión"},
+        {"start": 570, "end": 630, "title": "Cliente", "category": "Reunión"},       # se solapa con Daily
+        {"start": 630, "end": 635, "title": "Llamada", "category": "Reunión"},       # 5 min
+        {"start": 635, "end": 685, "title": "Informe", "category": "Documentación"},  # hasta la reunión
+        {"start": 685, "end": 710, "title": "Revisión", "category": "Reunión"},      # 11:25–11:50
+    ])
+    blocks = parse_edited(raw, CATS)
+    assert [(b.start, b.end, b.kind) for b in blocks] == [
+        (540, 600, "meeting"), (570, 630, "meeting"), (630, 635, "meeting"), (635, 685, "task"), (685, 710, "meeting")]
+    assert parse_edited(edited_json(blocks), CATS) == blocks
+
+
 @pytest.mark.parametrize("blocks, message", [
     ([{"start": 540, "end": 600, "title": "A"}, {"start": 570, "end": 630, "title": "B"}], "se solapa"),
+    # una tarea no puede pisar una reunión (solo las reuniones se solapan entre ellas)
+    ([{"start": 540, "end": 600, "title": "Daily", "category": "Reunión"},
+      {"start": 585, "end": 630, "title": "B"}], "«B» se solapa con «Daily»"),
+    ([{"start": 540, "end": 600, "title": "A"},
+      {"start": 585, "end": 630, "title": "Daily", "category": "Reunión"}], "«Daily» se solapa con «A»"),
+    ([{"start": 600, "end": 600, "title": "A"}], "posterior"),
     ([{"start": 600, "end": 540, "title": "A"}], "posterior"),
     ([{"start": 540, "end": 600, "title": "  "}], "nombre"),
     ([{"end": 600, "title": "A"}], "horario"),

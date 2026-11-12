@@ -65,6 +65,14 @@ def blocks_form(*blocks):
     return {"blocks": json.dumps([dict(zip(("start", "end", "title", "category"), b)) for b in blocks])}
 
 
+def test_guardar_dia_con_reuniones_solapadas_y_cortas(client):
+    r = client.post(f"/timesheet/day/{DAY}/blocks", data=blocks_form(
+        (600, 660, "Daily", "Reunión"), (630, 690, "Cliente", "Reunión"), (720, 725, "Llamada", "Reunión"),
+        (725, 780, "Informe", "Documentación")))
+    assert r.status_code == 200
+    assert 'data-start="720" data-end="725"' in r.text and 'data-start="630" data-end="690"' in r.text
+
+
 def test_regenerar_conserva_lo_editado_si_claude_falla(client, monkeypatch):
     monkeypatch.setattr(web, "timesheet_inputs", lambda con, day, cfg: {
         "context": {"fecha": DAY}, "commits": [], "meetings": [], "has_work": True})

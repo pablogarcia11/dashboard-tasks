@@ -166,7 +166,8 @@
   }
 
   // ---- Editar el parte: pulsar una tarea abre el formulario; con el ratón, arrastrarla la mueve y
-  // arrastrar su borde inferior la alarga o acorta (en tramos de STEP min, sin solapar otras tareas).
+  // arrastrar su borde inferior la alarga o acorta (en tramos de STEP min, sin solapar otras tareas;
+  // las reuniones sí pueden solaparse entre ellas, como en el calendario).
   // Cada cambio guarda el día entero (POST /timesheet/day/{d}/blocks) y vuelve a pintar su columna.
   const CATEGORY_CLASS = {{ category_class | tojson }};
   const STEP = {{ step }}, GRID_START = {{ grid_start }}, GRID_END = {{ grid_end }}, PPM = {{ ppm }};
@@ -182,7 +183,8 @@
       .map(b => ({ el: b, start: Number(b.dataset.start), end: Number(b.dataset.end), title: b.dataset.title,
                    project: b.dataset.project, category: b.dataset.category }));
   }
-  const overlaps = (a, b) => a.start < b.end && b.start < a.end;
+  const MEETING = "Reunión";
+  const overlaps = (a, b) => a.start < b.end && b.start < a.end && !(a.category === MEETING && b.category === MEETING);
 
   function saveDay(dayEl, blocks) {
     const week = document.querySelector(".ts-week");
@@ -212,9 +214,13 @@
     field.title.value = task.title;
     field.start.value = toTime(task.start);
     field.end.value = toTime(task.end);
+    // Una reunión a las 10:25 no encaja en los tramos: su campo admite minutos sueltos para no darla por inválida
+    field.start.step = task.start % STEP ? 60 : STEP * 60;
+    field.end.step = task.end % STEP ? 60 : STEP * 60;
     field.category.value = task.category;
     field.project.value = task.project || "";
     document.getElementById("task-delete").hidden = isNew;
+    editing.from = isNew ? null : { start: task.start, end: task.end };   // para saber qué horas se cambian
     showTaskError("");
     paintTask();
     dialog.showModal();
@@ -224,7 +230,11 @@
     event.preventDefault();
     const start = toMinutes(field.start.value), end = toMinutes(field.end.value);
     if (!(end > start)) return showTaskError("La hora de fin tiene que ser posterior a la de inicio.");
-    if (start % STEP || end % STEP) return showTaskError(`Usa horas en tramos de ${STEP} minutos (por ejemplo, 09:${String(STEP).padStart(2, "0")}).`);
+    // Las horas que se cambian van en tramos de STEP min; las que ya tenía (una reunión a las 10:25) se respetan
+    const from = editing.from || {};
+    if ((start !== from.start && start % STEP) || (end !== from.end && end % STEP)) {
+      return showTaskError(`Usa horas en tramos de ${STEP} minutos (por ejemplo, 09:${String(STEP).padStart(2, "0")}).`);
+    }
     const mine = { el: null, start, end, title: field.title.value.trim(), project: field.project.value.trim(),
                    category: field.category.value };
     if (!mine.title) return showTaskError("Escribe el nombre de la tarea.");

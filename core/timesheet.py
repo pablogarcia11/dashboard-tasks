@@ -219,9 +219,15 @@ def build_blocks(ts_cfg: dict, meetings: list[dict], commits: list[dict], tasks:
     return merged, warnings
 
 
-def parse_edited(raw: str, categories: list[str], step: int = 15) -> list[Block]:
+def parse_edited(raw: str, categories: list[str]) -> list[Block]:
     """Valida los bloques de un día editados a mano en la rejilla (JSON: [{start, end, title, project,
-    category}], en minutos desde medianoche). Lanza ValueError con un mensaje para la persona."""
+    category}], en minutos desde medianoche). Lanza ValueError con un mensaje para la persona.
+
+    Cada cambio reenvía el día entero, así que aquí llegan también los bloques que la persona no ha
+    tocado, tal como se calcularon: reuniones a su hora real (10:00–10:25, o de 5 min) y tareas que
+    terminan donde empieza una reunión. Por eso no se redondea nada (los tramos de `block_step_minutes`
+    los impone la rejilla al mover o escribir una hora) y dos reuniones pueden solaparse, como en el
+    calendario. Lo demás no puede solaparse."""
     try:
         data = json.loads(raw)
     except ValueError:
@@ -231,8 +237,8 @@ def parse_edited(raw: str, categories: list[str], step: int = 15) -> list[Block]
     blocks = []
     for item in data:
         try:
-            start, end = snap(float(item["start"]), step), snap(float(item["end"]), step)
-        except (KeyError, TypeError, ValueError):
+            start, end = round(float(item["start"])), round(float(item["end"]))
+        except (KeyError, TypeError, ValueError, OverflowError):
             raise ValueError("Falta el horario de una tarea.")
         title = str(item.get("title") or "").strip()[:200]
         if not title:
@@ -242,10 +248,11 @@ def parse_edited(raw: str, categories: list[str], step: int = 15) -> list[Block]
         category = item.get("category") if item.get("category") in categories else DEFAULT_CATEGORY
         blocks.append(Block(start, end, title, str(item.get("project") or "").strip()[:80], category,
                             kind="meeting" if category == "Reunión" else "task"))
-    blocks.sort(key=lambda b: b.start)
-    for prev, nxt in zip(blocks, blocks[1:]):
-        if nxt.start < prev.end:
-            raise ValueError(f"«{nxt.title}» se solapa con «{prev.title}».")
+    blocks.sort(key=lambda b: (b.start, b.end))
+    for i, b in enumerate(blocks):
+        for prev in blocks[:i]:
+            if b.start < prev.end and not (b.kind == prev.kind == "meeting"):
+                raise ValueError(f"«{b.title}» se solapa con «{prev.title}».")
     return blocks
 
 
