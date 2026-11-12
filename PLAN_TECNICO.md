@@ -291,7 +291,7 @@ claude -p <prompts/<kind>.md> --output-format json --model <claude.model> --tool
 
 ### 11.3 Notas para el diario (`prompts/journal_notes.md`, `journal_notes_context`)
 
-Borrador del día a partir de los commits de los repos visibles, con lo ya escrito en el diario ese día para completarlo sin repetirlo. Sale en markdown con el formato del diario (`# Martes 10/11/2026`, `### Proyecto`, viñetas en pasado y poco técnicas), que Notion convierte al pegar. Antes de generar se relee Notion para ese día.
+Borrador del día a partir de los commits de los repos visibles, con lo ya escrito en el diario ese día para completarlo sin repetirlo. Sale en markdown con el formato del diario (`# Martes 10/11/2026`, `### Proyecto`, viñetas poco técnicas). Cada viñeta describe un cambio en la aplicación: o cómo funciona ahora, de forma impersonal («Al salir del detalle de una incidencia se vuelve a la página anterior»), o en primera persona con un verbo de hacer cambios («Corregí…», «Añadí…»), nunca como una acción de la persona usando la aplicación, que Notion convierte al pegar. Antes de generar se relee Notion para ese día.
 
 ### 11.4 Parte de horas (`core/timesheet.py`, `prompts/timesheet.md`)
 

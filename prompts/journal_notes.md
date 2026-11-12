@@ -12,7 +12,10 @@ Pasos (en este orden):
 4. Si no falta nada, devuelve lo escrito tal cual.
 
 Cómo redactar lo que añadas (imita el estilo de lo ya escrito si lo hay):
-- En español, en primera persona y en pasado: «Corregí…», «Añadí…», «Revisé…», «Quité…».
+- En español. Cada viñeta describe **un cambio hecho en la aplicación**, no algo que la persona hiciera usándola. Hay dos formas válidas:
+  - Describir cómo funciona ahora la aplicación, de forma impersonal y en presente: «Al salir del detalle de una incidencia se vuelve a la página anterior.», «Las pestañas de administración se ajustan en pantallas estrechas.»
+  - Primera persona y pasado, con un verbo de hacer cambios: «Corregí…», «Añadí…», «Quité…», «Hice que…», «Revisé…».
+- Nunca conviertas el mensaje del commit en una acción de la persona dentro de la aplicación (volver, navegar, entrar, pulsar, abrir…). Mal: «Volví a la página anterior al salir del detalle de una incidencia.» (parece que la persona navegó). Bien: «Al salir del detalle de una incidencia se vuelve a la página anterior.»
 - Poco técnico: el efecto para quien usa la aplicación, no el código. Nada de ficheros, funciones ni hashes.
 - Junta los commits relacionados en una viñeta; si un tema tiene varios cambios, viñeta con el tema y dos puntos y subviñetas debajo.
 - Frases completas y concretas, terminadas en punto. Usa solo la información de los commits; no inventes ni digas que algo se pasó a producción salvo que un commit lo indique.
