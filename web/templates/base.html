@@ -340,7 +340,8 @@
         if (!pending) body.classList.remove("is-busy");
       });
 
-      // Texto o parte recién generado por Claude: se descubre (clase just-generated).
+      // Texto o parte recién generado por Claude: se descubre (clase just-generated). No cuenta guardar
+      // bloques editados a mano (…/blocks, …/blocks/reset) ni una generación que ha fallado.
       // Tarjeta actualizada con ↻: las filas que no estaban antes se señalan un momento (clase is-new).
       var before = null;
       var rowKey = function (li) { return li.textContent.replace(/\s+/g, " ").trim(); };
@@ -357,7 +358,8 @@
         // Tras leer una tarjeta, «Actualizado hace…» vuelve a contar desde ahora
         var since = document.getElementById("last-sync");
         if (since && path.indexOf("/refresh/") === 0) since.dataset.since = new Date().toISOString();
-        if (cfg.verb === "post" && /^\/(standup|journal-notes|weekly|timesheet\/day)\//.test(path)) el.classList.add("just-generated");
+        if (cfg.verb === "post" && /^\/(standup|journal-notes|weekly|timesheet\/day)\/[^/?]+(\?|$)/.test(path)
+            && !el.querySelector(".notice.error")) el.classList.add("just-generated");
         if (path.indexOf("/refresh/") === 0 && before && before.id === el.id) {
           el.querySelectorAll("li").forEach(function (li) {
             if (before.rows.indexOf(rowKey(li)) === -1) li.classList.add("is-new");
