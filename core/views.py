@@ -2,7 +2,7 @@
 import re
 import sqlite3
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 
 from core import db
 from core.dates import previous_workday
@@ -59,6 +59,7 @@ def day_data(con: sqlite3.Connection, day: date, holidays=()) -> dict:
     acts = visible_git(db.activities(con, d, d), settings)
     prev = previous_workday(day, holidays).isoformat()
     git_now = visible_git(db.activities(con, prev, d, ["git"]), settings)
+    unpushed = [a for a in git_now if a["kind"] == "commit" and not a["extra"].get("pushed", True)]
     return {
         "notes": group_by_project([a for a in acts if a["kind"] == "note"]),
         "commits": group_by_project([a for a in acts if a["kind"] == "commit"]),
@@ -69,8 +70,42 @@ def day_data(con: sqlite3.Connection, day: date, holidays=()) -> dict:
         "tasks": [a for a in db.activities(con, "0000-00-00", "9999-99-99", ["notion"]) if a["kind"] == "task"],
         "wip": visible_git([a for a in db.activities(con, "0000-00-00", "9999-99-99", ["git"])
                             if a["kind"] == "wip"], settings),
-        "unpushed": [a for a in git_now if a["kind"] == "commit" and not a["extra"].get("pushed", True)],
+        "unpushed": unpushed,
+        "unpushed_repos": unpushed_by_repo(unpushed),
     }
+
+
+def unpushed_by_repo(unpushed: list[dict]) -> list[dict]:
+    """Commits sin subir agrupados por repo (el detalle de cada commit ya está en la tarjeta Commits)."""
+    groups: dict[str, list[dict]] = defaultdict(list)
+    for c in unpushed:
+        groups[c["extra"].get("repo", "")].append(c)
+    return [{"repo": repo, "count": len(cs), "titles": [c["title"] for c in cs]} for repo, cs in groups.items()]
+
+
+def week_overview(con: sqlite3.Connection, day: date, today: date, holidays=()) -> list[dict]:
+    """Los cinco días de la semana de `day` y cómo está el diario en cada uno:
+    'notes' (hay notas), 'missing' (hay commits pero no notas: falta apuntar), 'empty' (sin actividad),
+    'future' o 'holiday'."""
+    monday = day - timedelta(days=day.weekday())
+    days = [monday + timedelta(days=i) for i in range(5)]
+    settings = db.repo_settings(con)
+    acts = visible_git(db.activities(con, days[0].isoformat(), days[-1].isoformat()), settings)
+    noted = {a["work_date"] for a in acts if a["kind"] == "note"}
+    committed = {a["work_date"] for a in acts if a["kind"] == "commit"}
+    out = []
+    for d in days:
+        iso = d.isoformat()
+        if d > today:
+            state = "future"
+        elif iso in holidays:
+            state = "holiday"
+        elif iso in noted:
+            state = "notes"
+        else:
+            state = "missing" if iso in committed else "empty"
+        out.append({"date": d, "state": state, "selected": d == day, "today": d == today})
+    return out
 
 
 def timesheet_inputs(con: sqlite3.Connection, day: date, cfg: dict) -> dict:

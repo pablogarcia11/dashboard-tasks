@@ -1,12 +1,16 @@
 {# "Para no perder" (dentro de "Qué toca hoy"): cambios sin commitear y commits sin subir.
    El contenedor siempre existe para que, al actualizar la tarjeta de Commits, la respuesta lo
-   sustituya también (hx-swap-oob) sin recargar la página. #}
+   sustituya también (hx-swap-oob) sin recargar la página.
+   Los commits sin subir van agrupados por repo: el detalle de cada uno ya está en la tarjeta Commits. #}
 <div id="keep-safe"{% if oob %} hx-swap-oob="true"{% endif %}>
-  {% if data.wip or data.unpushed %}
+  {% if data.wip or data.unpushed_repos %}
   <h3>Para no perder <span class="tag">git</span></h3>
   <ul>
-    {% for w in data.wip %}<li>{{ w.extra.repo }} <span class="muted">({{ w.extra.branch }})</span>: {{ w.title }}</li>{% endfor %}
-    {% for c in data.unpushed %}<li><span class="badge">solo local</span> {{ c.extra.repo }}: {{ c.title }}</li>{% endfor %}
+    {% for w in data.wip %}<li><span translate="no">{{ w.extra.repo }}</span> <span class="muted">({{ w.extra.branch }})</span>: {{ w.title | lower }}</li>{% endfor %}
+    {% for r in data.unpushed_repos %}
+    <li title="{{ r.titles | join('\n') }}"><span translate="no">{{ r.repo }}</span>:
+      {{ r.count }} commit{{ "s" if r.count != 1 }} sin subir <span class="badge">solo local</span></li>
+    {% endfor %}
   </ul>
   {% endif %}
 </div>

@@ -2,7 +2,7 @@ from datetime import date
 
 from collectors.base import Activity
 from core import db
-from core.views import standup_markdown, visible_git, written_journal_md
+from core.views import standup_markdown, unpushed_by_repo, visible_git, week_overview, written_journal_md
 
 
 def test_written_journal_md_conserva_proyectos_subvinetas_y_pendientes(tmp_path):
@@ -56,3 +56,24 @@ def test_standup_markdown_traduce_restos_del_formato_de_slack():
     slack = "Hola :wave:\n*Ayer*\n• AI Risk\n    ◦ Subir **ya negrita** y 2*3*4\n◦ Sin sangría\n*Hoy*"
     assert standup_markdown(slack) == ("Hola :wave:\n**Ayer**\n- AI Risk\n    - Subir **ya negrita** y 2*3*4\n"
                                        "    - Sin sangría\n\n**Hoy**")
+
+
+def test_unpushed_by_repo_agrupa_y_cuenta():
+    commits = [{"title": "a", "extra": {"repo": "api"}}, {"title": "b", "extra": {"repo": "web"}},
+               {"title": "c", "extra": {"repo": "api"}}]
+    assert unpushed_by_repo(commits) == [{"repo": "api", "count": 2, "titles": ["a", "c"]},
+                                         {"repo": "web", "count": 1, "titles": ["b"]}]
+
+
+def test_week_overview_estado_del_diario_por_dia(tmp_path):
+    con = db.connect(tmp_path / "t.db")
+    def item(source, kind, day, ext):
+        return Activity(source=source, kind=kind, external_id=ext, ts=f"{day}T10:00:00+01:00", work_date=day,
+                        title="x", extra={"repo": "api"} if source == "git" else {})
+    db.upsert_activities(con, [item("notion", "note", "2026-11-09", "n1"), item("git", "commit", "2026-11-09", "c1"),
+                               item("git", "commit", "2026-11-10", "c2")])
+    week = week_overview(con, date(2026, 11, 11), today=date(2026, 11, 12), holidays=("2026-11-11",))
+    assert [(w["date"].day, w["state"]) for w in week] == [
+        (9, "notes"), (10, "missing"), (11, "holiday"), (12, "empty"), (13, "future")]
+    assert [w["selected"] for w in week] == [False, False, True, False, False]
+    assert week[3]["today"]
