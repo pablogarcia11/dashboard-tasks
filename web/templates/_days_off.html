@@ -1,0 +1,32 @@
+{# Festivos y vacaciones (Ajustes): lista y formulario. Se sustituye entero al añadir o quitar un día
+   (POST /settings/days-off), así el formulario queda vacío y la página no se mueve. #}
+<div class="setting-control" id="days-off-control">
+  {% if days_off.company or days_off.own %}
+  <ul class="chip-list">
+    {% for a, b in days_off.company %}
+    <li class="chip">{{ a | short_date }}{% if b != a %} – {{ b | short_date }}{% endif %} {{ b.year }}
+      <span class="muted small">de la empresa</span></li>
+    {% endfor %}
+    {% for a, b in days_off.own %}
+    {% set label = (a | short_date) ~ ((" – " ~ (b | short_date)) if b != a else "") ~ " " ~ b.year %}
+    <li class="chip{% if b < days_off.today %} is-past{% endif %}">{{ label }}
+      <button type="button" class="chip-remove" hx-post="/settings/days-off" hx-target="#days-off-control"
+              hx-swap="outerHTML" data-done="Quitado: {{ label }}"
+              hx-vals='{"action": "remove", "start": "{{ a.isoformat() }}", "end": "{{ b.isoformat() }}"}'
+              aria-label="Quitar {{ label }}" title="Quitar">×</button></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">Aún no has apuntado ninguno.</p>
+  {% endif %}
+  <form class="days-off-form" hx-post="/settings/days-off" hx-target="#days-off-control" hx-swap="outerHTML"
+        data-done="Día libre añadido">
+    <input type="hidden" name="action" value="add">
+    <label><span class="range-label">Desde</span>
+      <input type="date" class="field" name="start" id="days-off-start" required></label>
+    <label><span class="range-label">Hasta <span class="muted">(opcional)</span></span>
+      <input type="date" class="field" name="end"></label>
+    <button type="submit" class="btn ghost">Añadir</button>
+  </form>
+  <p class="notice error small form-error" role="alert" hidden></p>
+</div>

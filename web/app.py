@@ -13,6 +13,7 @@ import threading
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -247,8 +248,7 @@ def settings_view(request: Request, msg: str = ""):
                      "company": cfg["timesheet"]},
         "standup": {"channel": standup_channel(),
                     "stored": json.loads(saved.get(settings.STANDUP_EXAMPLES) or "{}")},
-        "days_off": {"company": date_ranges([str(d) for d in cfg["schedule"].get("holidays") or []]),
-                     "own": date_ranges(settings.days_off(con)), "today": today()},
+        "days_off": days_off_state(con),
         "github": {"has_token": bool(github_token()), "state": db.sync_states(con).get("github", {}),
                    "count": sum(1 for a in db.activities(con, "0000-00-00", "9999-99-99", ["github"]))},
         "authors": {"detected": sorted(git.detected_authors), "extra": [e for e in extra if e not in git.detected_authors]},
@@ -274,6 +274,16 @@ SETTINGS_MESSAGES = {
     "standup-error": ("error", "No se pudo leer el canal de Slack. Comprueba que el conector de Slack está "
                                "conectado en claude.ai y que el nombre del canal es correcto."),
 }
+
+
+def hx_redirect(request: Request, url: str) -> Response:
+    """Lleva a `url` tras una acción de HTMX. Si solo cambia el #ancla respecto a la página abierta,
+    el navegador se limitaría a desplazarse sin recargar (y no se verían los cambios): se pide recargar."""
+    headers = {"HX-Redirect": url}
+    current, target = urlsplit(request.headers.get("HX-Current-URL", "")), urlsplit(url)
+    if (current.path, current.query) == (target.path, target.query):
+        headers["HX-Refresh"] = "true"
+    return Response(headers=headers)
 
 
 def setup_steps(con) -> list[dict]:
@@ -342,7 +352,7 @@ def notion_callback(state: str = "", code: str = "", error: str = ""):
 
 
 @app.post("/settings/notion/disconnect")
-def notion_disconnect():
+def notion_disconnect(request: Request):
     con = db.connect()
     notion_auth.TOKEN_FILE.unlink(missing_ok=True)
     settings.set_value(con, settings.JOURNAL_PAGE_ID, None)
@@ -350,7 +360,7 @@ def notion_disconnect():
     db.replace_kind(con, "notion", "task", [])   # las tareas eran de esa cuenta
     identity.reset()
     load_identity()
-    return Response(headers={"HX-Redirect": "/settings?msg=notion-disconnected#notion"})
+    return hx_redirect(request, "/settings?msg=notion-disconnected#notion")
 
 
 @app.get("/settings/notion/pages", response_class=HTMLResponse)
@@ -376,7 +386,7 @@ async def notion_set_journal(request: Request):
         # Las notas guardadas eran de la página anterior: fuera, y se releen de la nueva
         db.delete_kinds(con, "notion", ["note", "task_plan"])
         refresh_in_background({"notion"}, days=JOURNAL_BACKFILL_DAYS)
-    return Response(headers={"HX-Redirect": "/settings#notion"})
+    return hx_redirect(request, "/settings#notion")
 
 
 @app.get("/settings/notion/journal-status", response_class=HTMLResponse)
@@ -426,7 +436,7 @@ def pick_directory(initial: str | None) -> str | None:
     return p.stdout.strip() or None   # vacío si se cancela
 
 
-def add_repos_folder(path: str) -> Response:
+def add_repos_folder(request: Request, path: str) -> Response:
     folder = Path(path.strip().strip('"')).expanduser()
     if not path.strip() or not folder.is_dir():
         return Response(f"No existe la carpeta «{path}».", status_code=422)
@@ -437,7 +447,7 @@ def add_repos_folder(path: str) -> Response:
         return Response("Esa carpeta ya está en la lista.", status_code=422)
     settings.set_repos_roots(con, roots + [folder])
     refresh_in_background({"git"})
-    return Response(headers={"HX-Redirect": "/settings?msg=repos-added#repos"})
+    return hx_redirect(request, "/settings?msg=repos-added#repos")
 
 
 @app.post("/settings/standup/channel")
@@ -447,15 +457,15 @@ async def standup_set_channel(request: Request):
     if not channel:
         return Response("Escribe el nombre del canal.", status_code=422)
     settings.set_value(db.connect(), settings.STANDUP_CHANNEL, channel)
-    return Response(headers={"HX-Redirect": "/settings#standup"})
+    return hx_redirect(request, "/settings#standup")
 
 
 @app.post("/settings/standup/learn")
-def standup_learn():
+def standup_learn(request: Request):
     """Vuelve a leer sus últimos stand-ups del canal (conector de Slack)."""
     stored = standup_examples(db.connect(), force=True)
     msg = "standup-error" if stored.get("error") else "standup-learned"
-    return Response(headers={"HX-Redirect": f"/settings?msg={msg}#standup"})
+    return hx_redirect(request, f"/settings?msg={msg}#standup")
 
 
 @app.post("/settings/timesheet")
@@ -466,7 +476,7 @@ async def timesheet_schedule(request: Request):
     if form.get("action") == "reset":
         for k in settings.TIMESHEET_KEYS:
             settings.set_value(con, f"timesheet.{k}", None)
-        return Response(headers={"HX-Redirect": "/settings?msg=timesheet-reset#timesheet"})
+        return hx_redirect(request, "/settings?msg=timesheet-reset#timesheet")
     values = {k: (form.get(k) or "").strip() for k in settings.TIMESHEET_KEYS}
     times = [values[k] for k in ("day_start", "lunch_start", "lunch_end", "day_end")]
     if not all(re.fullmatch(r"\d{2}:\d{2}", t) for t in times) or times != sorted(times) or len(set(times)) < 4:
@@ -480,12 +490,18 @@ async def timesheet_schedule(request: Request):
     values["min_daily_hours"] = str(hours)
     for k, v in values.items():
         settings.set_value(con, f"timesheet.{k}", v)
-    return Response(headers={"HX-Redirect": "/settings?msg=timesheet-saved#timesheet"})
+    return hx_redirect(request, "/settings?msg=timesheet-saved#timesheet")
 
 
-@app.post("/settings/days-off")
+def days_off_state(con) -> dict:
+    return {"company": date_ranges([str(d) for d in cfg["schedule"].get("holidays") or []]),
+            "own": date_ranges(settings.days_off(con)), "today": today()}
+
+
+@app.post("/settings/days-off", response_class=HTMLResponse)
 async def days_off(request: Request):
-    """Añade un festivo o unas vacaciones (un día o un rango) o quita un rango. Solo cuentan los días de L a V."""
+    """Añade un festivo o unas vacaciones (un día o un rango) o quita un rango. Solo cuentan los días de L a V.
+    Devuelve la lista actualizada (_days_off.html) para sustituirla en Ajustes sin recargar."""
     form = await request.form()
     con = db.connect()
     days = set(settings.days_off(con))
@@ -507,7 +523,7 @@ async def days_off(request: Request):
     else:
         days |= span
     settings.set_days_off(con, sorted(days))
-    return Response(headers={"HX-Redirect": "/settings#days-off"})
+    return templates.TemplateResponse(request, "_days_off.html", {"days_off": days_off_state(con)})
 
 
 @app.post("/settings/git-authors")
@@ -525,11 +541,11 @@ async def git_authors(request: Request):
         emails.append(email)
     settings.set_extra_authors(con, emails)
     refresh_in_background({"git"})
-    return Response(headers={"HX-Redirect": "/settings#repos"})
+    return hx_redirect(request, "/settings#repos")
 
 
 @app.post("/settings/repos-folders/pick")
-def repos_folder_pick():
+def repos_folder_pick(request: Request):
     if not picker_lock.acquire(blocking=False):
         return Response("Ya hay un selector de carpetas abierto.", status_code=409)
     try:
@@ -540,13 +556,13 @@ def repos_folder_pick():
         picker_lock.release()
     if not path:
         return Response(status_code=204)   # cancelado
-    return add_repos_folder(path)
+    return add_repos_folder(request, path)
 
 
 @app.post("/settings/repos-folders")
 async def repos_folder_manual(request: Request):
     form = await request.form()
-    return add_repos_folder(form.get("path", ""))
+    return add_repos_folder(request, form.get("path", ""))
 
 
 @app.post("/settings/repos-folders/remove")
@@ -559,7 +575,7 @@ async def repos_folder_remove(request: Request):
     after = {r.name for r in GitLocalCollector(effective_config(cfg, con)).repos()}
     with collect_lock:
         db.delete_git_repos(con, sorted(before - after))
-    return Response(headers={"HX-Redirect": "/settings?msg=repos-removed#repos"})
+    return hx_redirect(request, "/settings?msg=repos-removed#repos")
 
 
 @app.post("/settings/repo")
