@@ -280,6 +280,7 @@ claude -p <prompts/<kind>.md> --output-format json --model <claude.model> --tool
 
 ### 11.2 Stand-up (`prompts/standup.md`, `core/views.py · standup_context`)
 
+- **Solo para hoy:** en los días anteriores la vista Día no muestra la pestaña Stand-up (la tarjeta enseña solo las notas para el diario) y `POST /standup/{d}` responde 409.
 - **Contexto**:
   - `ayer`: notas del diario del día laborable anterior (fuente principal), commits y reuniones.
   - `hoy`: pendientes de ayer, tareas activas, reuniones de hoy y trabajo sin terminar.

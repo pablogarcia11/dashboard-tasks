@@ -71,7 +71,7 @@ Mientras falte algo, la vista Día te lo recuerda.
 - Qué toca hoy (pendientes de ayer, tareas activas de Notion, reuniones, cambios sin commitear y commits sin subir), tus notas del diario y tus commits, agrupados por proyecto. Los proyectos se pueden plegar y el dashboard lo recuerda.
 - Para moverte: **Hoy**, las flechas ‹ › (saltan fines de semana) o el **calendario** entre ellas para ir a cualquier día. En fin de semana o festivo se muestra el último día laborable.
 - El icono ↻ de cada tarjeta vuelve a leer solo esa parte; «Actualizar datos» lo lee todo.
-- La tarjeta de la derecha tiene dos pestañas:
+- La tarjeta de la derecha tiene dos pestañas (en los días anteriores, solo las notas: el stand-up es del día en curso):
   - **Stand-up**: imita el formato de tus últimos stand-ups del canal que elijas en Ajustes.
   - **Notas para tu diario**: borrador a partir de tus commits con el formato de tu diario. Respeta lo que ya hayas escrito ese día y añade solo lo que falta.
   - ↻ regenera el texto y el icono de copiar lo deja en el portapapeles. Te avisa si hay commits nuevos desde que se generó.

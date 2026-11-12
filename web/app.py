@@ -607,6 +607,8 @@ def timesheet_day_generate(request: Request, d: str, force: bool = False):
 @app.post("/standup/{d}", response_class=HTMLResponse)
 def standup(request: Request, d: str, force: bool = False):
     day = date.fromisoformat(d)
+    if day != effective_today(today(), HOLIDAYS)[0]:   # el stand-up es solo del día en curso
+        return Response("El stand-up solo se genera para hoy.", status_code=409)
     con = db.connect()
     error, cached = None, False
     context = standup_context(con, day, HOLIDAYS)
@@ -644,7 +646,7 @@ def journal_notes(request: Request, d: str, force: bool = False):
             error = str(e)   # se conserva el último borrador guardado
     return templates.TemplateResponse(request, "_card_journal_notes.html", {
         "day": day, "text": state["text"], "stale": state["stale"], "has_commits": state["has_commits"],
-        "error": error})
+        "error": error, "is_today": day == effective_today(today(), HOLIDAYS)[0]})
 
 
 def main():

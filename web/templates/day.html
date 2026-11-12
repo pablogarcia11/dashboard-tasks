@@ -108,7 +108,15 @@
   </div>
 
   <div class="col col-side">
-    {# Textos para copiar: stand-up y notas para el diario, en pestañas dentro de la misma tarjeta #}
+    {# Textos para copiar. Hoy: stand-up y notas para el diario, en pestañas. Días anteriores: solo las
+       notas (el stand-up es del día en curso; las notas sirven para apuntar un día que se quedó sin ellas) #}
+    {% if not is_today %}
+    <section class="card writer" id="card-writer" aria-labelledby="writer-title">
+      <h2 id="writer-title">Notas para {{ journal_title() }}</h2>
+      {% with text=journal_notes.text, stale=journal_notes.stale, has_commits=journal_notes.has_commits,
+              error=None, hidden=False %}{% include "_card_journal_notes.html" %}{% endwith %}
+    </section>
+    {% else %}
     <section class="card writer" id="card-writer" aria-label="Textos para copiar">
       <div class="tabs" role="tablist" aria-label="Textos para copiar">
         <button type="button" role="tab" id="tab-standup" aria-controls="panel-standup" aria-selected="true">Stand-up</button>
@@ -120,8 +128,10 @@
       {% with text=journal_notes.text, stale=journal_notes.stale, has_commits=journal_notes.has_commits,
               error=None, hidden=True %}{% include "_card_journal_notes.html" %}{% endwith %}
     </section>
+    {% endif %}
   </div>
 </div>
+{% if is_today %}
 <script>
   // Pestañas de la tarjeta de textos (patrón WAI-ARIA: clic o flechas ← →; se recuerda la última)
   (function () {
@@ -158,4 +168,5 @@
     new ResizeObserver(() => moveBar(tabs.find(t => t.getAttribute("aria-selected") === "true"))).observe(bar.parentElement);
   })();
 </script>
+{% endif %}
 {% endblock %}

@@ -601,6 +601,7 @@ textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-text) 22%, t
 }
 .tab-indicator.is-ready { transition: transform 280ms var(--ease-in-out); }
 .tab-panel > .regen { position: absolute; top: 14px; right: 16px; }
+.writer > h2 { margin: 2px 44px 12px 0; }   /* días anteriores: título en vez de pestañas */
 .tab-panel:not([hidden]) { animation: fade 150ms ease; }
 .tab-panel > .muted:first-of-type { margin-top: 0; }
 /* Parte de horas: el icono de regenerar va al pie de cada día, con borde para que se vea como botón */
