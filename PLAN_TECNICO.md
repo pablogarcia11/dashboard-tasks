@@ -371,7 +371,7 @@ Se calcula al arrancar y se recalcula al conectar o desconectar Notion.
   - `prefers-reduced-motion` desactiva escalas y desplazamientos.
 - **Componentes:**
   - navegación por días al estilo Google Calendar (Hoy, ‹ ›, calendario mensual que no deja elegir fines de semana ni el futuro);
-  - tarjetas con proyectos plegables (recordados en `localStorage`);
+  - tarjetas con proyectos plegables (recordados en `localStorage`). Donde el navegador soporta `::details-content`, los plegables y las guías de ayuda se abren y se cierran animando la altura (`interpolate-size: allow-keywords`) y la opacidad. El contenido usa `display: flow-root` para que los márgenes no salten al terminar. En el resto de navegadores, y con movimiento reducido, solo hay fundido;
   - pestañas Stand-up / Notas para el diario;
   - botón de copiar solo con icono dentro del texto;
   - estados de tarea con el color de Notion;

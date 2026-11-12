@@ -536,6 +536,21 @@ table.settings { margin: 0; }
 .chevron { transition: transform 200ms var(--ease-out); }
 .project-group[open] > :not(summary) { animation: reveal 200ms var(--ease-out); }
 @keyframes reveal { from { opacity: 0; transform: translateY(-4px); } }
+/* Donde se puede animar la altura del contenido de <details>, se abre y se cierra con altura y fundido
+   (antes se cerraba de golpe y lo de debajo saltaba). El resto de navegadores mantiene el fundido de arriba. */
+@supports selector(::details-content) {
+  .project-group, .guide { interpolate-size: allow-keywords; }
+  .project-group::details-content, .guide::details-content {
+    /* flow-root: los márgenes de la lista quedan dentro (si no, se salen y saltan al acabar de cerrar) */
+    display: flow-root; block-size: 0; overflow-y: clip; opacity: 0;
+    transition: block-size 220ms var(--ease-out), opacity 180ms ease, content-visibility 220ms allow-discrete;
+  }
+  .project-group[open]::details-content, .guide[open]::details-content { block-size: auto; opacity: 1; }
+  .project-group[open] > :not(summary), .guide[open] > :not(summary) { animation: none; }
+  /* Con flow-root el margen inferior de la lista ya no se solapa con el superior del grupo siguiente:
+     se quita este para que la separación quede como antes */
+  .project-group + .project-group { margin-top: 0; }
+}
 @keyframes fade { from { opacity: 0; } }
 .appnav a { transition: color var(--fast) ease; }
 /* Rueda de Ajustes: al pasar el ratón avanza un diente (45°, tiene 8: queda igual) con un leve rebote
@@ -702,4 +717,8 @@ html.theme-fading, html.theme-fading *, html.theme-fading *::before, html.theme-
   .btn.htmx-request::before { animation-duration: 1.5s; }
   .btn.is-copied .i-check { animation: none; }
   ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 150ms; }
+  /* Plegables: sin cambio de altura animado, solo un fundido corto */
+  .project-group::details-content, .guide::details-content {
+    transition: opacity 150ms ease, content-visibility 150ms allow-discrete;
+  }
 }
