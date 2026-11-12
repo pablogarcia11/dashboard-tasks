@@ -342,30 +342,63 @@
 
       // Texto o parte recién generado por Claude: se descubre (clase just-generated). No cuenta guardar
       // bloques editados a mano (…/blocks, …/blocks/reset) ni una generación que ha fallado.
-      // Tarjeta actualizada con ↻: las filas que no estaban antes se señalan un momento (clase is-new).
-      var before = null;
+      // Tarjeta actualizada con ↻ (o sola, cada pocos minutos): las filas que no estaban antes se señalan
+      // un momento (clase is-new) y el foco, si estaba dentro, vuelve al mismo sitio.
+      var before = null, focusSpot = null;
       var rowKey = function (li) { return li.textContent.replace(/\s+/g, " ").trim(); };
-      body.addEventListener("htmx:beforeRequest", function (e) {
-        var path = (e.detail.requestConfig || {}).path || "", card = e.target.closest && e.target.closest("section.card");
-        if (path.indexOf("/refresh/") === 0 && card) {
-          before = { id: card.id, rows: Array.prototype.map.call(card.querySelectorAll("li"), rowKey) };
+      var FOCUSABLE = "a[href], button, summary, input, textarea, select, [tabindex]";
+      // Lo que se ve de una tarjeta (sin sus scripts), para saber si una lectura trae algo distinto
+      var visibleText = function (el) {
+        if (!el) return "";
+        var copy = el.cloneNode(true);
+        copy.querySelectorAll("script").forEach(function (sc) { sc.remove(); });
+        return copy.textContent.replace(/\s+/g, " ").trim();
+      };
+      body.addEventListener("htmx:beforeSwap", function (e) {
+        var cfg = e.detail.requestConfig || {}, path = cfg.path || "", target = e.detail.target;
+        if (path.indexOf("/refresh/") !== 0 || e.detail.xhr.status !== 200 || !target || !target.id) return;
+        var doc = new DOMParser().parseFromString(e.detail.serverResponse, "text/html");
+        var fresh = doc.getElementById(target.id);
+        // «Actualizado hace…» vuelve a contar desde ahora solo si la fuente se ha leído bien
+        var since = document.getElementById("last-sync");
+        if (since && fresh && !fresh.querySelector(".notice.error")) since.dataset.since = new Date().toISOString();
+        // Recogida automática sin cambios: no se toca nada (ni fundido, ni foco, ni aviso al lector de pantalla).
+        // Si solo cambia «Para no perder» (cambios sin commitear), se sustituye solo eso
+        if ((cfg.headers || {})["X-Auto-Refresh"] && fresh && visibleText(fresh) === visibleText(target)) {
+          e.detail.shouldSwap = false;
+          var keep = document.getElementById("keep-safe"), freshKeep = doc.getElementById("keep-safe");
+          if (keep && freshKeep && visibleText(keep) !== visibleText(freshKeep)) {
+            freshKeep.removeAttribute("hx-swap-oob");
+            keep.replaceWith(document.importNode(freshKeep, true));
+          }
+          return;
         }
+        before = { id: target.id, rows: Array.prototype.map.call(target.querySelectorAll("li"), rowKey) };
+        var active = document.activeElement;
+        focusSpot = active && active !== body && target.contains(active)
+          ? { id: target.id, index: Array.prototype.indexOf.call(target.querySelectorAll(FOCUSABLE), active) }
+          : null;
       });
       body.addEventListener("htmx:afterSwap", function (e) {
         var cfg = e.detail.requestConfig || {}, path = cfg.path || "";
         var el = e.detail.target && e.detail.target.id && document.getElementById(e.detail.target.id);
         if (!el || !e.detail.xhr || e.detail.xhr.status !== 200) return;
-        // Tras leer una tarjeta, «Actualizado hace…» vuelve a contar desde ahora
-        var since = document.getElementById("last-sync");
-        if (since && path.indexOf("/refresh/") === 0) since.dataset.since = new Date().toISOString();
         if (cfg.verb === "post" && /^\/(standup|journal-notes|weekly|timesheet\/day)\/[^/?]+(\?|$)/.test(path)
             && !el.querySelector(".notice.error")) el.classList.add("just-generated");
-        if (path.indexOf("/refresh/") === 0 && before && before.id === el.id) {
+        if (path.indexOf("/refresh/") !== 0) return;
+        if (before && before.id === el.id) {
           el.querySelectorAll("li").forEach(function (li) {
             if (before.rows.indexOf(rowKey(li)) === -1) li.classList.add("is-new");
           });
-          before = null;
         }
+        before = null;
+        // El foco estaba en la tarjeta sustituida: vuelve al elemento equivalente (o a la propia tarjeta)
+        if (focusSpot && focusSpot.id === el.id && (!document.activeElement || document.activeElement === body)) {
+          var spot = el.querySelectorAll(FOCUSABLE)[focusSpot.index];
+          if (!spot) { el.tabIndex = -1; spot = el; }
+          spot.focus({ preventScroll: true });
+        }
+        focusSpot = null;
       });
     })();
 

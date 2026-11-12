@@ -171,15 +171,24 @@
 <script>
   // Recogida automática: cada {{ auto_refresh_minutes }} min, con la pestaña a la vista, se vuelven a leer el diario
   // y los commits de hoy (rápidos y sin Claude; Calendar se queda para «Actualizar datos»).
+  // Si la lectura no trae nada nuevo, la tarjeta no se toca (X-Auto-Refresh, ver base.html).
+  // Pasada la medianoche, la página vuelve a «hoy» en lugar de seguir releyendo el día anterior.
   (function () {
     const every = {{ auto_refresh_minutes }} * 60000, day = {{ day.isoformat() | tojson }};
+    const openedOn = new Date().toDateString();
     let last = Date.now();
     async function refresh() {
-      if (document.hidden || document.body.classList.contains("is-busy") || Date.now() - last < every) return;
+      if (document.hidden || document.body.classList.contains("is-busy")) return;
+      if (new Date().toDateString() !== openedOn) {
+        if (!document.querySelector("textarea[data-dirty], dialog[open]")) location.href = "/";
+        return;
+      }
+      if (Date.now() - last < every) return;
       last = Date.now();
       for (const card of ["notes", "commits"]) {
         if (!document.getElementById("card-" + card)) continue;
-        await htmx.ajax("POST", `/refresh/${day}/${card}`, { target: "#card-" + card, swap: "outerHTML" });
+        await htmx.ajax("POST", `/refresh/${day}/${card}`,
+                        { target: "#card-" + card, swap: "outerHTML", headers: { "X-Auto-Refresh": "1" } });
       }
     }
     setInterval(refresh, 30000);
