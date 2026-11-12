@@ -348,6 +348,9 @@
         var cfg = e.detail.requestConfig || {}, path = cfg.path || "";
         var el = e.detail.target && e.detail.target.id && document.getElementById(e.detail.target.id);
         if (!el || !e.detail.xhr || e.detail.xhr.status !== 200) return;
+        // Tras leer una tarjeta, «Actualizado hace…» vuelve a contar desde ahora
+        var since = document.getElementById("last-sync");
+        if (since && path.indexOf("/refresh/") === 0) since.dataset.since = new Date().toISOString();
         if (cfg.verb === "post" && /^\/(standup|journal-notes|timesheet\/day)\//.test(path)) el.classList.add("just-generated");
         if (path.indexOf("/refresh/") === 0 && before && before.id === el.id) {
           el.querySelectorAll("li").forEach(function (li) {

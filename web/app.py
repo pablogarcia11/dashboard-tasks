@@ -33,7 +33,7 @@ from collectors.claude_connector import ConnectorError
 from collectors.slack import fetch_channel_messages, own_standups
 from core.timesheet import as_text, build_blocks, fmt, parse_tasks
 from core.views import (day_data, journal_notes_context, standup_markdown, standup_context, timesheet_inputs,
-                        week_overview)
+                        unnoted_days, week_overview)
 from jobs.collect_all import run_collect
 from llm.claude_cli import ClaudeError, generate, input_hash
 
@@ -168,6 +168,8 @@ def day_view(request: Request, d: str):
         "prev": previous_workday(shown, holidays()), "next": nxt if nxt <= today() else None,
         "data": day_data(con, shown, holidays()), "sync": db.sync_states(con),
         "week": week_overview(con, shown, today(), holidays()), "last_sync": last_sync(con),
+        "unnoted": unnoted_days(con, today(), holidays()),
+        "auto_refresh_minutes": cfg["server"].get("auto_refresh_minutes", 10),
         "standup": db.get_summary(con, shown.isoformat(), "standup"),
         "journal_notes": journal_notes_state(con, shown),
         "pending_steps": sum(not s["done"] for s in setup_steps(con)),

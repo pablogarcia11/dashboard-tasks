@@ -743,6 +743,9 @@ a.week-day:hover { background: var(--hover-bg); color: var(--text); }
   .week-indicator { left: 6px; right: 6px; }
 }
 
+.btn:disabled:not(.htmx-request) { opacity: .5; cursor: not-allowed; }
+.notice.unnoted a { font-weight: 700; }
+
 /* «Actualizado hace 5 min», junto al botón */
 .since { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .htmx-request ~ .since, .since:has(~ .htmx-request) { display: none; }

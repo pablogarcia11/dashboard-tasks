@@ -52,6 +52,13 @@
 <p class="notice">Te falta{{ "n" if pending_steps > 1 }} {{ pending_steps }} paso{{ "s" if pending_steps > 1 }} para dejar el dashboard listo.
   <a href="/settings#setup">Ver primeros pasos</a></p>
 {% endif %}
+{# Días anteriores con commits y sin notas en el diario: enlace a cada uno, donde se generan sus notas #}
+{% if is_today and unnoted %}
+<p class="notice unnoted">Tienes {{ unnoted | length }} día{{ "s" if unnoted | length > 1 }} con commits sin apuntar en {{ journal_title() }}:
+  {% for d in unnoted[:4] %}<a href="/day/{{ d.isoformat() }}">{{ d | long_date }}</a>{% if not loop.last %}{{ " y " if loop.revindex == 2 and unnoted | length <= 4 else ", " }}{% endif %}{% endfor %}
+  {%- if unnoted | length > 4 %} y {{ unnoted | length - 4 }} más{% endif %}.
+  <span class="hint">Abre el día y genera sus notas a partir de los commits.</span></p>
+{% endif %}
 {% if weekend %}
 <p class="notice">Hoy no es día laborable: se muestra el último día laborable.</p>
 {% endif %}
@@ -131,6 +138,26 @@
     {% endif %}
   </div>
 </div>
+{% if is_today and auto_refresh_minutes %}
+<script>
+  // Recogida automática: cada {{ auto_refresh_minutes }} min, con la pestaña a la vista, se vuelven a leer el diario
+  // y los commits de hoy (rápidos y sin Claude; Calendar se queda para «Actualizar datos»).
+  (function () {
+    const every = {{ auto_refresh_minutes }} * 60000, day = {{ day.isoformat() | tojson }};
+    let last = Date.now();
+    async function refresh() {
+      if (document.hidden || document.body.classList.contains("is-busy") || Date.now() - last < every) return;
+      last = Date.now();
+      for (const card of ["notes", "commits"]) {
+        if (!document.getElementById("card-" + card)) continue;
+        await htmx.ajax("POST", `/refresh/${day}/${card}`, { target: "#card-" + card, swap: "outerHTML" });
+      }
+    }
+    setInterval(refresh, 30000);
+    document.addEventListener("visibilitychange", refresh);
+  })();
+</script>
+{% endif %}
 {% if is_today %}
 <script>
   // Pestañas de la tarjeta de textos (patrón WAI-ARIA: clic o flechas ← →; se recuerda la última)

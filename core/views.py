@@ -108,6 +108,18 @@ def week_overview(con: sqlite3.Connection, day: date, today: date, holidays=()) 
     return out
 
 
+def unnoted_days(con: sqlite3.Connection, today: date, holidays=(), lookback: int = 21) -> list[date]:
+    """Días laborables anteriores a hoy (últimas tres semanas) con commits y sin ninguna nota en el
+    diario: lo que falta por apuntar. Del más reciente al más antiguo."""
+    start = today - timedelta(days=lookback)
+    acts = visible_git(db.activities(con, start.isoformat(), (today - timedelta(days=1)).isoformat()),
+                       db.repo_settings(con))
+    noted = {a["work_date"] for a in acts if a["kind"] == "note"}
+    committed = {a["work_date"] for a in acts if a["kind"] == "commit"}
+    days = [date.fromisoformat(d) for d in committed - noted]
+    return sorted((d for d in days if d.weekday() < 5 and d.isoformat() not in holidays), reverse=True)
+
+
 def timesheet_inputs(con: sqlite3.Connection, day: date, cfg: dict) -> dict:
     """Datos del parte de horas de un día: contexto para Claude y datos para el cálculo horario."""
     tz = cfg["user"]["timezone"]
