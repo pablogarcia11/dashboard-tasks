@@ -183,11 +183,12 @@
 
   // Un bloque que cambia de sitio sin repintarse (el arrastre que no se llega a guardar): se desliza hasta él
   Motion.glide = function (el, change) {
-    if (Motion.reduced) return change();
+    if (Motion.reduced) { change(); return true; }
     var state = Flip.getState(el, { simple: true });
     change();
     hold([el]);
     Flip.from(state, { duration: 0.38, ease: "power3.inOut", scale: true, simple: true,
                        onComplete: function () { tidy([el]); } });
+    return true;
   };
 })();

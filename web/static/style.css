@@ -895,15 +895,55 @@ html:active-view-transition-type(theme)::view-transition-new(root) {
   }
   .ts-block:not(.is-tiny):hover .ts-resize::after { opacity: .5; }
 }
-.ts-day .ts-block.is-dragging {
-  z-index: 5; overflow: visible; cursor: grabbing;
-  box-shadow: 0 0 0 2px var(--text), 0 8px 20px rgb(0 0 0 / .25);
-  transition: transform 90ms var(--ease-out), box-shadow var(--fast) ease;   /* el salto entre tramos, suavizado */
+/* Levantado: crece un poco, se ladea y proyecta sombra. Tres estados: is-dragging (en la mano), is-dropped
+   (soltado, mientras llega la columna guardada) e is-settling (se posa, 380 ms). La escala y el giro van en
+   las propiedades scale y rotate para no pisar el transform con el que timesheet.html lo lleva de tramo en tramo */
+.ts-day .ts-block:is(.is-dragging, .is-dropped, .is-settling) { z-index: 5; overflow: visible; }
+/* La sombra va en ::before y solo cambia de opacidad (animar box-shadow repinta en cada fotograma) */
+.ts-block:is(.is-dragging, .is-dropped, .is-settling)::before {
+  content: ""; position: absolute; inset: 0 0 0 -4px; z-index: -1; border-radius: inherit; pointer-events: none;
+  box-shadow: 0 10px 24px light-dark(rgb(0 0 0 / .28), rgb(0 0 0 / .6));
 }
+.ts-day .ts-block:is(.is-dragging, .is-dropped) { scale: 1.02; rotate: -0.6deg; box-shadow: 0 0 0 2px var(--text); }
+.ts-day .ts-block.is-dragging {
+  cursor: grabbing;
+  /* el salto entre tramos lo da un muelle corto; levantarse, una curva rápida */
+  transition: transform 140ms var(--ease-spring), scale 200ms var(--ease-out), rotate 200ms var(--ease-out),
+              box-shadow var(--fast) ease;
+}
+.ts-block.is-dragging::before { animation: fade 200ms var(--ease-out) both; }
+.ts-day .ts-block.is-settling {
+  animation: block-settle 380ms var(--ease-spring) both;
+  /* si vuelve a su sitio, lo hace con el mismo muelle */
+  transition: transform 380ms var(--ease-spring), box-shadow var(--fast) ease;
+}
+.ts-block.is-settling::before { animation: shadow-out 380ms var(--ease-out) both; }
+@keyframes block-settle { from { scale: 1.02; rotate: -0.6deg; } }
+@keyframes shadow-out { to { opacity: 0; } }
 /* Mientras se arrastra, el texto no se sale del bloque (solo la etiqueta del horario) */
 .ts-block.is-dragging .ts-title { max-height: 100%; }
 .ts-block.is-dragging .ts-meta { display: none; }
-.ts-day .ts-block.is-clash { box-shadow: 0 0 0 2px var(--red-text); opacity: .7; }
+/* Pisa a otra tarea: aro rojo sobre el bloque opaco (lo de debajo no se transparenta) y etiqueta en rojo.
+   Si se suelta ahí, vuelve a su sitio negando con la cabeza */
+.ts-day .ts-block:is(.is-clash, .is-rejected) { box-shadow: 0 0 0 2px var(--red-text), 0 0 0 5px var(--red-tint); }
+.ts-block.is-clash[data-live]::after { background: var(--red); color: var(--white); }
+.ts-day .ts-block.is-settling.is-rejected {
+  animation: block-settle 380ms var(--ease-spring) both, clash-shake 240ms var(--ease-in-out) both;
+}
+@keyframes clash-shake {
+  20%, 60% { translate: -4px 0; }
+  40%, 80% { translate: 4px 0; }
+}
+/* Hueco de origen mientras se arrastra: de dónde ha salido la tarea */
+.ts-ghost {
+  position: absolute; left: 4px; width: calc(100% - 8px); border: 1.5px dashed var(--detail);
+  border-radius: var(--r-sm); pointer-events: none; animation: fade 150ms ease both;
+  transition: opacity 200ms ease;
+}
+.ts-ghost.in-lane {
+  left: calc(4px + (100% - 8px) * var(--lane) / var(--lanes)); width: calc((100% - 8px) / var(--lanes) - 2px);
+}
+.ts-ghost.is-leaving { opacity: 0; }
 .ts-block[data-live]::after {
   content: attr(data-live); position: absolute; right: 0; top: -22px; padding: 1px 8px; border-radius: var(--r-pill);
   background: var(--text); color: var(--bg); font-size: 11px; font-weight: 700; line-height: 1.6; white-space: nowrap;
@@ -1058,7 +1098,12 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   body.is-busy .appbar::after { width: 100%; transform: none; animation: none; opacity: .6; }
   .writing i, .tab-panel:has(.regen.htmx-request) textarea, .weekly:has(.regen.htmx-request) textarea { animation: none; opacity: .6; }
   .ts-now::after { animation: none; opacity: 0; }
-  .ts-day .ts-block.is-dragging { transition: none; }
+  /* Arrastre: sin levantarse, sin muelle y sin negar con la cabeza; el aro rojo se queda quieto */
+  .ts-day .ts-block:is(.is-dragging, .is-dropped) { scale: none; rotate: none; }
+  .ts-day .ts-block.is-dragging, .ts-day .ts-block.is-settling { transition: none; }
+  .ts-day .ts-block.is-settling, .ts-day .ts-block.is-settling.is-rejected { animation: none; }
+  .ts-block.is-dragging::before { animation: none; }
+  .ts-block.is-settling::before { animation: none; opacity: 0; }
   .cat-option:active { transform: none; }
   .more-menu, .more:hover .more-menu, .more:focus-within .more-menu { transform: none; }
   .just-generated textarea, .ts-day.just-generated .ts-block { animation: fade 200ms ease both; animation-delay: 0s; }

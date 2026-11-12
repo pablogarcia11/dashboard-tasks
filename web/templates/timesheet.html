@@ -360,6 +360,12 @@
       if (Math.abs(dy) < 4) return;   // hasta 4 px es un clic
       drag.moved = true;
       drag.others = dayBlocks(drag.dayEl).filter(b => b.el !== drag.el);
+      // Hueco punteado donde estaba: se ve de dónde sale mientras se mueve
+      drag.ghost = document.createElement("div");
+      drag.ghost.className = "ts-ghost" + (drag.el.classList.contains("in-lane") ? " in-lane" : "");
+      drag.ghost.setAttribute("aria-hidden", "true");
+      drag.ghost.style.cssText = drag.el.style.cssText;   // misma posición, altura y carril
+      drag.el.before(drag.ghost);
       drag.el.setPointerCapture(drag.id);
       drag.el.classList.add("is-dragging");
       document.body.classList.add("is-dragging-block");
@@ -386,13 +392,24 @@
     document.body.classList.remove("is-dragging-block");
     delete d.el.dataset.live;
     const changed = d.newStart !== d.start || d.newEnd !== d.end;
-    if (!commit || d.clash || !changed) {   // vuelve a su sitio
+    const dropGhost = () => {
+      if (!d.ghost) return;
+      d.ghost.classList.add("is-leaving");
+      setTimeout(() => d.ghost.remove(), 200);
+    };
+    if (!commit || d.clash || !changed) {   // vuelve a su sitio y se posa
+      if (commit && d.clash) {
+        motion("replay", d.el, "is-rejected", 420);
+        announce("No cabe ahí: se solapa con otra tarea.");
+      }
+      motion("replay", d.el, "is-settling", 420);   // antes de soltarlo: la vuelta usa ya la transición de posarse
       d.el.style.transform = "";
       d.el.style.height = (d.end - d.start) * PPM + "px";
-      if (commit && d.clash) announce("No cabe ahí: se solapa con otra tarea.");
+      dropGhost();
       return;
     }
-    // Se queda donde se soltó mientras llega la columna repintada
+    // Se queda donde se soltó, aún levantado, mientras llega la columna repintada (y allí se posa)
+    d.el.classList.add("is-dropped");
     d.el.style.transition = "none";
     d.el.style.transform = "";
     d.el.style.top = (d.newStart - GRID_START) * PPM + "px";
@@ -402,11 +419,18 @@
                                      project: d.el.dataset.project, category: d.el.dataset.category }],
             { from: d.el, to: { title: d.el.dataset.title, start: d.newStart, end: d.newEnd }, drop: true })
       .then(error => {
-        if (error === null) {   // no se ha guardado a propósito: el bloque vuelve a su sitio
+        dropGhost();
+        if (error) showSaveError(`No se ha guardado el cambio: ${error}`);
+        // Sigue en la página: no se ha guardado (a propósito, o sin conexión ni para releer el día).
+        // El bloque vuelve, deslizándose, a donde estaba
+        if (!d.el.isConnected) return;
+        const back = () => {
+          d.el.classList.remove("is-dropped");
           d.el.style.transition = "";
           d.el.style.top = (d.start - GRID_START) * PPM + "px";
           d.el.style.height = (d.end - d.start) * PPM + "px";
-        } else if (error) showSaveError(`No se ha guardado el cambio: ${error}`);
+        };
+        if (!motion("glide", d.el, back)) back();
       });
   }
   document.addEventListener("pointerup", () => endDrag(true));
