@@ -143,6 +143,7 @@ La configuración efectiva se compone en tres capas (`core/settings.py · effect
 | `standup.channel` | Canal de stand-up. Sin él, el stand-up usa el formato por defecto |
 | `standup.examples` | Últimos stand-ups propios leídos de Slack, con canal y fecha de lectura |
 | `timesheet.*` | Jornada, comida y horas mínimas propias |
+| `schedule.days_off` | JSON con los festivos y vacaciones de la persona (fechas ISO) |
 
 El usuario de Notion (`user_id`) no se configura: sale del token OAuth.
 
@@ -223,6 +224,7 @@ Slack **no es una fuente de actividad**: solo sirve para aprender el formato del
 | «Actualizar datos de la semana» (`POST /collect-range/{start}/{end}`) | La semana, hasta hoy |
 | Icono ↻ de una tarjeta (`POST /refresh/{d}/{notes\|commits}`) | Solo Notion o solo git para `d` |
 | Generar notas del diario | Solo Notion para ese día (para no pisar lo recién escrito) |
+| Vista de hoy abierta, cada `server.auto_refresh_minutes` (10 por defecto) | Solo Notion y git de hoy, con la pestaña a la vista; refresca las dos tarjetas |
 | Cambio de diario o de carpetas en Ajustes | Relectura en segundo plano |
 | Terminal: `python -m jobs.collect_all [--date D \| --since A --until B] [--show]` | El indicado |
 
@@ -252,7 +254,7 @@ sync_state(source PRIMARY KEY, last_ok, last_error)
 | `notion` | `note`, `task_plan`, `task` |
 | `gcal` | `meeting` |
 
-Valores de `summaries.kind`: `standup`, `journal_notes` y `timesheet`.
+Valores de `summaries.kind`: `standup`, `journal_notes`, `timesheet` y `timesheet_edit` (bloques de un día editados a mano).
 
 ---
 
@@ -261,6 +263,7 @@ Valores de `summaries.kind`: `standup`, `journal_notes` y `timesheet`.
 - `is_workday`: lunes a viernes y que no esté en `holidays`. `previous_workday`: el lunes da el viernes anterior.
 - `day_bounds(d, tz)`: de 00:00 a 00:00 del día siguiente en la zona de la persona, correcto con los cambios de horario. `to_work_date` convierte un instante a fecha local.
 - En fin de semana, "Hoy" muestra el último día laborable con aviso (`effective_today`).
+- **Días libres:** los festivos de la empresa (`schedule.holidays` de `config.yaml`) y los festivos y vacaciones de cada persona (Ajustes › Festivos y vacaciones, clave `schedule.days_off`). `web/app.py · holidays()` los une en cada petición.
 - Tests de lunes, fines de semana, cambio de mes y año, y DST.
 
 ---
@@ -311,6 +314,7 @@ El parte se construye en dos partes:
   5. Los demás huecos se reparten entre las tareas del diario sin commits según su peso estimado. Si no hay, se alarga la tarea anterior.
   6. Los bordes se redondean a múltiplos de `block_step_minutes` (salvo los fijos), con una duración mínima de `min_block_minutes`. Los bloques contiguos con el mismo título se fusionan y los demasiado cortos se absorben en el vecino.
   7. Se avisa si el día queda por debajo de `min_daily_hours`.
+- **Edición a mano** (`parse_edited`, `POST /timesheet/day/{d}/blocks`): la persona puede mover una tarea arrastrándola, alargarla o acortarla desde su borde inferior, y cambiar su nombre, horario, tipo y proyecto, añadir tareas o eliminarlas desde un formulario. Los cambios van en tramos de `block_step_minutes` y no pueden solaparse. Cada cambio guarda el día entero como JSON en `summaries` (`kind=timesheet_edit`); mientras exista, manda sobre la propuesta calculada. «Deshacer mis cambios» (`…/blocks/reset`) y «Regenerar» lo borran. En pantallas táctiles no hay arrastre: se edita con el formulario.
 - Se cachea por día (`kind=timesheet`). Las categorías y sus colores son los del hub: Desarrollo de negocio, Reunión, Documentación, Tareas administrativas y Formación.
 
 ---
@@ -327,6 +331,7 @@ El parte se construye en dos partes:
 | `POST /standup/{d}`, `POST /journal-notes/{d}` | Generan (o devuelven de caché) el texto; `?force=true` regenera |
 | `GET /timesheet` → `GET /timesheet/week/{d}` | Parte de horas semanal |
 | `GET`/`POST /timesheet/day/{d}` | Columna de un día: ver o generar |
+| `POST /timesheet/day/{d}/blocks`, `POST …/blocks/reset` | Guardan los bloques editados a mano de un día, o los descartan |
 | `GET /settings` y `POST /settings/…` | Ajustes: canal y aprendizaje del stand-up, jornada, emails de autor, carpetas (selector nativo, alta y baja), visibilidad por repo |
 | `GET /settings/notion/connect`, `GET /oauth/notion/callback`, `POST /settings/notion/disconnect` | OAuth de Notion |
 | `GET /settings/notion/pages`, `POST /settings/notion/journal`, `GET /settings/notion/journal-status` | Búsqueda, elección y vista previa del diario |
@@ -377,9 +382,10 @@ Se calcula al arrancar y se recalcula al conectar o desconectar Notion.
 - **Componentes:**
   - tira de la semana en la vista Día (`core/views.py · week_overview`): un enlace por día laborable con una marca según el diario: hay notas, hay commits sin notas (falta apuntar) o no hay actividad;
   - «Actualizado hace…» junto al botón de actualizar (`sync_state.last_ok` más reciente) y, en las reuniones de hoy, cuánto falta para la siguiente; ambos se recalculan en el navegador cada 30 s con `Intl.RelativeTimeFormat`;
+  - aviso en la vista de hoy con los días laborables de las tres últimas semanas que tienen commits y ninguna nota (`unnoted_days`), con enlace a cada uno;
   - «Para no perder» agrupa los commits sin subir por repo (`unpushed_by_repo`); el detalle está en la tarjeta Commits;
   - en escritorio, la tarjeta de textos se queda fija al desplazar la página (`position: sticky`);
-  - parte de horas: línea de la hora actual en la columna de hoy, horas de la semana por categoría junto a la leyenda y, en pantallas estrechas, eje de horas fijo y desplazamiento inicial hasta hoy;
+  - parte de horas: línea de la hora actual en la columna de hoy, horas de la semana por categoría junto a la leyenda, «Copiar semana» (el texto de todos los días, cada uno con su nombre) y, en pantallas estrechas, eje de horas fijo y desplazamiento inicial hasta hoy;
   - atajos de teclado (`base.html`): ← → día o semana, T hoy, D y P secciones, R actualizar, C copiar el texto visible y ? para la ayuda. No actúan mientras se escribe ni con un diálogo abierto;
   - navegación por días al estilo Google Calendar (Hoy, ‹ ›, calendario mensual que no deja elegir fines de semana ni el futuro);
   - tarjetas con proyectos plegables (recordados en `localStorage`). Donde el navegador soporta `::details-content`, los plegables y las guías de ayuda se abren y se cierran animando la altura (`interpolate-size: allow-keywords`) y la opacidad. El contenido usa `display: flow-root` para que los márgenes no salten al terminar. En el resto de navegadores, y con movimiento reducido, solo hay fundido;
@@ -441,6 +447,6 @@ Los colectores se prueban con datos de ejemplo, sin red.
 
 - La conexión OAuth de Notion pertenece a la cuenta que la creó. Conviene que la administre una cuenta de la empresa.
 - Calendar y Slack dependen de que la sesión de Claude Code de la persona tenga los conectores autorizados, con todos sus permisos.
-- En el parte de horas, como los commits ocupan casi toda la jornada, las tareas sin commits (documentación, informes) suelen quedarse con poco tiempo. Los bloques todavía no se pueden editar sobre la rejilla.
-- No hay recogida programada: los datos se refrescan al arrancar y con los botones de actualizar.
+- En el parte de horas, como los commits ocupan casi toda la jornada, las tareas sin commits (documentación, informes) suelen quedarse con poco tiempo.
+- La recogida automática solo funciona con la vista de hoy abierta y no incluye Calendar (cada lectura pasa por Claude): las reuniones se leen al arrancar y con «Actualizar datos».
 - No hay colector de GitHub remoto (PRs o reviews pendientes): el trabajo se lee del git local.

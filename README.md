@@ -70,7 +70,8 @@ Mientras falte algo, la vista Día te lo recuerda.
 
 - Qué toca hoy (pendientes de ayer, tareas activas de Notion, reuniones, cambios sin commitear y commits sin subir), tus notas del diario y tus commits, agrupados por proyecto. Los proyectos se pueden plegar y el dashboard lo recuerda.
 - Para moverte: **Hoy**, las flechas ‹ › (saltan fines de semana) o el **calendario** entre ellas para ir a cualquier día. En fin de semana o festivo se muestra el último día laborable.
-- El icono ↻ de cada tarjeta vuelve a leer solo esa parte; «Actualizar datos» lo lee todo.
+- El icono ↻ de cada tarjeta vuelve a leer solo esa parte; «Actualizar datos» lo lee todo. Con la vista de hoy abierta, el diario y los commits se releen solos cada 10 minutos.
+- Si algún día anterior tiene commits y no lo apuntaste en tu diario, un aviso te lleva a él para generar sus notas.
 - La tarjeta de la derecha tiene dos pestañas (en los días anteriores, solo las notas: el stand-up es del día en curso):
   - **Stand-up**: imita el formato de tus últimos stand-ups del canal que elijas en Ajustes.
   - **Notas para tu diario**: borrador a partir de tus commits con el formato de tu diario. Respeta lo que ya hayas escrito ese día y añade solo lo que falta.
@@ -84,6 +85,8 @@ Mientras falte algo, la vista Día te lo recuerda.
 - La semana en formato calendario, como en el hub: reuniones a su hora, tareas agrupadas y horas estimadas a partir de tus commits, en tramos de 15 minutos y con la comida respetada.
 - «Generar» por día o «Generar semana». Si los datos cambian, te avisa para regenerar.
 - Pulsa un bloque para ver la tarea completa (horario, duración, tipo y proyecto).
+- **Corrige la propuesta sobre la rejilla**: arrastra una tarea para moverla, tira de su borde inferior para alargarla o acortarla, o púlsala para cambiar su nombre, horario, tipo y proyecto o eliminarla. «Añadir tarea» crea una nueva y «Deshacer mis cambios» vuelve a la propuesta.
+- «Copiar semana» copia el parte de todos los días de una vez.
 - Cada día tiene su «Texto para copiar», editable. Revísalo y pásalo al hub. Avisa si un día baja de 8 h.
 
 - La columna de hoy marca la hora actual, y bajo la semana se ven las horas por categoría.
@@ -97,6 +100,7 @@ Pulsa **?** en cualquier pantalla para verlos: ← → cambian de día o de sema
 - **Apariencia**: modo claro u oscuro (por defecto, el de tu sistema).
 - **Notion**: conectar o desconectar la cuenta y cambiar de página diario.
 - **Stand-up**: el canal donde publicas y «Volver a aprender» tu formato (se renueva solo cada semana).
+- **Festivos y vacaciones**: los días que no trabajas, sueltos o por rangos. No cuentan como «ayer» en el stand-up ni piden parte.
 - **Parte de horas**: tu jornada y tu comida si no son las de la empresa (jornada parcial, intensiva…).
 - **Repositorios**: carpetas, emails de autor y **qué se muestra**: por cada repo, «Visible» y «Cambios sin commitear».
 
