@@ -834,7 +834,8 @@ body.is-busy .appbar::after { opacity: 1; transition-delay: 150ms; animation: bu
 /* 3. Lo que redacta Claude tarda unos segundos: mientras, unas líneas marcan dónde caerá el texto; al
       llegar, el texto se descubre de arriba abajo y los bloques del parte se colocan uno tras otro. */
 .writing { display: none; margin-top: 16px; }
-.tab-panel:has(.btn.htmx-request) .writing { display: grid; gap: 10px; }
+/* HTMX marca como «en curso» el indicador (hx-indicator) o, si no lo hay, el propio botón */
+.tab-panel:has(.btn.htmx-request, .htmx-indicator.htmx-request) .writing { display: grid; gap: 10px; }
 .writing i {
   width: var(--w); height: 9px; border-radius: var(--r-pill); background: var(--line);
   animation: writing 1.4s ease-in-out infinite; animation-delay: calc(var(--i) * 110ms);
@@ -989,6 +990,12 @@ body.is-dragging-block { user-select: none; cursor: grabbing; }
 mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color: inherit; border-radius: 2px; padding: 0 1px; }
 @media (max-width: 520px) { .search-hit { grid-template-columns: 1fr; gap: 0; } }
 
+/* Resumen de la semana, bajo la leyenda del parte de horas */
+.weekly { margin-top: 22px; max-width: 860px; }
+.weekly .card-head .regen { margin-right: -8px; }
+.weekly:has(.btn.htmx-request, .htmx-indicator.htmx-request) .writing { display: grid; gap: 10px; }
+.weekly:has(.regen.htmx-request) textarea { animation: writing 1.4s ease-in-out infinite; }
+
 /* Menos movimiento: fuera desplazamientos y escalas; se mantienen fundidos breves */
 @media (prefers-reduced-motion: reduce) {
   .btn:active, .nav-current:active, .nav-arrow:active, .icon-btn:active, .theme-toggle:active, .icon-link:active,
@@ -1022,7 +1029,7 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   ::view-transition-group(week-indicator) { animation-duration: 0s; }
   /* Actividad: el filete entero se aclara, sin barrido; las líneas de espera y el aro de la hora, quietos */
   body.is-busy .appbar::after { width: 100%; transform: none; animation: none; opacity: .6; }
-  .writing i, .tab-panel:has(.regen.htmx-request) textarea { animation: none; opacity: .6; }
+  .writing i, .tab-panel:has(.regen.htmx-request) textarea, .weekly:has(.regen.htmx-request) textarea { animation: none; opacity: .6; }
   .ts-now::after { animation: none; opacity: 0; }
   .ts-day .ts-block.is-dragging { transition: none; }
   .cat-option:active { transform: none; }
