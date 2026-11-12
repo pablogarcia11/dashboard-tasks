@@ -101,6 +101,21 @@
           <span class="status notion-{{ t.extra.status_color or 'default' }}"><i class="dot" aria-hidden="true"></i>{{ t.status }}</span></li>
       {% endfor %}</ul>
       {% else %}<p class="muted">Sin tareas activas.</p>{% endif %}
+      {% if data.reviews or data.my_prs %}
+      <h3>Pull requests <span class="tag">GitHub</span></h3>
+      <ul class="prs">
+        {% for pr in data.reviews %}
+        <li><span class="pr-state is-review">Te piden revisión</span>
+          <a href="{{ pr.url }}" target="_blank" rel="noopener">{{ pr.title }}<span class="ext" aria-hidden="true">↗</span><span class="sr-only"> (se abre en otra pestaña)</span></a>
+          <span class="repo" translate="no">{{ pr.extra.repo }}#{{ pr.extra.number }} · {{ pr.extra.author }}</span></li>
+        {% endfor %}
+        {% for pr in data.my_prs %}
+        <li><span class="pr-state">{{ "Borrador" if pr.extra.draft else "Tuya, abierta" }}</span>
+          <a href="{{ pr.url }}" target="_blank" rel="noopener">{{ pr.title }}<span class="ext" aria-hidden="true">↗</span><span class="sr-only"> (se abre en otra pestaña)</span></a>
+          <span class="repo" translate="no">{{ pr.extra.repo }}#{{ pr.extra.number }}</span></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
       {% if data.meetings %}
       <h3>Reuniones <span class="tag">Calendar</span></h3>
       {# data-start/end: base.html añade «en 25 min» / «ahora» y apaga las que ya han pasado #}

@@ -26,6 +26,7 @@ from core.config import ROOT, load_config
 from core.dates import date_ranges, effective_today, is_workday, next_workday, previous_workday
 from core import identity, settings
 from core.identity import avatar_path, display_name, initials, notion_owner
+from collectors.github import github_token
 from core.search import KINDS as SEARCH_KINDS, highlight, search
 from core.settings import effective_config
 from collectors import notion_auth
@@ -84,6 +85,7 @@ templates.env.globals["sync_hints"] = {
     "git": "Comprueba que el repo existe y que git funciona en él; si el aviso habla de «dubious ownership», revisa la configuración de git del repo.",
     "notion": "Si el permiso caducó o se revocó, vuelve a conectar Notion en Ajustes.",
     "gcal": "Reconecta Google Calendar en claude.ai → Configuración → Conectores, marcando todos los permisos, y pulsa «Actualizar datos».",
+    "github": "Revisa el token de GitHub en .env (GITHUB_TOKEN) siguiendo Ajustes › GitHub, y pulsa «Actualizar datos».",
 }
 templates.env.globals["claude_hint"] = ("Si es un límite de uso de Claude, espera unos minutos y vuelve a intentarlo; "
                                         "si dice que falta iniciar sesión, ejecuta «claude» en una terminal.")
@@ -247,6 +249,8 @@ def settings_view(request: Request, msg: str = ""):
                     "stored": json.loads(saved.get(settings.STANDUP_EXAMPLES) or "{}")},
         "days_off": {"company": date_ranges([str(d) for d in cfg["schedule"].get("holidays") or []]),
                      "own": date_ranges(settings.days_off(con)), "today": today()},
+        "github": {"has_token": bool(github_token()), "state": db.sync_states(con).get("github", {}),
+                   "count": sum(1 for a in db.activities(con, "0000-00-00", "9999-99-99", ["github"]))},
         "authors": {"detected": sorted(git.detected_authors), "extra": [e for e in extra if e not in git.detected_authors]},
         "notion": {
             "has_credentials": all(notion_auth.client_credentials()),

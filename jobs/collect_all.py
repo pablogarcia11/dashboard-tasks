@@ -10,6 +10,7 @@ import sqlite3
 from datetime import date, datetime
 
 from collectors.gcal import GcalCollector
+from collectors.github import GithubCollector, github_token
 from collectors.git_local import GitLocalCollector
 from collectors.notion import NotionCollector
 from core import db
@@ -71,6 +72,17 @@ def run_collect(cfg: dict, con: sqlite3.Connection, start: date, end: date, only
         except Exception as e:
             db.set_sync_state(con, "gcal", str(e))
             report.append(f"gcal: error: {e}")
+    # GitHub: solo con token (es opcional). Son las PR abiertas ahora, no depende del rango.
+    if "github" in sources and github_token():
+        try:
+            found = GithubCollector(github_token()).collect()
+            for kind, items in found.items():
+                db.replace_kind(con, "github", kind, items)
+            db.set_sync_state(con, "github")
+            report.append(f"github: {len(found['review'])} PR pendientes de tu revisión, {len(found['pr'])} tuyas abiertas")
+        except Exception as e:
+            db.set_sync_state(con, "github", str(e))
+            report.append(f"github: error: {e}")
     return report
 
 

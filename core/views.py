@@ -68,6 +68,8 @@ def day_data(con: sqlite3.Connection, day: date, holidays=()) -> dict:
             [a for a in db.activities(con, prev, prev, ["notion"]) if a["kind"] == "task_plan"]),
         # Instantáneas del estado actual (solo tienen sentido para hoy)
         "tasks": [a for a in db.activities(con, "0000-00-00", "9999-99-99", ["notion"]) if a["kind"] == "task"],
+        "reviews": [a for a in db.activities(con, "0000-00-00", "9999-99-99", ["github"]) if a["kind"] == "review"],
+        "my_prs": [a for a in db.activities(con, "0000-00-00", "9999-99-99", ["github"]) if a["kind"] == "pr"],
         "wip": visible_git([a for a in db.activities(con, "0000-00-00", "9999-99-99", ["git"])
                             if a["kind"] == "wip"], settings),
         "unpushed": unpushed,

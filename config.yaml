@@ -69,6 +69,7 @@ sources:
   git: { enabled: true }
   notion: { enabled: true }
   gcal: { enabled: true, via: claude_connector }
+  github: { enabled: true }   # opcional: solo se usa si hay GITHUB_TOKEN en .env
 
 server:
   auto_refresh_minutes: 10   # con la vista de hoy abierta, relee diario y commits cada tantos minutos (0 = nunca)

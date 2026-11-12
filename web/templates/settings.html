@@ -162,6 +162,46 @@
   </details>
 </section>
 
+{# ---------- GitHub (opcional) ---------- #}
+<section class="card settings-card" id="github" aria-labelledby="github-title">
+  <header class="settings-card-head">
+    <div>
+      <h2 id="github-title">GitHub</h2>
+      <p class="muted small">Opcional: las pull requests que esperan tu revisión y las tuyas abiertas, en «Qué toca hoy». Solo lectura.</p>
+    </div>
+    {% if github.has_token and github.state.last_ok and not github.state.last_error %}<span class="pill ok">Conectado</span>{% endif %}
+  </header>
+  <div class="setting-row">
+    <div class="setting-label">
+      <h3>Token</h3>
+      <p class="muted small">Se guarda en el fichero <code>.env</code> de tu ordenador, nunca en el repositorio.</p>
+    </div>
+    <div class="setting-control">
+      {% if github.has_token and github.state.last_error %}
+      <p class="notice error small">{{ github.state.last_error }}</p>
+      {% elif github.has_token and github.state.last_ok %}
+      <p class="journal-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+         stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>
+        <span>Leyendo tus pull requests ({{ github.count }} abiertas ahora).</span></p>
+      {% elif github.has_token %}
+      <p class="muted">Token encontrado. Pulsa «Actualizar datos» en la vista Día para leer tus pull requests.</p>
+      {% else %}
+      <p class="muted">Sin token: esta parte no se usa.</p>
+      {% endif %}
+      <details class="guide">
+        <summary>Cómo crear el token</summary>
+        <ol>
+          <li>En GitHub: <strong>Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token</strong>.</li>
+          <li><strong>Resource owner</strong>: la organización de la empresa. <strong>Repository access</strong>: todos los repositorios, o los tuyos.</li>
+          <li><strong>Permissions → Repository</strong>: <em>Pull requests</em> y <em>Metadata</em> en <strong>Read-only</strong>. Nada más.</li>
+          <li>Si la organización pide aprobación, un administrador tendrá que aceptarlo.</li>
+          <li>Copia el token y ponlo en el fichero <code>.env</code> de la carpeta del dashboard: <code>GITHUB_TOKEN=…</code>. Reinicia el dashboard.</li>
+        </ol>
+      </details>
+    </div>
+  </div>
+</section>
+
 {# ---------- Stand-up ---------- #}
 {% set learned = standup.stored %}
 <section class="card settings-card" id="standup" aria-labelledby="standup-settings-title">

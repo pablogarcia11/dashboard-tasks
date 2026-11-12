@@ -996,6 +996,16 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
 .weekly:has(.btn.htmx-request, .htmx-indicator.htmx-request) .writing { display: grid; gap: 10px; }
 .weekly:has(.regen.htmx-request) textarea { animation: writing 1.4s ease-in-out infinite; }
 
+/* Pull requests en «Qué toca hoy» */
+.prs { list-style: none; padding: 0; }
+.prs li { margin: 6px 0; }
+.pr-state {
+  display: inline-block; margin-right: 6px; padding: 1px 8px; border-radius: var(--r-pill); font-size: .72em; font-weight: 700;
+  border: 1px solid var(--line); color: var(--muted); vertical-align: 1px;
+}
+.pr-state.is-review { border-color: transparent; background: var(--red-tint); color: var(--red-text); }
+.prs .repo { margin-left: 6px; }
+
 /* Menos movimiento: fuera desplazamientos y escalas; se mantienen fundidos breves */
 @media (prefers-reduced-motion: reduce) {
   .btn:active, .nav-current:active, .nav-arrow:active, .icon-btn:active, .theme-toggle:active, .icon-link:active,
