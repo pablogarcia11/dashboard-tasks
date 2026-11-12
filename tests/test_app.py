@@ -57,3 +57,35 @@ def test_redireccion_a_la_misma_pagina_pide_recargar(client):
     other = client.post("/settings/git-authors", data={"email": "yo@example.com", "action": "remove"},
                         headers={"HX-Current-URL": "http://127.0.0.1:8765/day/2026-11-12"})
     assert other.headers["HX-Redirect"] == "/settings#repos" and "HX-Refresh" not in other.headers
+
+
+# --- Parte de horas ----------------------------------------------------------------------------------
+
+def blocks_form(*blocks):
+    return {"blocks": json.dumps([dict(zip(("start", "end", "title", "category"), b)) for b in blocks])}
+
+
+def test_regenerar_conserva_lo_editado_si_claude_falla(client, monkeypatch):
+    monkeypatch.setattr(web, "timesheet_inputs", lambda con, day, cfg: {
+        "context": {"fecha": DAY}, "commits": [], "meetings": [], "has_work": True})
+
+    def failing(*a, **k):
+        raise ClaudeError("límite de uso alcanzado")
+    monkeypatch.setattr(web, "generate", failing)
+    con = db.connect()
+    client.post(f"/timesheet/day/{DAY}/blocks", data=blocks_form((540, 600, "Lo mío", "Documentación")))
+
+    r = client.post(f"/timesheet/day/{DAY}?force=true")
+    assert r.status_code == 200 and "límite de uso alcanzado" in r.text and "Lo mío" in r.text
+    assert db.get_summary(con, DAY, web.TIMESHEET_EDIT) is not None
+
+    # Con Claude funcionando, regenerar sí descarta lo editado
+    def ok(con, cfg, kind, work_date, context, force=False, validate=None):
+        text = json.dumps({"tareas": [{"id": "t1", "titulo": "AI Risk - informe", "proyecto": "AI Risk",
+                                       "categoria": "Documentación", "commits": [], "minutos": 60}]})
+        db.save_summary(con, work_date, kind, text, "h")
+        return text, False
+    monkeypatch.setattr(web, "generate", ok)
+    r = client.post(f"/timesheet/day/{DAY}?force=true")
+    assert r.status_code == 200 and "Editado a mano" not in r.text
+    assert db.get_summary(con, DAY, web.TIMESHEET_EDIT) is None

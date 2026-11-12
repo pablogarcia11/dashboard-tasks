@@ -645,26 +645,29 @@ def timesheet_column(request: Request, d: str, generate_now: bool = False, force
     con = db.connect()
     ts_cfg = effective_config(cfg, con)["timesheet"]   # con el horario de la persona si lo ha cambiado
     ctx["step"] = ts_cfg.get("block_step_minutes", 15)
-    if generate_now and force:
-        db.delete_summary(con, d, TIMESHEET_EDIT)        # regenerar descarta lo editado a mano
     edit = db.get_summary(con, d, TIMESHEET_EDIT)
-    if edit:   # la persona ha movido o cambiado bloques: mandan sobre lo calculado
-        blocks = parse_edited(edit["content_md"], ts_cfg["categories"], ctx["step"])
-        ctx.update(blocks=blocks, edited=True, total=sum(b.minutes for b in blocks), text=as_text(blocks),
-                   warnings=short_day_warning(blocks, ts_cfg))
-        return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
-
     inputs = timesheet_inputs(con, day, cfg)
     commits, cats = inputs["commits"], ts_cfg["categories"]
     text = None
-    if not inputs["has_work"]:
-        ctx["state"] = "empty"
-    elif generate_now:
+    if generate_now and inputs["has_work"] and (force or not edit):
         try:
             text, _ = generate(con, cfg, "timesheet", d, inputs["context"], force=force,
                                validate=lambda t: parse_tasks(t, commits, cats))
         except ClaudeError as e:
             ctx["error"] = str(e)
+    # Regenerar descarta lo editado a mano, pero solo cuando ya hay propuesta nueva: si Claude falla
+    # (límite de uso, tiempo agotado), los cambios se conservan y se ve el error junto a ellos
+    if edit and generate_now and force and not ctx["error"]:
+        db.delete_summary(con, d, TIMESHEET_EDIT)
+        edit = None
+    if edit:   # la persona ha movido o cambiado bloques: mandan sobre lo calculado
+        blocks = parse_edited(edit["content_md"], cats)
+        ctx.update(blocks=blocks, edited=True, total=sum(b.minutes for b in blocks), text=as_text(blocks),
+                   warnings=short_day_warning(blocks, ts_cfg))
+        return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
+
+    if not inputs["has_work"]:
+        ctx["state"] = "empty"
     cached = db.get_summary(con, d, "timesheet")
     if inputs["has_work"] and text is None:
         if cached:
