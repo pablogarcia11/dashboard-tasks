@@ -32,15 +32,16 @@ if [ ${#missing[@]} -gt 0 ]; then
 fi
 chmod +x start.sh
 
-# Comando dashboard-1mb: un pequeño script en ~/.local/bin que lanza start.sh
+# Comando dashboard-tasks: un pequeño script en ~/.local/bin que lanza start.sh
 bin="$HOME/.local/bin"
 mkdir -p "$bin"
 {
   echo '#!/usr/bin/env bash'
   echo '# Creado por setup.sh del dashboard de 1MillionBot. Vuelve a ejecutar setup.sh si mueves la carpeta.'
   printf 'exec %q "$@"\n' "$PWD/start.sh"
-} > "$bin/dashboard-1mb"
-chmod +x "$bin/dashboard-1mb"
+} > "$bin/dashboard-tasks"
+chmod +x "$bin/dashboard-tasks"
+rm -f "$bin/dashboard-1mb"   # nombre anterior del comando
 
 # Añade ~/.local/bin al PATH si falta (en el fichero de arranque de tu shell)
 new_terminal=0
@@ -56,7 +57,7 @@ case ":$PATH:" in
 esac
 
 echo
-echo "Listo. Arranca el dashboard desde cualquier terminal con:  dashboard-1mb"
+echo "Listo. Arranca el dashboard desde cualquier terminal con:  dashboard-tasks"
 [ "$new_terminal" = 1 ] && echo "(Abre una terminal nueva para que reconozca el comando.)"
 echo "También puedes usar ./start.sh desde esta carpeta."
 echo "Después, en Ajustes (⚙) sigue los «Primeros pasos»."

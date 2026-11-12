@@ -136,7 +136,7 @@ Estado observado el 2026-11-11 (puede cambiar; **descúbrelos dinámicamente**, 
 - **Worktrees** (`.git` es un *fichero* `gitdir: …`): `airisk-api-cdu` y `airisk-api-roles` (de `airisk-api`), `airiskmanagement-roles` (de `airiskmanagement`). Comparten commits con su repo principal → **deduplica commits por SHA**; el WIP (`git status`) sí se lee por worktree.
 - `aurea/.git` existe pero está vacío (no es repo). Los repos reales están anidados.
 - **Repos anidados**: `aurea/aurea-1mb`, `aurea/aurea-api`, `ibh/bff-user-control-panel`, `ibh/ibh-api`, `millie/apiREST`, `millie/dashboard`, `rec-aereas/juridocraft-api`, `rec-aereas/juridocraft-assist`. Escanea hasta profundidad 3 buscando `.git` (carpeta o fichero).
-- La carpeta `dashboard/` (este proyecto) debe **excluirse por ruta absoluta**: `millie/dashboard` es un repo de trabajo distinto con el mismo nombre y **sí** cuenta.
+- La carpeta `dashboard-tasks/` (este proyecto) debe **excluirse por ruta absoluta**: `millie/dashboard` es un repo de trabajo distinto con el mismo nombre y **sí** cuenta.
 - **Exclusiones (actualizado 2026-11-11):** ya no hay `exclude_repos` en `config.yaml`. El **propio dashboard se excluye siempre y automáticamente** en el colector (su ruta `ROOT`), sin aviso en Ajustes. `Kanvas` y `shannon` dejan de estar excluidos: aparecen en Ajustes con "Visible" apagado y el usuario decide.
 - **Repo → proyecto** (en `config.yaml`, `projects`; el nombre del proyecto = encabezado 3 de I'M BACK): AI Risk = `airisk-api`, `airiskmanagement` y sus worktrees; Kit migración = `boilerplate-api`, `migration-boilerplate-api`; Aurea = `aurea/*`; IBH = `ibh/*`; Millie = `millie/*`; Rec Aéreas = `rec-aereas/*`. Repo nuevo sin mapear → proyecto = nombre de la carpeta de primer nivel, y avisa en la UI.
 - Proyecto especial **"1MB"** = reuniones de empresa (Sprint Review, Monthly Review…). Puede aparecer como encabezado 3 en I'M BACK. Las reuniones de Calendar que no encajan en ningún proyecto van a "1MB" (en stand-up, resumen y parte de horas).
@@ -278,7 +278,7 @@ Orden de trabajo:
 5. **Repo → proyecto por nomenclatura de la empresa**, no por la ruta local: se compara con el nombre del repo o de cualquier carpeta que lo contenga (`airisk-api` y `airiskmanagement` → AI Risk; todo lo de `millie/` → Millie, `ibh/` → IBH…). Los worktrees heredan el proyecto de su repo principal.
 6. **Horario del parte de horas por persona** en Ajustes (el de la empresa por defecto).
 7. **Limpiar configuración sin uso** (`github`, `standup_time`, `weekend_view`).
-8. **Comando `dashboard-1mb` (2026-11-11).** `setup.ps1` / `setup.sh` instalan un lanzador en `~/.local/bin` (Windows: `dashboard-1mb.cmd` que llama a `start.ps1`; macOS/Linux: script que hace `exec start.sh`) y añaden esa carpeta al PATH de la persona si falta (Windows: registro de usuario sin expandir variables; macOS/Linux: `.zshrc`, `.bash_profile` o `.bashrc`). `start.*` detecta si el puerto 8765 ya está en uso y en ese caso solo abre el navegador. Si se mueve la carpeta, hay que repetir `setup`. README reescrito con instalación y arranque por sistema, formatos de diario, Día, Parte de horas, Ajustes, privacidad, actualizar y problemas frecuentes.
+8. **Comando `dashboard-tasks` (2026-11-11; antes `dashboard-1mb`, renombrado el 2026-11-12).** `setup.ps1` / `setup.sh` instalan un lanzador en `~/.local/bin` (Windows: `dashboard-tasks.cmd` que llama a `start.ps1`; macOS/Linux: script que hace `exec start.sh`) y añaden esa carpeta al PATH de la persona si falta (Windows: registro de usuario sin expandir variables; macOS/Linux: `.zshrc`, `.bash_profile` o `.bashrc`). `start.*` detecta si el puerto 8765 ya está en uso y en ese caso solo abre el navegador. Si se mueve la carpeta, hay que repetir `setup`. README reescrito con instalación y arranque por sistema, formatos de diario, Día, Parte de horas, Ajustes, privacidad, actualizar y problemas frecuentes.
 - Riesgo anotado: la conexión OAuth de Notion está creada con la cuenta del usuario; conviene que la tenga una cuenta de la empresa.
 
 ### 7.0 bis Dashboard genérico: configuración por usuario desde Ajustes (2026-11-11)
@@ -381,7 +381,7 @@ Los prompts (`standup.md`, `day_summary.md`, `notion_summary.md`, `timesheet.md`
 ## 8. Estructura del proyecto
 
 ```
-C:\Users\daxte\Documents\1MillionBot\dashboard\
+C:\Users\daxte\Documents\1MillionBot\dashboard-tasks\
 ├─ PLAN_TECNICO.md
 ├─ README.md
 ├─ CONTRIBUTING.md        # convención de commits (Conventional Commits, en inglés)
@@ -412,7 +412,7 @@ Inicializa este directorio como repo git propio (`git init`) con `.gitignore` co
 - ✅ Adelantado de la Fase 2: colector de Notion (`collectors/notion.py`) con notas (`kind=note`) y pendientes (`kind=task_plan`) de I'M BACK y tareas activas (`kind=task`). Las notas de un rango se reemplazan en cada recogida (las ediciones y borrados en Notion se reflejan).
 - ✅ `llm/claude_cli.py`: `claude -p --tools "" --strict-mcp-config` (sin herramientas ni conectores), contexto por stdin, `cwd` fuera de los repos, caché por hash en `summaries`; si falla se muestra el error y se conserva el último resultado.
 - ⏳ Pendiente de validar por el usuario: stand-up generado para el 11/11 comparado con el que publicó.
-- ✅ Aceptación: ejecutar para "ayer laborable" lista commits reales de los repos del usuario, marca los no subidos, **no aparece nada del repo `dashboard/`**, y genera un stand-up coherente que el usuario valida.
+- ✅ Aceptación: ejecutar para "ayer laborable" lista commits reales de los repos del usuario, marca los no subidos, **no aparece nada del repo `dashboard-tasks/`**, y genera un stand-up coherente que el usuario valida.
 
 **Fase 2 — Notion**
 - Lectura de I'M BACK y de tareas explícitas; vista "Hoy" con tareas del día.

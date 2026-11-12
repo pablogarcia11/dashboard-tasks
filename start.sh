@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Arranca el dashboard y lo abre en el navegador (macOS/Linux). Para pararlo: Ctrl+C.
-# Tras setup.sh también se arranca desde cualquier terminal con:  dashboard-1mb
+# Tras setup.sh también se arranca desde cualquier terminal con:  dashboard-tasks
 # Si ya está en marcha, solo lo abre en el navegador.
 cd "$(dirname "$0")"
 port=8765

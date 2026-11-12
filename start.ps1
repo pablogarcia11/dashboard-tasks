@@ -1,5 +1,5 @@
 ﻿# Arranca el dashboard y lo abre en el navegador (Windows). Para pararlo: Ctrl+C.
-# Tras setup.ps1 también se arranca desde cualquier terminal con:  dashboard-1mb
+# Tras setup.ps1 también se arranca desde cualquier terminal con:  dashboard-tasks
 # Si ya está en marcha, solo lo abre en el navegador.
 Set-Location $PSScriptRoot
 $port = 8765

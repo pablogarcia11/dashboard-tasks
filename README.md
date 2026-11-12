@@ -1,4 +1,4 @@
-# Dashboard de trabajo
+# Dashboard Tasks
 
 Dashboard local para la gente de 1MillionBot. Junta en una pantalla tu actividad del día: tus commits (también los que aún no has subido), tu diario y tus tareas de Notion, y tus reuniones de Google Calendar. Con eso te prepara el **stand-up**, las **notas para tu diario** y el **parte de horas** para el hub, listos para copiar.
 
@@ -30,14 +30,14 @@ powershell -ExecutionPolicy Bypass -File setup.ps1
 bash setup.sh
 ```
 
-`setup` comprueba lo que falta, crea el entorno de Python, instala las dependencias, crea el fichero `.env` e instala el comando **`dashboard-1mb`**. Abre `.env` y rellena las dos credenciales de Notion.
+`setup` comprueba lo que falta, crea el entorno de Python, instala las dependencias, crea el fichero `.env` e instala el comando **`dashboard-tasks`**. Abre `.env` y rellena las dos credenciales de Notion.
 
 ## Arrancar el dashboard
 
 Desde cualquier terminal y cualquier carpeta:
 
 ```
-dashboard-1mb
+dashboard-tasks
 ```
 
 Arranca el dashboard y lo abre en el navegador. Si ya estaba en marcha, solo lo abre. Para pararlo: Ctrl+C en esa terminal.
@@ -109,7 +109,7 @@ Y vuelve a ejecutar `setup` (instala dependencias nuevas y actualiza el comando;
 
 ## Problemas frecuentes
 
-- **`dashboard-1mb` no se reconoce**: abre una terminal nueva. Si sigue igual, vuelve a ejecutar `setup`.
+- **`dashboard-tasks` no se reconoce**: abre una terminal nueva. Si sigue igual, vuelve a ejecutar `setup`.
 - **No salen commits**: revisa en Ajustes las carpetas de repositorios y tus emails de autor.
 - **Error en gcal**: reconecta Google Calendar en claude.ai → Conectores, con todos los permisos. Si el error habla de la sesión de Claude Code, ejecuta `claude auth login`; y si usas Claude Code con otra carpeta de configuración (`CLAUDE_CONFIG_DIR`, p. ej. para la cuenta de empresa), ponla también en el `.env` del dashboard y reinícialo.
 - **El stand-up no sigue tu formato**: conecta Slack en claude.ai → Conectores y pulsa «Volver a aprender» en Ajustes. Comprueba que el canal es el tuyo.
@@ -132,6 +132,6 @@ python -m web.app                                            # servidor sin abri
 
 - Configuración común de la empresa: `config.yaml` (base de Tareas de Notion, horario por defecto del parte, categorías, **proyectos según el nombre del repo** y palabras clave de reuniones, modelo de Claude). Lo de cada persona se guarda en su `db/` local desde Ajustes.
 - Prompts que usa Claude: `prompts/`. Diseño y decisiones: [PLAN_TECNICO.md](PLAN_TECNICO.md). Commits: [CONTRIBUTING.md](CONTRIBUTING.md).
-- Scripts: `setup.ps1` / `setup.sh` (instalación y comando `dashboard-1mb`), `start.ps1` / `start.sh` (arranque).
+- Scripts: `setup.ps1` / `setup.sh` (instalación y comando `dashboard-tasks`), `start.ps1` / `start.sh` (arranque).
 - Capturas de la interfaz con Playwright: instala `requirements-dev.txt` y `python -m playwright install chromium`.
 - Logo: copia el PNG oficial de 1MillionBot en `web/static/logo.png`.

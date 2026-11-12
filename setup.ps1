@@ -31,14 +31,15 @@ if ($missing.Count) {
     $missing | ForEach-Object { Write-Host $_ }
     exit 1
 }
-# Comando dashboard-1mb: un .cmd en ~\.local\bin (la misma carpeta que usa uv) que lanza start.ps1.
+# Comando dashboard-tasks: un .cmd en ~\.local\bin (la misma carpeta que usa uv) que lanza start.ps1.
 # Se escribe con la página de códigos de la consola para que cmd lea bien rutas con tildes o eñes.
 $bin = Join-Path $env:USERPROFILE ".local\bin"
 New-Item -ItemType Directory -Force $bin | Out-Null
 $oem = [Text.Encoding]::GetEncoding([Globalization.CultureInfo]::CurrentCulture.TextInfo.OEMCodePage)
 $shim = "@echo off`r`nrem Creado por setup.ps1 del dashboard de 1MillionBot. Vuelve a ejecutar setup.ps1 si mueves la carpeta.`r`n" +
         "powershell -NoProfile -ExecutionPolicy Bypass -File `"$PSScriptRoot\start.ps1`"`r`n"
-[IO.File]::WriteAllText((Join-Path $bin "dashboard-1mb.cmd"), $shim, $oem)
+[IO.File]::WriteAllText((Join-Path $bin "dashboard-tasks.cmd"), $shim, $oem)
+Remove-Item (Join-Path $bin "dashboard-1mb.cmd") -ErrorAction SilentlyContinue  # nombre anterior del comando
 
 # Añade la carpeta al PATH del usuario si falta (leído sin expandir para no romper entradas como %NVM_HOME%)
 $newTerminal = $false
@@ -48,13 +49,13 @@ $entries = $userPath -split ";" | Where-Object { $_ } | ForEach-Object { [Enviro
 if ($entries -notcontains $bin) {
     $key.SetValue("Path", (@($userPath.TrimEnd(";"), $bin) | Where-Object { $_ }) -join ";", "ExpandString")
     # Avisa a Windows del cambio para que las terminales nuevas lo vean
-    [Environment]::SetEnvironmentVariable("DASHBOARD_1MB_SETUP", "1", "User")
-    [Environment]::SetEnvironmentVariable("DASHBOARD_1MB_SETUP", $null, "User")
+    [Environment]::SetEnvironmentVariable("DASHBOARD_TASKS_SETUP", "1", "User")
+    [Environment]::SetEnvironmentVariable("DASHBOARD_TASKS_SETUP", $null, "User")
     $newTerminal = $true
 }
 $key.Close()
 
-Write-Host "`nListo. Arranca el dashboard desde cualquier terminal con:  dashboard-1mb" -ForegroundColor Green
+Write-Host "`nListo. Arranca el dashboard desde cualquier terminal con:  dashboard-tasks" -ForegroundColor Green
 if ($newTerminal) { Write-Host "(Abre una terminal nueva para que Windows reconozca el comando.)" -ForegroundColor Yellow }
 Write-Host "También puedes usar .\start.ps1 desde esta carpeta."
 Write-Host "Después, en Ajustes (⚙) sigue los «Primeros pasos»."
