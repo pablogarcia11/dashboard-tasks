@@ -111,7 +111,7 @@ Y vuelve a ejecutar `setup` (instala dependencias nuevas y actualiza el comando;
 
 - **`dashboard-1mb` no se reconoce**: abre una terminal nueva. Si sigue igual, vuelve a ejecutar `setup`.
 - **No salen commits**: revisa en Ajustes las carpetas de repositorios y tus emails de autor.
-- **Error en gcal**: reconecta Google Calendar en claude.ai → Conectores, con todos los permisos.
+- **Error en gcal**: reconecta Google Calendar en claude.ai → Conectores, con todos los permisos. Si el error habla de la sesión de Claude Code, ejecuta `claude auth login`; y si usas Claude Code con otra carpeta de configuración (`CLAUDE_CONFIG_DIR`, p. ej. para la cuenta de empresa), ponla también en el `.env` del dashboard y reinícialo.
 - **El stand-up no sigue tu formato**: conecta Slack en claude.ai → Conectores y pulsa «Volver a aprender» en Ajustes. Comprueba que el canal es el tuyo.
 - **Error en notion**: vuelve a conectar Notion en Ajustes.
 - **«Elegir carpeta…» no abre nada**: el selector puede quedar detrás del navegador; también puedes escribir la ruta a mano.

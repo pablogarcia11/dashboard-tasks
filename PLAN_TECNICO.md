@@ -87,8 +87,9 @@ Por qué NO dejar que Claude *interprete* las fuentes vía MCP: gasta más cuota
 ### Llamar a Claude desde Python
 
 ```python
-import os, subprocess, json
-env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}  # fuerza suscripción
+import subprocess, json
+from core.claude_env import claude_env
+env = claude_env()  # sin ANTHROPIC_API_KEY (fuerza suscripción) + CLAUDE_CONFIG_DIR del .env si lo hay
 p = subprocess.run(
     ["claude", "-p", prompt, "--output-format", "json", "--model", "sonnet"],
     input=json.dumps(contexto, ensure_ascii=False),

@@ -5,13 +5,13 @@ Los resultados se cachean en `summaries` por hash del contexto.
 """
 import hashlib
 import json
-import os
 import shutil
 import sqlite3
 import subprocess
 import tempfile
 
 from core import db
+from core.claude_env import claude_env
 from core.config import ROOT
 
 PROMPTS = ROOT / "prompts"
@@ -24,7 +24,7 @@ class ClaudeError(RuntimeError):
 def run_claude(prompt: str, context: dict, cfg: dict) -> str:
     c = cfg["claude"]
     exe = shutil.which(c.get("command", "claude")) or c.get("command", "claude")
-    env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}  # fuerza la suscripción
+    env = claude_env()
     try:
         p = subprocess.run(
             [exe, "-p", prompt, "--output-format", "json", "--model", c.get("model", "sonnet"),
