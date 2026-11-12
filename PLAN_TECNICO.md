@@ -92,6 +92,7 @@ dashboard-tasks/
 ├─ core/
 │  ├─ config.py           # carga de config.yaml; ROOT del proyecto
 │  ├─ settings.py         # ajustes por persona (app_settings) y effective_config()
+│  ├─ search.py           # búsqueda en el historial (sin tildes ni mayúsculas)
 │  ├─ dates.py            # días laborables, límites de día en la zona horaria
 │  ├─ db.py               # acceso a SQLite (upserts, reemplazos por rango, resúmenes)
 │  ├─ views.py            # datos de cada vista y contexto para Claude
@@ -105,10 +106,11 @@ dashboard-tasks/
 │  ├─ notion.py           # diario y tareas activas
 │  ├─ claude_connector.py # ejecución de `claude -p` con herramientas de lectura y lectura del stream
 │  ├─ gcal.py             # reuniones (conector de Google Calendar)
-│  └─ slack.py            # stand-ups propios del canal (conector de Slack)
+│  ├─ slack.py            # stand-ups propios del canal (conector de Slack)
+│  └─ github.py           # pull requests abiertas (API de GitHub, opcional)
 ├─ llm/claude_cli.py      # `claude -p` para redactar + caché por hash
 ├─ jobs/collect_all.py    # orquestación de la recogida (también por terminal)
-├─ prompts/               # standup.md · journal_notes.md · timesheet.md
+├─ prompts/               # standup.md · journal_notes.md · timesheet.md · weekly_summary.md
 ├─ web/
 │  ├─ app.py              # rutas FastAPI
 │  ├─ templates/          # base, day, timesheet, settings y parciales (_*.html)
@@ -132,7 +134,7 @@ La configuración efectiva se compone en tres capas (`core/settings.py · effect
    - `standup`: número de ejemplos y `relearn_days`.
    - `claude`: comando, modelo para redactar y timeout.
    - `sources` (fuentes activas) y `server` (host y puerto).
-2. **`.env`: local y no versionado**: `NOTION_CLIENT_ID` y `NOTION_CLIENT_SECRET` de la conexión OAuth del equipo, `NOTION_TASKS_DATABASE_ID` (la base de datos de tareas) y `CLAUDE_CONFIG_DIR` opcional (ver 7.3). Ningún identificador de un workspace, una persona o un canal concretos se versiona.
+2. **`.env`: local y no versionado**: `NOTION_CLIENT_ID` y `NOTION_CLIENT_SECRET` de la conexión OAuth del equipo, `NOTION_TASKS_DATABASE_ID` (la base de datos de tareas), `GITHUB_TOKEN` opcional (ver 7.6) y `CLAUDE_CONFIG_DIR` opcional (ver 7.3). Ningún identificador de un workspace, una persona o un canal concretos se versiona.
 3. **Ajustes (`app_settings`): por persona**, y tienen prioridad sobre `config.yaml`:
 
 | Clave | Contenido |
@@ -211,6 +213,12 @@ Slack **no es una fuente de actividad**: solo sirve para aprender el formato del
 - Necesita un canal elegido en Ajustes; sin él no se lee Slack.
 - Se guardan en `standup.examples` y se renuevan cada `relearn_days` días, al cambiar de canal o con «Volver a aprender» en Ajustes. Si Slack falla, se conservan los anteriores.
 
+### 7.6 GitHub (`collectors/github.py`, opcional)
+
+- Solo se usa si hay `GITHUB_TOKEN` en `.env`: un token *fine-grained* de solo lectura (*Pull requests* y *Metadata*), creado por cada persona. Ajustes › GitHub explica cómo crearlo y muestra el estado.
+- Dos búsquedas en la API REST (`/search/issues`), con `@me` para no tener que configurar el usuario: `is:pr is:open review-requested:@me` (`kind=review`) y `is:pr is:open author:@me` (`kind=pr`). Es una instantánea: se reemplaza entera en cada recogida, sea cual sea el rango.
+- Los errores llevan el paso para arreglarlos: token no válido o caducado (401), organización con SSO (403 con SAML) o límite de consultas.
+
 ---
 
 ## 8. Recogida (`jobs/collect_all.py · run_collect`)
@@ -251,10 +259,11 @@ sync_state(source PRIMARY KEY, last_ok, last_error)
 | `source` | `kind` |
 |---|---|
 | `git` | `commit`, `wip` |
+| `github` | `review` (piden tu revisión), `pr` (tuyas abiertas) |
 | `notion` | `note`, `task_plan`, `task` |
 | `gcal` | `meeting` |
 
-Valores de `summaries.kind`: `standup`, `journal_notes`, `timesheet` y `timesheet_edit` (bloques de un día editados a mano).
+Valores de `summaries.kind`: `standup`, `journal_notes`, `timesheet`, `timesheet_edit` (bloques de un día editados a mano) y `weekly_summary` (con `work_date` = lunes de la semana).
 
 ---
 
@@ -297,7 +306,14 @@ claude -p <prompts/<kind>.md> --output-format json --model <claude.model> --tool
 
 Borrador del día a partir de los commits de los repos visibles, con lo ya escrito en el diario ese día para completarlo sin repetirlo. Sale en markdown con el formato del diario (`# Martes 10/11/2026`, `### Proyecto`, viñetas poco técnicas). Cada viñeta describe un cambio en la aplicación: o cómo funciona ahora, de forma impersonal («Al salir del detalle de una incidencia se vuelve a la página anterior»), o en primera persona con un verbo de hacer cambios («Corregí…», «Añadí…»), nunca como una acción de la persona usando la aplicación, que Notion convierte al pegar. Antes de generar se relee Notion para ese día.
 
-### 11.4 Parte de horas (`core/timesheet.py`, `prompts/timesheet.md`)
+### 11.4 Resumen de la semana (`prompts/weekly_summary.md`, `weekly_context`)
+
+En la página del parte de horas, bajo la leyenda. Para la Sprint Review o para el responsable: lo conseguido en cada proyecto durante la semana, no un diario por días.
+- **Contexto:** por cada día laborable de la semana hasta hoy, las notas del diario (fuente principal), los títulos de los commits (apoyo) y las reuniones con su proyecto; y lo último que quedó pendiente (el día más reciente con pendientes).
+- **Salida:** Markdown con `**Proyecto**` y viñetas de resultados (varios días sobre lo mismo se juntan en un punto), y «Para la próxima semana» con lo pendiente.
+- Se cachea por semana y avisa si el diario o los commits han cambiado desde que se generó.
+
+### 11.5 Parte de horas (`core/timesheet.py`, `prompts/timesheet.md`)
 
 El parte se construye en dos partes:
 - **Claude agrupa y titula.** Recibe los commits del día y las notas del diario, y devuelve JSON con tareas: título `<Proyecto> - <tarea>`, proyecto, categoría, commits asignados o minutos estimados. `parse_tasks` valida la respuesta:
@@ -335,6 +351,8 @@ El parte se construye en dos partes:
 | `GET /settings` y `POST /settings/…` | Ajustes: canal y aprendizaje del stand-up, jornada, emails de autor, carpetas (selector nativo, alta y baja), visibilidad por repo |
 | `GET /settings/notion/connect`, `GET /oauth/notion/callback`, `POST /settings/notion/disconnect` | OAuth de Notion |
 | `GET /settings/notion/pages`, `POST /settings/notion/journal`, `GET /settings/notion/journal-status` | Búsqueda, elección y vista previa del diario |
+| `GET /search?q=` | Buscador; con HTMX devuelve solo los resultados (`_search_results.html`) |
+| `POST /weekly/{d}` | Genera (o devuelve de caché) el resumen de la semana de `d`; `?force=true` regenera |
 | `GET /avatar` | Foto de perfil local |
 
 Las acciones devuelven fragmentos HTML (`_*.html`) que HTMX coloca en su sitio. No hay API JSON.
@@ -380,13 +398,15 @@ Se calcula al arrancar y se recalcula al conectar o desconectar Notion.
   - **Lo que no se anima:** la navegación con atajos de teclado (se salta la transición) y la carga inicial de las páginas.
   - **`prefers-reduced-motion`:** se quitan desplazamientos, escalas, el círculo del tema y los bucles; quedan fundidos breves y los indicadores de carga, quietos.
 - **Componentes:**
+  - buscador (`/search`, `core/search.py`): busca en commits, notas, pendientes y reuniones guardados, sin distinguir tildes ni mayúsculas, con todas las palabras; resultados por día con enlace a cada uno y lo encontrado resaltado. Respeta lo oculto en Ajustes. Se abre desde la lupa de la barra o con `/`;
+  - pull requests en «Qué toca hoy» (si hay token de GitHub): las que piden tu revisión y las tuyas abiertas, con enlace;
   - tira de la semana en la vista Día (`core/views.py · week_overview`): un enlace por día laborable con una marca según el diario: hay notas, hay commits sin notas (falta apuntar) o no hay actividad;
   - «Actualizado hace…» junto al botón de actualizar (`sync_state.last_ok` más reciente) y, en las reuniones de hoy, cuánto falta para la siguiente; ambos se recalculan en el navegador cada 30 s con `Intl.RelativeTimeFormat`;
-  - aviso en la vista de hoy con los días laborables de las tres últimas semanas que tienen commits y ninguna nota (`unnoted_days`), con enlace a cada uno;
+  - línea discreta en la vista de hoy con los días laborables de las tres últimas semanas que tienen commits y ninguna nota (`unnoted_days`): los tres más recientes como enlaces y, si hay más, «y N más» despliega el resto (al pasar el puntero o con el foco);
   - «Para no perder» agrupa los commits sin subir por repo (`unpushed_by_repo`); el detalle está en la tarjeta Commits;
   - en escritorio, la tarjeta de textos se queda fija al desplazar la página (`position: sticky`);
   - parte de horas: línea de la hora actual en la columna de hoy, horas de la semana por categoría junto a la leyenda, «Copiar semana» (el texto de todos los días, cada uno con su nombre) y, en pantallas estrechas, eje de horas fijo y desplazamiento inicial hasta hoy;
-  - atajos de teclado (`base.html`): ← → día o semana, T hoy, D y P secciones, R actualizar, C copiar el texto visible y ? para la ayuda. No actúan mientras se escribe ni con un diálogo abierto;
+  - atajos de teclado (`base.html`): ← → día o semana, T hoy, D y P secciones, R actualizar, C copiar el texto visible, / buscar y ? para la ayuda. No actúan mientras se escribe ni con un diálogo abierto;
   - navegación por días al estilo Google Calendar (Hoy, ‹ ›, calendario mensual que no deja elegir fines de semana ni el futuro);
   - tarjetas con proyectos plegables (recordados en `localStorage`). Donde el navegador soporta `::details-content`, los plegables y las guías de ayuda se abren y se cierran animando la altura (`interpolate-size: allow-keywords`) y la opacidad. El contenido usa `display: flow-root` para que los márgenes no salten al terminar. En el resto de navegadores, y con movimiento reducido, solo hay fundido;
   - pestañas Stand-up / Notas para el diario;
@@ -449,4 +469,4 @@ Los colectores se prueban con datos de ejemplo, sin red.
 - Calendar y Slack dependen de que la sesión de Claude Code de la persona tenga los conectores autorizados, con todos sus permisos.
 - En el parte de horas, como los commits ocupan casi toda la jornada, las tareas sin commits (documentación, informes) suelen quedarse con poco tiempo.
 - La recogida automática solo funciona con la vista de hoy abierta y no incluye Calendar (cada lectura pasa por Claude): las reuniones se leen al arrancar y con «Actualizar datos».
-- No hay colector de GitHub remoto (PRs o reviews pendientes): el trabajo se lee del git local.
+- Las pull requests solo se ven con un token de GitHub de cada persona; las revisiones pedidas a un equipo (no a la persona) no aparecen.
