@@ -912,6 +912,33 @@ body.is-dragging-block { user-select: none; cursor: grabbing; }
 .task-actions .spacer { flex: 1; }
 #task-error { margin: 14px 0 0; }
 
+/* Tipo de tarea: opciones con el color de su categoría (el mismo que el bloque en el calendario) */
+.cat-picker { margin: 12px 0 0; padding: 0; border: 0; min-width: 0; }
+.cat-picker legend { padding: 0; margin-bottom: 5px; }
+.cat-options { display: flex; flex-wrap: wrap; gap: 6px; }
+.cat-option {
+  --c-bg: var(--dev-bg); --c-line: var(--dev-line);
+  position: relative; display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px 6px 9px;
+  border: 1px solid var(--line); border-radius: var(--r-pill); background: var(--surface); color: var(--text);
+  font-size: .95em; font-weight: 500; cursor: pointer; user-select: none;
+  transition: background-color var(--fast) ease, border-color var(--fast) ease, transform var(--press) var(--ease-out);
+}
+.cat-option.cat-meet { --c-bg: var(--meet-bg); --c-line: var(--meet-line); }
+.cat-option.cat-doc { --c-bg: var(--doc-bg); --c-line: var(--doc-line); }
+.cat-option.cat-admin { --c-bg: var(--admin-bg); --c-line: var(--admin-line); }
+.cat-option.cat-learn { --c-bg: var(--learn-bg); --c-line: var(--learn-line); }
+.cat-option input { position: absolute; opacity: 0; width: 0; height: 0; }
+.cat-swatch {
+  width: 12px; height: 12px; border-radius: var(--r-sm); flex: none;
+  background: var(--c-bg); box-shadow: inset 3px 0 0 var(--c-line);
+}
+@media (hover: hover) and (pointer: fine) { .cat-option:hover { border-color: var(--c-line); } }
+.cat-option:active { transform: scale(0.97); }
+/* Elegida: se rellena con el color de la categoría, como el bloque */
+.cat-option:has(input:checked) { background: var(--c-bg); border-color: var(--c-line); color: var(--cat-text); font-weight: 700; }
+.cat-option:has(input:checked) .cat-swatch { background: var(--c-line); box-shadow: none; }
+.cat-option:has(input:focus-visible) { outline: 2px solid var(--red-text); outline-offset: 2px; }
+
 /* Menos movimiento: fuera desplazamientos y escalas; se mantienen fundidos breves */
 @media (prefers-reduced-motion: reduce) {
   .btn:active, .nav-current:active, .nav-arrow:active, .icon-btn:active, .theme-toggle:active, .icon-link:active,
@@ -948,5 +975,6 @@ body.is-dragging-block { user-select: none; cursor: grabbing; }
   .writing i, .tab-panel:has(.regen.htmx-request) textarea { animation: none; opacity: .6; }
   .ts-now::after { animation: none; opacity: 0; }
   .ts-day .ts-block.is-dragging { transition: none; }
+  .cat-option:active { transform: none; }
   .just-generated textarea, .ts-day.just-generated .ts-block { animation: fade 200ms ease both; animation-delay: 0s; }
 }

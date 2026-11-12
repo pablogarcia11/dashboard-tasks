@@ -71,10 +71,18 @@
         <input type="time" class="field" name="end" step="{{ step * 60 }}" required></label>
       <p class="task-duration" id="task-duration" aria-live="polite"></p>
     </div>
-    <label class="task-field"><span>Tipo</span>
-      <select class="field" name="category">
-        {% for c in categories %}<option>{{ c }}</option>{% endfor %}
-      </select></label>
+    {# Tipo: las cinco categorías a la vista, cada una con su color del calendario (radios: flechas para cambiar) #}
+    <fieldset class="task-field cat-picker">
+      <legend>Tipo</legend>
+      <div class="cat-options">
+        {% for c in categories %}
+        <label class="cat-option cat-{{ category_class.get(c, 'dev') }}">
+          <input type="radio" name="category" value="{{ c }}" {% if loop.first %}checked{% endif %}>
+          <i class="cat-swatch" aria-hidden="true"></i><span>{{ c }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </fieldset>
     <label class="task-field"><span>Proyecto</span>
       <input type="text" class="field" name="project" maxlength="80" spellcheck="false"></label>
     <p class="notice error small" id="task-error" role="alert" hidden></p>
@@ -237,7 +245,7 @@
       const dayEl = add.closest(".ts-day"), last = Math.max(0, ...dayBlocks(dayEl).map(b => b.end));
       const start = last && last + STEP <= GRID_END ? last : 9 * 60;
       return openTask(dayEl, { start, end: Math.min(start + 60, GRID_END), title: "", project: "",
-                               category: field.category.options[0].value }, true);
+                               category: {{ categories[0] | tojson }} }, true);
     }
     const block = event.target.closest(".ts-day .ts-block[data-title]");
     if (block) {
