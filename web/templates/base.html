@@ -108,9 +108,48 @@
   <div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
   <script>
 
-    // Botones "Copiar" (_macros.html, solo icono): copian el texto de un campo, el icono pasa a ✓ y se anuncia
+    // Markdown de Slack (*negrita*, _cursiva_, ~tachado~, viñetas • / ◦ con sangría) → HTML con listas
+    // anidadas reales: es lo que el editor de Slack convierte en formato al pegar (el texto plano no).
+    function slackToHtml(text) {
+      function inline(s) {
+        s = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        return s.replace(/(^|[\s(])\*([^*\n]+?)\*(?=$|[\s.,:;!?)])/g, "$1<b>$2</b>")
+                .replace(/(^|[\s(])_([^_\n]+?)_(?=$|[\s.,:;!?)])/g, "$1<i>$2</i>")
+                .replace(/(^|[\s(])~([^~\n]+?)~(?=$|[\s.,:;!?)])/g, "$1<s>$2</s>");
+      }
+      var out = "", depth = 0;  // listas <ul> abiertas
+      text.replace(/\r/g, "").split("\n").forEach(function (line) {
+        var m = line.match(/^([ \t]*)([•◦▪▫‣·-])\s+(.*)$/);
+        if (m) {
+          var indent = m[1].replace(/\t/g, "    ").length;
+          // 4 espacios = un nivel; un ◦ sin sangría también es subviñeta
+          var level = 1 + Math.max(Math.ceil(indent / 4), /[◦▫]/.test(m[2]) ? 1 : 0);
+          if (level > depth + 1) level = depth + 1;
+          if (level > depth) { while (depth < level) { out += "<ul>"; depth++; } }
+          else { while (depth > level) { out += "</li></ul>"; depth--; } out += "</li>"; }
+          out += "<li>" + inline(m[3]);
+        } else {
+          while (depth > 0) { out += "</li></ul>"; depth--; }
+          out += line.trim() ? "<div>" + inline(line) + "</div>" : "<div><br></div>";
+        }
+      });
+      while (depth > 0) { out += "</li></ul>"; depth--; }
+      return out;
+    }
+
+    // Botones "Copiar" (_macros.html, solo icono): copian el texto de un campo, el icono pasa a ✓ y se anuncia.
+    // Con data-copy-as="slack" copian además la versión HTML, para que Slack mantenga listas y negritas.
     function copyFrom(id, btn) {
-      navigator.clipboard.writeText(document.getElementById(id).value).then(function () {
+      var field = document.getElementById(id), text = field.value, write;
+      if (field.dataset.copyAs === "slack" && window.ClipboardItem) {
+        write = navigator.clipboard.write([new ClipboardItem({
+          "text/plain": new Blob([text], { type: "text/plain" }),
+          "text/html": new Blob([slackToHtml(text)], { type: "text/html" }),
+        })]).catch(function () { return navigator.clipboard.writeText(text); });
+      } else {
+        write = navigator.clipboard.writeText(text);
+      }
+      write.then(function () {
         delete document.getElementById(id).dataset.dirty;  // copiado: ya no se pierde nada
         btn.classList.add("is-copied");
         btn.title = "Copiado";

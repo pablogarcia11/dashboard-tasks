@@ -7,7 +7,7 @@
   {% if error %}<p class="notice error">No se pudo generar: {{ error }}<span class="hint">{{ claude_hint }}</span></p>{% endif %}
   {% if text %}
   <div class="copy-wrap">
-    <textarea id="standup-text" rows="18" spellcheck="false" aria-label="Texto del stand-up" data-guard>{{ text }}</textarea>
+    <textarea id="standup-text" rows="18" spellcheck="false" aria-label="Texto del stand-up" data-guard data-copy-as="slack">{{ text }}</textarea>
     {{ copy_button("standup-text", inline=True) }}
   </div>
   {% else %}
