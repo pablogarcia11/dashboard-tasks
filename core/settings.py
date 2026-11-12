@@ -7,6 +7,9 @@ import copy
 import json
 import sqlite3
 
+from dotenv import dotenv_values
+
+from core.config import ROOT
 from core.identity import notion_owner
 
 JOURNAL_PAGE_ID = "notion.journal_page_id"
@@ -14,7 +17,7 @@ JOURNAL_PAGE_TITLE = "notion.journal_page_title"
 REPOS_ROOTS = "git.repos_roots"      # JSON: carpetas donde la persona tiene sus repos (pueden ser varias)
 REPOS_ROOT = "git.repos_root"        # antigua, de cuando solo había una carpeta: se migra a REPOS_ROOTS
 EXTRA_AUTHORS = "git.extra_authors"   # JSON: emails de autor añadidos a mano (los de git se detectan solos)
-STANDUP_CHANNEL = "standup.channel"    # canal de stand-up de la persona (por defecto, el de config.yaml)
+STANDUP_CHANNEL = "standup.channel"    # canal de stand-up de la persona (sin él, formato por defecto)
 # Horario del parte de horas de la persona (por defecto, el de la empresa en config.yaml)
 TIMESHEET_KEYS = ("day_start", "day_end", "lunch_start", "lunch_end", "min_daily_hours")
 STANDUP_EXAMPLES = "standup.examples"  # JSON: sus últimos stand-ups del canal, para imitar su formato
@@ -78,6 +81,10 @@ def effective_config(cfg: dict, con: sqlite3.Connection) -> dict:
         if saved.get(f"timesheet.{k}"):
             v = saved[f"timesheet.{k}"]
             out.setdefault("timesheet", {})[k] = float(v) if k == "min_daily_hours" else v
+    # Base de datos de tareas de Notion: va en .env (no se versiona), junto con las credenciales OAuth
+    tasks_db = (dotenv_values(ROOT / ".env").get("NOTION_TASKS_DATABASE_ID") or "").strip()
+    if tasks_db:
+        out["notion"]["tasks_database_id"] = tasks_db
     owner_id = notion_owner().get("id")
     if owner_id:
         out["notion"]["user_id"] = owner_id

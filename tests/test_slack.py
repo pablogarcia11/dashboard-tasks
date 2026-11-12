@@ -6,7 +6,7 @@ from collectors.claude_connector import ConnectorError
 from collectors.slack import messages_from_stream, own_standups, parse_messages
 
 RAW = (
-    "Channel: #equipo-tecnologia-stand-up (C056VQM4E74)\n\n"
+    "Channel: #stand-up (C0000000001)\n\n"
     "Ana Pérez <ana@empresa.com>: Buenos días! :saluting_face:\n*Tareas realizadas el último día*\n"
     "• AI Risk\n    ◦ Revisar permisos de roles [2026-11-11 09:18:04 CET]\n\n"
     "Luis <luis@empresa.com>: buenas, sigo con lo mismo [2026-11-11 09:02:21 CET]\n\n"
@@ -26,8 +26,8 @@ def test_parse_messages_con_varias_lineas():
 
 
 RAW_B = (
-    "Channel: #equipo-tecnologia-stand-up (C056VQM4E74)\n\n"
-    "=== Message from Ana Pérez <ana@empresa.com> (U0B1F4CJ8CA) at 2026-11-11 09:18:04 CET === \n"
+    "Channel: #stand-up (C0000000001)\n\n"
+    "=== Message from Ana Pérez <ana@empresa.com> (U0000000001) at 2026-11-11 09:18:04 CET === \n"
     "Message TS: 1794385084.628719\nBuenos días! :saluting_face:\n*Tareas realizadas el último día*\n"
     "• AI Risk\n    ◦ Revisar permisos de roles\n\n"
     "=== Message from Luis <luis@empresa.com> (U02) at 2026-11-11 09:02:21 CET === \n"

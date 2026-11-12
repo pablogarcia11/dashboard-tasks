@@ -51,15 +51,15 @@ def test_project_for_por_nombre_de_repo_o_carpeta_en_cualquier_sitio(tmp_path):
 
 def test_parse_log():
     out = (
-        f"{RS}abc123{US}Pablo García{US}pablogarcia@1millionbot.com{US}2026-11-10T10:15:00+01:00"
-        f"{US}refs/heads/pablo/roles{US}Corregir permisos\n\n 3 files changed, 40 insertions(+), 2 deletions(-)\n"
-        f"{RS}def456{US}pablogarcia11{US}pablogarcia@1millionbot.com{US}2026-11-10T12:00:00+01:00"
+        f"{RS}abc123{US}Laura Martín{US}laura.martin@empresa.com{US}2026-11-10T10:15:00+01:00"
+        f"{US}refs/heads/laura/roles{US}Corregir permisos\n\n 3 files changed, 40 insertions(+), 2 deletions(-)\n"
+        f"{RS}def456{US}lauramartin{US}laura.martin@empresa.com{US}2026-11-10T12:00:00+01:00"
         f"{US}refs/remotes/origin/main{US}Docs: separador {US} raro\n\n 1 file changed, 1 insertion(+)\n"
     )
     first, second = parse_log(out)
-    assert first == {"sha": "abc123", "author": "Pablo García", "email": "pablogarcia@1millionbot.com",
+    assert first == {"sha": "abc123", "author": "Laura Martín", "email": "laura.martin@empresa.com",
                      "date": "2026-11-10T10:15:00+01:00", "subject": "Corregir permisos",
-                     "branch": "pablo/roles", "files": 3, "insertions": 40, "deletions": 2}
+                     "branch": "laura/roles", "files": 3, "insertions": 40, "deletions": 2}
     assert second["subject"] == f"Docs: separador {US} raro"
     assert second["branch"] == "origin/main"
     assert (second["files"], second["insertions"], second["deletions"]) == (1, 1, 0)

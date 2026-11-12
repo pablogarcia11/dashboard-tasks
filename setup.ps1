@@ -23,7 +23,7 @@ if (Get-Command uv -ErrorAction SilentlyContinue) {
 
 if (-not (Test-Path .env)) {
     Copy-Item .env.example .env
-    Write-Host "Creado .env: pon NOTION_CLIENT_ID y NOTION_CLIENT_SECRET (pídelos a quien administre la conexión de Notion)." -ForegroundColor Yellow
+    Write-Host "Creado .env: pon NOTION_CLIENT_ID, NOTION_CLIENT_SECRET y NOTION_TASKS_DATABASE_ID (pídelos a quien administre la conexión de Notion)." -ForegroundColor Yellow
 }
 
 if ($missing.Count) {

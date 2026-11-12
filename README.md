@@ -12,7 +12,7 @@ Funciona solo en tu ordenador (`http://127.0.0.1:8765`), en **Windows, macOS y L
 - En [claude.ai](https://claude.ai) → Configuración → Conectores:
   - **Google Calendar** (con todos los permisos): para las reuniones.
   - **Slack** (opcional): para que el stand-up copie tu formato de los que ya publicas. Sin él se usa un formato por defecto.
-- Las credenciales de la conexión de Notion del equipo (`NOTION_CLIENT_ID` y `NOTION_CLIENT_SECRET`): pídelas a quien la administre.
+- Las credenciales de la conexión de Notion del equipo (`NOTION_CLIENT_ID` y `NOTION_CLIENT_SECRET`) y el ID de la base de datos de tareas (`NOTION_TASKS_DATABASE_ID`): pídelos a quien la administre.
 
 ## Instalación
 
@@ -30,7 +30,7 @@ powershell -ExecutionPolicy Bypass -File setup.ps1
 bash setup.sh
 ```
 
-`setup` comprueba lo que falta, crea el entorno de Python, instala las dependencias, crea el fichero `.env` e instala el comando **`dashboard-tasks`**. Abre `.env` y rellena las dos credenciales de Notion.
+`setup` comprueba lo que falta, crea el entorno de Python, instala las dependencias, crea el fichero `.env` e instala el comando **`dashboard-tasks`**. Abre `.env` y rellena las credenciales de Notion y el ID de la base de datos de tareas.
 
 ## Arrancar el dashboard
 
@@ -72,7 +72,7 @@ Mientras falte algo, la vista Día te lo recuerda.
 - Para moverte: **Hoy**, las flechas ‹ › (saltan fines de semana) o el **calendario** entre ellas para ir a cualquier día. En fin de semana o festivo se muestra el último día laborable.
 - El icono ↻ de cada tarjeta vuelve a leer solo esa parte; «Actualizar datos» lo lee todo.
 - La tarjeta de la derecha tiene dos pestañas:
-  - **Stand-up**: imita el formato de tus últimos stand-ups del canal del equipo.
+  - **Stand-up**: imita el formato de tus últimos stand-ups del canal que elijas en Ajustes.
   - **Notas para tu diario**: borrador a partir de tus commits con el formato de tu diario. Respeta lo que ya hayas escrito ese día y añade solo lo que falta.
   - ↻ regenera el texto y el icono de copiar lo deja en el portapapeles. Te avisa si hay commits nuevos desde que se generó.
 
@@ -130,7 +130,7 @@ python -m web.app                                            # servidor sin abri
 
 (Con el entorno activado, o usando `.venv\Scripts\python.exe` en Windows y `.venv/bin/python` en macOS / Linux.)
 
-- Configuración común de la empresa: `config.yaml` (base de Tareas de Notion, horario por defecto del parte, categorías, **proyectos según el nombre del repo** y palabras clave de reuniones, modelo de Claude). Lo de cada persona se guarda en su `db/` local desde Ajustes.
+- Configuración común de la empresa: `config.yaml` (propiedades de la base de tareas de Notion, horario por defecto del parte, categorías, **proyectos según el nombre del repo** y palabras clave de reuniones, modelo de Claude). Lo de cada persona se guarda en su `db/` local desde Ajustes.
 - Prompts que usa Claude: `prompts/`. Diseño y decisiones: [PLAN_TECNICO.md](PLAN_TECNICO.md). Commits: [CONTRIBUTING.md](CONTRIBUTING.md).
 - Scripts: `setup.ps1` / `setup.sh` (instalación y comando `dashboard-tasks`), `start.ps1` / `start.sh` (arranque).
 - Capturas de la interfaz con Playwright: instala `requirements-dev.txt` y `python -m playwright install chromium`.

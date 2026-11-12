@@ -21,7 +21,7 @@ fi
 
 if [ ! -f .env ]; then
   cp .env.example .env
-  echo "Creado .env: pon NOTION_CLIENT_ID y NOTION_CLIENT_SECRET (pídelos a quien administre la conexión de Notion)."
+  echo "Creado .env: pon NOTION_CLIENT_ID, NOTION_CLIENT_SECRET y NOTION_TASKS_DATABASE_ID (pídelos a quien administre la conexión de Notion)."
 fi
 
 if [ ${#missing[@]} -gt 0 ]; then

@@ -1,445 +1,433 @@
-# Dashboard personal de trabajo — Plan técnico y guía de arranque
+# Dashboard Tasks — Arquitectura y funcionamiento técnico
 
-> **Para el Claude Code que lea esto:** no tienes contexto previo. Este documento es tu contexto completo.
-> Léelo entero y empieza por la **sección 0 (Protocolo de arranque)**. Habla con el usuario en **español**.
-> No escribas código de la aplicación hasta completar la fase de conexiones (sección 0 y 5), salvo el esqueleto del proyecto.
+Documento de referencia técnica: describe **cómo está construido y cómo funciona** el dashboard. La guía de uso para quien lo instala está en [README.md](README.md) y la convención de commits en [CONTRIBUTING.md](CONTRIBUTING.md).
 
----
-
-## 0. Protocolo de arranque (haz esto primero)
-
-La cuenta de Claude Code en la que estás es nueva: **no tiene ninguna herramienta conectada**. Tú no puedes iniciar sesión, pegar contraseñas ni aprobar permisos OAuth por el usuario. Guíale paso a paso, **un paso cada vez**, esperando su confirmación antes de pasar al siguiente. Cada paso: di qué hacer, dónde pulsar y qué debe contestarte.
-
-Orden recomendado (de menos a más fricción; así hay algo funcionando pronto):
-
-1. **Entorno local.** Ejecuta tú mismo: `git --version`, `python --version`, `node --version`, `claude --version`. (En la máquina del usuario ya había git 2.51, Python 3.14.7, Node 22, Claude Code 2.1.x; `gh` NO está instalado.) Si Python 3.14 da problemas con alguna librería, crea el venv con 3.12/3.13 (`uv` o `py -3.12`).
-2. **Comprobar que `claude -p` funciona con la suscripción**, sin API key:
-   - Ejecuta `echo $env:ANTHROPIC_API_KEY` (PowerShell). Si tiene valor, pide al usuario que la elimine del entorno: con esa variable Claude Code factura por API y **el usuario no quiere ese coste**.
-   - Prueba `claude -p "responde solo OK" --output-format json`. Debe responder usando el login de la cuenta. Si pide login, que el usuario ejecute `claude` y entre con su cuenta.
-3. **Datos del usuario** (pregúntalos y guárdalos en `config.yaml`, no en el código):
-   - Emails y nombres con los que firma commits (`git config user.email` de cada repo puede variar; pide todos: personal y de empresa).
-   - Usuario de GitHub, zona horaria (por defecto `Europe/Madrid`), hora a la que quiere el stand-up listo (por defecto 08:30).
-4. **Git local** (no requiere autenticación). Verifica que lees los repos de `C:\Users\daxte\Documents\1MillionBot` (sección 4.1).
-5. **Notion** (sección 5.1): crear integración interna y compartir con ella las páginas necesarias.
-6. **Google Calendar** (sección 5.2): crear credenciales OAuth de escritorio y autorizar solo lectura.
-7. **Slack** (sección 5.3): puede requerir aprobación de un administrador; déjalo para el final y no bloquees el resto.
-8. **GitHub remoto** (sección 5.4): opcional; con el git local casi todo está cubierto.
-9. **Conectores MCP de Claude Code (opcional, secundario).** Si el usuario quiere, que conecte Notion/Calendar/Slack/GitHub como conectores en su cuenta de Claude para consultas libres. **No son la base del proyecto**: los colectores usan sus propias credenciales (ver sección 2).
-
-Cada credencial va a un fichero `.env` (que nunca se versiona) o al almacén de credenciales de Windows vía `keyring`. **Nunca pegues secretos en el chat ni en commits**; si el usuario los pega por error, avísale para que los revoque.
+Este documento describe el estado actual del sistema, no su historia. Cuando cambie la arquitectura o el funcionamiento, actualiza la sección afectada para que siga describiendo lo que hay. Los cambios concretos quedan en el historial de git.
 
 ---
 
-## 1. Qué se quiere construir y por qué
+## 1. Propósito y alcance
 
-Un **dashboard local de uso personal** que unifique en una sola pantalla la actividad de trabajo del usuario en la empresa (1MillionBot) y le ahorre trabajo repetitivo:
+Aplicación web **local y personal** para la gente de 1MillionBot. Reúne en una pantalla la actividad de trabajo de una persona y le prepara los textos repetitivos del día:
 
-1. **Vista principal diaria (funcionalidad principal): "Qué toca hoy".** Cada día muestra las tareas del día, combinando:
-   - **Reuniones del día** (Google Calendar).
-   - **Pendientes apuntados el día laborable anterior en "I'M BACK"**: lo que ese día quedó pendiente y se pretende hacer al siguiente (ver 5.1 para cómo se marca).
-   - **Tareas de la base "Tareas" del workspace 1millionbot**, solo las del usuario y activas (ver 5.1).
-   - Trabajo sin commitear y commits sin subir (para no perder nada).
-   - Más adelante: PRs pendientes de su revisión, menciones y hilos de Slack relevantes.
-2. **Timeline de actividad** de cualquier día o rango: commits (incluidos **locales sin subir**), reuniones, tareas de Notion, mensajes de Slack.
-3. **Resumen de lo hecho (para volcar a "I'M BACK").** La página "I'M BACK" es el **diario de trabajo** del usuario (lo que hace cada día). El dashboard genera un borrador del bloque del día **con el mismo formato que la página** (fecha → proyecto → lista), a partir de commits, reuniones y WIP, para que **el usuario lo copie y lo pegue él mismo** en I'M BACK. **El dashboard no escribe en Notion** (solo botón "Copiar"). Escritura en Notion = mejora futura y siempre con confirmación.
-4. **Borrador de stand-up** para el canal de Slack **`#equipo-tecnologia-stand-up`**: "Ayer / Hoy / Bloqueos", generado con Claude. El "Ayer" es **sobre todo un resumen de lo apuntado en I'M BACK el día laborable anterior**; commits y reuniones solo complementan (p. ej. avisar de algo hecho y no apuntado). El usuario lo copia y lo pega en Slack; el dashboard no publica.
-5. **Parte de horas en formato calendario** (ver 7.5): para un día o una semana, propone en qué franjas se hizo cada tarea, con horas aproximadas y categoría, para que el usuario lo copie a mano en el calendario de la plataforma interna **1million hub**. El dashboard **no** tiene acceso al hub ni lo rellena.
+| Funcionalidad | Qué hace |
+|---|---|
+| **Vista Día** ("Qué toca hoy") | Pendientes apuntados el día laborable anterior, tareas activas de Notion, reuniones, cambios sin commitear y commits sin subir; notas del diario y commits del día, agrupados por proyecto. |
+| **Stand-up** | Borrador para el canal de stand-up de Slack con lo hecho el día laborable anterior y lo previsto para hoy, imitando el formato con el que la persona ya escribe. |
+| **Notas para el diario** | Borrador del día para la página diario de Notion a partir de los commits, con el formato del diario. |
+| **Parte de horas** | Propuesta semanal (L–V) de bloques horarios con categoría para copiar a mano en la plataforma interna *1million hub*. |
+| **Ajustes** | Configuración propia de cada persona: conexión de Notion, página diario, carpetas de repos, emails de autor, canal de stand-up, jornada y visibilidad por repo. |
 
-### Reglas de negocio (no negociables)
-
-- **Días laborables = lunes a viernes.** "El día anterior" es el **día laborable anterior**: si hoy es lunes, ayer = viernes. Sábados y domingos no se trabaja: no cuentan como "ayer" ni se muestran como días de trabajo. (Festivos: fuera de alcance salvo que el usuario lo pida; deja un `holidays: []` en config.)
-- **Este repo (el del dashboard) se excluye siempre** de commits, resúmenes, stand-up y tareas de Notion. Es un proyecto personal, no trabajo de empresa. Excluye por ruta absoluta del propio repo (`dashboard/`) en `config.yaml` (`exclude_repos`). Aplica el filtro en el colector, no en la UI.
-- **Sin API key de Anthropic.** Toda la IA va por `claude -p` (Claude Code en modo headless, con la suscripción). Prohibido usar el SDK/HTTP de la API.
-- **Solo lectura** sobre todas las fuentes externas (Notion, Calendar, Slack, GitHub).
-- **Privacidad:** el servidor escucha solo en `127.0.0.1`. Envía a Claude datos agregados y recortados (títulos de commit, nunca diffs completos ni conversaciones enteras de Slack). Recuérdale al usuario que revise la política de su empresa sobre enviar contenido de Slack/Notion a un proveedor de IA.
+Fuera de alcance: el dashboard **no escribe** en ningún servicio (Notion, Slack, Calendar, hub). Todo se copia y se pega a mano.
 
 ---
 
-## 2. Arquitectura: separar *recoger datos* de *resumir*
+## 2. Principios de diseño
 
-La lectura de las fuentes **no usa IA**: scripts normales con sus propias credenciales guardan todo en SQLite. Claude solo se usa al final para resumir y redactar. Motivos: gasta poca cuota de la suscripción, es rápido y reproducible.
+- **Solo lectura** sobre todas las fuentes externas. Los colectores nunca reciben herramientas ni permisos de escritura.
+- **Recoger y redactar son pasos separados.** Los colectores son código determinista que guarda en SQLite. Claude solo interviene al final, para redactar o agrupar, sobre datos ya recogidos.
+- **Sin API key de Anthropic.** Toda la IA va por `claude -p` (Claude Code en modo headless) con la suscripción de la persona. `ANTHROPIC_API_KEY` se elimina siempre del entorno del subproceso.
+- **Local y privado.** El servidor escucha solo en `127.0.0.1`. A Claude se le envía contexto recortado (títulos de commit y notas, nunca diffs ni conversaciones completas). Lo que se oculta en Ajustes tampoco se envía.
+- **Configuración común frente a configuración personal.** Lo que es de la empresa está en `config.yaml` (versionado). Lo que es de cada persona se elige en Ajustes y se guarda en su base de datos local. En el código no hay nada fijo de una persona.
+- **Días laborables = lunes a viernes**, más los festivos configurados. "Ayer" es siempre el día laborable anterior.
+- **El propio repo del dashboard nunca se recoge**: se excluye por su ruta absoluta (`ROOT`), de modo que otro repo con un nombre parecido sí cuenta.
+- **Una fuente caída no tumba las demás.** Cada colector registra su error en `sync_state` y la interfaz lo muestra con el paso para arreglarlo.
+
+---
+
+## 3. Visión general
 
 ```
-┌──────────────── Colectores (Python, sin IA) ────────────────┐
-│ Git local · Notion · Google Calendar · Slack · GitHub       │
-└───────────────────────────┬─────────────────────────────────┘
-                            ▼
-                  SQLite  (tabla "activity")
-                            │
-           ┌────────────────┴──────────────────┐
-           ▼                                   ▼
-   Dashboard web local                Resumidor: `claude -p`
-   (FastAPI + HTMX)                   (stand-up, resumen del día,
-           ▲                           resumen para Notion)
-           └──────── resultados guardados en SQLite ──────────
+              ┌──────────────────────── Colectores (sin IA) ────────────────────────┐
+              │ git local (subprocess) · Notion (OAuth propio, HTTP)                 │
+              │ Google Calendar · Slack  (conectores de Claude vía `claude -p` Haiku,│
+              │                           datos leídos del tool_result en bruto)     │
+              └───────────────────────────────┬─────────────────────────────────────┘
+                                              ▼
+                     SQLite  db/dashboard.db  (activity · summaries · sync_state ·
+                                               repo_settings · app_settings)
+                                              │
+                 ┌────────────────────────────┴──────────────────────────┐
+                 ▼                                                       ▼
+   core/views.py: datos por vista y contexto                 llm/claude_cli.py: `claude -p`
+   para Claude (filtros de visibilidad)        ─────────▶    (sin herramientas ni conectores,
+                 │                                            caché por hash en summaries)
+                 ▼                                                       │
+   web/app.py: FastAPI + Jinja2 + HTMX   ◀──────────────────────────────┘
+   http://127.0.0.1:8765
 ```
 
-Por qué NO dejar que Claude *interprete* las fuentes vía MCP: gasta más cuota, es lento y da resultados distintos cada vez.
-
-**Excepción decidida el 2026-11-11 — Calendar y Slack vía conectores de Claude.** El admin de Workspace bloquea la iCal secreta y Slack suele exigir aprobación de admin, así que estos dos colectores leen a través de los conectores de la cuenta de Claude (ya conectados: Google Calendar, Notion, Slack), pero **de forma determinista**:
-- `claude -p` con `--model haiku`, `--output-format stream-json --verbose` y `--allowedTools` limitado a las herramientas **de lectura** concretas que hagan falta (ver 5.2 y 5.3). Nunca permitir herramientas de escritura (`send_message`, `create_*`, `update_*`, `add_*`, `schedule_*`).
-- Los datos se sacan **del `tool_result` en bruto** del stream (JSON tal cual lo devuelve Google/Slack), **no** de la respuesta redactada por Claude. Si no hay `tool_result` válido o viene con `is_error`, el colector falla y lo registra en `sync_state`.
-- Frecuencia baja (p. ej. al arrancar el dashboard, en el job matinal y con botón "Actualizar"), no cada 30 min.
-- Coste medido: ~6 s y ~0,004 USD equivalentes por llamada con Haiku (con suscripción, consume cuota, no se factura).
-- Notion **no** usa el conector: tiene su propio OAuth (5.1), más rápido y sin cuota.
-- La interfaz `collect(since, until)` es la misma; si algún día hay credenciales propias, se cambia el colector sin tocar el resto.
-
-### Llamar a Claude desde Python
-
-```python
-import subprocess, json
-from core.claude_env import claude_env
-env = claude_env()  # sin ANTHROPIC_API_KEY (fuerza suscripción) + CLAUDE_CONFIG_DIR del .env si lo hay
-p = subprocess.run(
-    ["claude", "-p", prompt, "--output-format", "json", "--model", "sonnet"],
-    input=json.dumps(contexto, ensure_ascii=False),
-    capture_output=True, text=True, encoding="utf-8", env=env, timeout=300,
-)
-resultado = json.loads(p.stdout)["result"]
-```
-
-- Guarda en `summaries.input_hash` un hash del contexto; si no cambió, **no vuelvas a llamar** a Claude.
-- Si `claude` no está en el PATH desde el programador de tareas de Windows, usa la ruta absoluta (configurable).
-- Si la llamada falla por límite de cuota, muestra el error en la UI y conserva el último resultado; no reintentes en bucle.
+**Por qué Calendar y Slack van por los conectores de Claude.** El administrador de Google Workspace bloquea la dirección iCal secreta, y Slack suele exigir la aprobación de un administrador para instalar apps propias. Los conectores ya autorizados en la cuenta de Claude de cada persona evitan los dos bloqueos. Para que el resultado siga siendo determinista, Claude solo actúa como "cliente" que llama a una herramienta de lectura concreta, y los datos se toman del `tool_result` en bruto, nunca de lo que Claude responda (ver 7.3).
 
 ---
 
-## 3. Stack
+## 4. Stack
 
 | Pieza | Elección |
 |---|---|
-| Lenguaje | Python (3.12–3.14 según compatibilidad de librerías) con `venv`/`uv` |
+| Lenguaje | Python ≥ 3.11, entorno en `.venv` (con `uv` si está disponible) |
 | Backend | FastAPI + Uvicorn |
-| Frontend | Plantillas Jinja2 + HTMX + CSS sencillo (sin paso de build). Identidad visual de 1MillionBot (skill `brand-1mb`): rojo `#CD3434` muy presente, coral `#FE6565` solo como acento puntual (commits "solo local", reuniones), fondo blanco, texto `#1D1D1D`, grises `#D2D2D2`/`#949494` en detalles, Montserrat (Google Fonts) con Verdana de reserva. **Modo claro y oscuro** (decisión del usuario, 2026-11-11, sustituye a "sin modo oscuro"): por defecto sigue `prefers-color-scheme`; interruptor (sol/luna) en **Ajustes › Apariencia**, primera sección (2026-11-11; antes en la barra superior), reducida a **una sola línea** (título «Apariencia» y el interruptor, sin textos ni subtítulos; el icono resaltado indica el tema actual y el interruptor lleva `aria-label="Modo oscuro"`), que guarda la elección en `localStorage` y, a la derecha del interruptor, un botón **«Sistema»** (`aria-pressed`) con icono de pantalla que olvida la elección; cuando ya se sigue al sistema (o tras pulsarlo) el icono pasa a un **check** con un fundido de 200 ms (escala .6 → 1 y desenfoque, `ease-out`) y el trazo del check se dibuja; con `prefers-reduced-motion` solo hay fundido; pulsarlo estando ya en «sistema» no hace nada y el botón mide siempre lo mismo, así que nada se mueve; el tema se aplica con un script mínimo en el `<head>` (sin parpadeo). **Radios** (2026-11-11, tras pasar el escáner unslop-ui, que no encontró señales de diseño por defecto de IA salvo las píldoras): cuatro tokens por función, `--r-sm` 4 px (bloques del parte, muestras), `--r-md` 8 px (botones, campos, filas), `--r-lg` 12 px (tarjetas, calendario, modal) y `--r-pill` (chips, etiquetas, interruptores, «Hoy», barras indicadoras); los círculos van con 50 %. El oscuro usa gris muy oscuro (`#242424` fondo, `#2C2C2C` tarjetas), nunca negro puro; el rojo `#CD3434` se mantiene en rellenos (botones, filete, hoy: blanco encima 5,08:1) y para texto rojo en oscuro se usa `#EE6A6A` (4,59:1 sobre tarjeta; `#CD3434` daría 2,75:1, no cumple AA). **Colores de categoría del parte de horas** (decisión del usuario, 2026-11-11; fuera de la paleta de marca a propósito, como en el hub): mismo tono en ambos temas, **claro en el tema claro** y **más oscuro en el oscuro** (fondos `#2D4C7C`, `#1E5A52`, `#6A5416`, `#484C54`, `#2C5A32` con texto `#F3F5F9` ≥ 6,6:1 y bordes brillantes). Tema claro, con texto `#1D1D1D` dentro: Desarrollo de negocio = azul (`#BCD4FB`, borde `#2F6FDB`), Documentación = azul verdoso (`#AEE5DD`/`#12A08B`), Reunión = amarillo (`#FCE29A`/`#D9A400`), Tareas administrativas = gris (`#D9DCE1`/`#737A85`), Formación = verde (`#C3E8C1`/`#2E9D49`); contraste del texto ≥ 11:1. Logo: se muestra si existe `web/static/logo.png` (la skill no trae los ficheros; no se recrea a mano) |
-| Pruebas de UI | Playwright (`requirements-dev.txt`) con la skill `webapp-testing`: capturas de las pantallas para revisarlas |
-| Movimiento | Microinteracciones solo en CSS siguiendo `emil-design-eng`: escala 0,97 al pulsar, spinner en botones con petición en curso (`hx-disabled-elt`), fundido de 200 ms del contenido que llega por HTMX, "Copiado ✓", modal con `<dialog>` nativo (entra 220 ms, sale 150 ms), cambio de tema con fundido de 350 ms (View Transitions, con transición de colores de reserva). Solo `transform`/`opacity`/colores; `prefers-reduced-motion` quita escalas y desplazamientos |
-| Accesibilidad y robustez (auditoría `web-design-guidelines`, 2026-11-11, todo aplicado) | Aviso antes de perder texto editado (Regenerar/recargar); títulos con "…"; rejilla a 0,8 px/min (48 px por hora, como Google Calendar; decisión del usuario 2026-11-11, sustituye a 1,6 px/min para no tener que hacer scroll: los bloques de 15 min miden 12 px y se pintan en una línea compacta, con el detalle en el modal); htmx servido en local (`web/static/vendor/htmx-1.9.12.min.js`, funciona sin internet); errores con el paso para arreglarlos; Ajustes confirma cada guardado y deshace el interruptor si falla; "Saltar al contenido", `aria-label` en flechas, anuncio de cargas y de "Copiado" por una región `role="status"`, aviso de enlaces que abren otra pestaña, `theme-color` por tema, `tabular-nums`, cabeceras de día como encabezados, foco visible en alto contraste, `touch-action: manipulation`. Botones "Copiar" solo con icono (documentos superpuestos a dos tonos; `aria-label` y tooltip "Copiar") que pasa a un círculo con ✓ |
-| Skills de UI (nivel usuario, 2026-11-11) | Instaladas tras revisar su código: `frontend-design`, `webapp-testing`, `web-design-guidelines` (reglas fijadas en local, vercel-labs/web-interface-guidelines@434b7f9, sin descarga en cada uso) y `emil-design-eng`. Descartadas: `impeccable` (descarga y ejecuta un binario, hooks automáticos, telemetría, marca Montserrat como fuente "sobreusada") y `ui-ux-pro-max` (genera paletas/tipografías propias; su plugin trae skills con API key de Gemini y `npx shadcn`) |
-| BD | SQLite (`db/dashboard.db`, fuera de git) |
-| Git | Llamadas a `git` por `subprocess` (`git -C <repo> ...`) |
-| Notion | `notion-client` (integración interna) |
-| Calendar | `google-api-python-client`, `google-auth-oauthlib` |
-| Slack | `slack_sdk` |
-| Secretos | `.env` (python-dotenv) y/o `keyring` |
-| Planificación | Programador de tareas de Windows (`schtasks`) |
+| Frontend | Plantillas Jinja2 + HTMX 1.9.12 servido en local (`web/static/vendor/`) + CSS propio, sin paso de build |
+| Base de datos | SQLite (`db/dashboard.db`, fuera de git) |
+| Git | `git -C <repo> …` por `subprocess` |
+| Notion | API REST con `httpx` y OAuth público de Notion (`Notion-Version: 2022-06-28`) |
+| Calendar y Slack | Conectores de la cuenta de Claude, llamados con `claude -p` |
+| IA | `claude -p` (Sonnet para redactar, Haiku para los conectores) |
+| Secretos | `.env` (`python-dotenv`) y `secrets/` (fuera de git) |
+| Tests | `pytest`; capturas de interfaz con Playwright (`requirements-dev.txt`) |
+| Plataformas | Windows, macOS y Linux |
 
 ---
 
-## 4. Fuentes de datos
+## 5. Estructura del proyecto
 
-### 4.1 Git local (prioridad máxima, sin autenticación)
+```
+dashboard-tasks/
+├─ README.md · CONTRIBUTING.md · PLAN_TECNICO.md
+├─ config.yaml            # configuración común de la empresa (versionada, sin secretos)
+├─ .env / .env.example    # credenciales y ajustes locales (el .env fuera de git)
+├─ secrets/               # notion_token.json (fuera de git)
+├─ setup.ps1 · setup.sh   # instalación + comando `dashboard-tasks`
+├─ start.ps1 · start.sh   # arranque (o solo abrir el navegador si ya está en marcha)
+├─ core/
+│  ├─ config.py           # carga de config.yaml; ROOT del proyecto
+│  ├─ settings.py         # ajustes por persona (app_settings) y effective_config()
+│  ├─ dates.py            # días laborables, límites de día en la zona horaria
+│  ├─ db.py               # acceso a SQLite (upserts, reemplazos por rango, resúmenes)
+│  ├─ views.py            # datos de cada vista y contexto para Claude
+│  ├─ timesheet.py        # cálculo determinista del parte de horas
+│  ├─ identity.py         # nombre y foto de quien usa el dashboard
+│  └─ claude_env.py       # entorno de los subprocesos `claude`
+├─ collectors/
+│  ├─ base.py             # dataclass Activity
+│  ├─ git_local.py        # repos, commits (incluidos los no subidos) y WIP
+│  ├─ notion_auth.py      # OAuth de Notion (web y terminal)
+│  ├─ notion.py           # diario y tareas activas
+│  ├─ claude_connector.py # ejecución de `claude -p` con herramientas de lectura y lectura del stream
+│  ├─ gcal.py             # reuniones (conector de Google Calendar)
+│  └─ slack.py            # stand-ups propios del canal (conector de Slack)
+├─ llm/claude_cli.py      # `claude -p` para redactar + caché por hash
+├─ jobs/collect_all.py    # orquestación de la recogida (también por terminal)
+├─ prompts/               # standup.md · journal_notes.md · timesheet.md
+├─ web/
+│  ├─ app.py              # rutas FastAPI
+│  ├─ templates/          # base, day, timesheet, settings y parciales (_*.html)
+│  └─ static/             # style.css, vendor/htmx, logo.png opcional
+├─ db/schema.sql          # esquema (la .db y avatar.img, fuera de git)
+└─ tests/
+```
 
-Directorio raíz de repos: `C:\Users\daxte\Documents\1MillionBot`. Los repos del usuario conviven con carpetas que no son repos.
+---
 
-Estado observado el 2026-11-11 (puede cambiar; **descúbrelos dinámicamente**, no los codifiques):
-- Repos (carpeta `.git`): `Kanvas`, `airisk-api`, `airiskmanagement`, `boilerplate-api`, `migration-boilerplate-api`, `shannon`.
-- **Worktrees** (`.git` es un *fichero* `gitdir: …`): `airisk-api-cdu` y `airisk-api-roles` (de `airisk-api`), `airiskmanagement-roles` (de `airiskmanagement`). Comparten commits con su repo principal → **deduplica commits por SHA**; el WIP (`git status`) sí se lee por worktree.
-- `aurea/.git` existe pero está vacío (no es repo). Los repos reales están anidados.
-- **Repos anidados**: `aurea/aurea-1mb`, `aurea/aurea-api`, `ibh/bff-user-control-panel`, `ibh/ibh-api`, `millie/apiREST`, `millie/dashboard`, `rec-aereas/juridocraft-api`, `rec-aereas/juridocraft-assist`. Escanea hasta profundidad 3 buscando `.git` (carpeta o fichero).
-- La carpeta `dashboard-tasks/` (este proyecto) debe **excluirse por ruta absoluta**: `millie/dashboard` es un repo de trabajo distinto con el mismo nombre y **sí** cuenta.
-- **Exclusiones (actualizado 2026-11-11):** ya no hay `exclude_repos` en `config.yaml`. El **propio dashboard se excluye siempre y automáticamente** en el colector (su ruta `ROOT`), sin aviso en Ajustes. `Kanvas` y `shannon` dejan de estar excluidos: aparecen en Ajustes con "Visible" apagado y el usuario decide.
-- **Repo → proyecto** (en `config.yaml`, `projects`; el nombre del proyecto = encabezado 3 de I'M BACK): AI Risk = `airisk-api`, `airiskmanagement` y sus worktrees; Kit migración = `boilerplate-api`, `migration-boilerplate-api`; Aurea = `aurea/*`; IBH = `ibh/*`; Millie = `millie/*`; Rec Aéreas = `rec-aereas/*`. Repo nuevo sin mapear → proyecto = nombre de la carpeta de primer nivel, y avisa en la UI.
-- Proyecto especial **"1MB"** = reuniones de empresa (Sprint Review, Monthly Review…). Puede aparecer como encabezado 3 en I'M BACK. Las reuniones de Calendar que no encajan en ningún proyecto van a "1MB" (en stand-up, resumen y parte de horas).
-- Identidad de autor: `pablogarcia@1millionbot.com` (firma como "Pablo García" y "pablogarcia11"); filtra por email.
+## 6. Configuración
 
-Qué extraer por repo y rango de fechas (zona horaria del usuario):
+La configuración efectiva se compone en tres capas (`core/settings.py · effective_config`):
 
-1. **Commits propios, incluidos los NO subidos:**
-   `git -C <repo> log --all --no-merges --author=<email> --since=<ini> --until=<fin> --format=%H%x1f%an%x1f%ae%x1f%aI%x1f%s%x1f%D`
-   - `--all` incluye ramas locales sin push. Para cada commit calcula si está **sin subir** (`git branch -r --contains <sha>` vacío → `pushed=false`) y márcalo en la UI como "solo local".
-   - Repite `--author` por cada email/nombre configurado (el usuario puede firmar con varios).
-   - Incluye también `git reflog --date=iso` del día como señal de commits amendados/rebasados (solo informativo).
-   - Guarda por commit: repo, rama(s), sha corto, mensaje, fecha, `--shortstat` (ficheros/líneas), `pushed`.
-2. **Trabajo en curso sin commitear:** `git status --porcelain` y `git diff --stat` por repo → entradas `kind=wip` ("cambios sin commitear en N ficheros"). Útil para el "hoy" y para no olvidar nada del "ayer".
-3. **Rama actual** de cada repo con actividad (contexto para el resumen).
+1. **`config.yaml`: común a la empresa**, versionado:
+   - `user.timezone`, `schedule.holidays`.
+   - `timesheet`: jornada y comida por defecto, `min_block_minutes`, `block_step_minutes`, `min_daily_hours` y las cinco categorías.
+   - `notion`: propiedad de persona y estados inactivos de la base de datos de tareas, y `redirect_uri` del OAuth.
+   - `git.scan_depth`.
+   - `projects`: proyecto según el nombre del repo o de las carpetas que lo contienen, con comodines; los encabezados del diario usan los mismos nombres. `company_meetings_project` y `meeting_keywords` asignan proyecto a las reuniones.
+   - `standup`: número de ejemplos y `relearn_days`.
+   - `claude`: comando, modelo para redactar y timeout.
+   - `sources` (fuentes activas) y `server` (host y puerto).
+2. **`.env`: local y no versionado**: `NOTION_CLIENT_ID` y `NOTION_CLIENT_SECRET` de la conexión OAuth del equipo, `NOTION_TASKS_DATABASE_ID` (la base de datos de tareas) y `CLAUDE_CONFIG_DIR` opcional (ver 7.3). Ningún identificador de un workspace, una persona o un canal concretos se versiona.
+3. **Ajustes (`app_settings`): por persona**, y tienen prioridad sobre `config.yaml`:
 
-Detalles de Windows: usa siempre `git -C <ruta>`; si salta "dubious ownership" no cambies la config global sin avisar, pregunta al usuario. Rutas con espacios entre comillas (varias carpetas las tienen). Codifica la salida como UTF-8 (`encoding="utf-8", errors="replace"`).
+| Clave | Contenido |
+|---|---|
+| `notion.journal_page_id` / `notion.journal_page_title` | Página (o base de datos) diario elegida y su título actual |
+| `git.repos_roots` | JSON con las carpetas de repos (la antigua `git.repos_root` se migra sola) |
+| `git.extra_authors` | Emails de autor añadidos a mano |
+| `standup.channel` | Canal de stand-up. Sin él, el stand-up usa el formato por defecto |
+| `standup.examples` | Últimos stand-ups propios leídos de Slack, con canal y fecha de lectura |
+| `timesheet.*` | Jornada, comida y horas mínimas propias |
 
-### 4.2 Diseño del modelo de datos
+El usuario de Notion (`user_id`) no se configura: sale del token OAuth.
+
+---
+
+## 7. Fuentes de datos
+
+Todos los colectores producen `Activity` (`collectors/base.py`): `source`, `kind`, `external_id`, `ts` (ISO con zona), `work_date` (fecha en la zona de la persona), `title`, `body`, `url`, `project`, `status` y `extra` (JSON).
+
+### 7.1 Git local (`collectors/git_local.py`)
+
+- **Descubrimiento:** recorre cada carpeta de `git.repos_roots` hasta `scan_depth` niveles buscando `.git`, que es una carpeta en los repos y un fichero en los worktrees. No entra dentro de un repo, salta `node_modules`, `.venv`, etc., y excluye el propio dashboard. Cada repo se nombra relativo a su carpeta; si dos carpetas tienen un repo con el mismo nombre, el segundo lleva delante el nombre de su carpeta. Las carpetas anidadas no duplican repos.
+- **Proyecto:** `projects` de `config.yaml` se compara con el nombre del repo y con el de cada carpeta que lo contiene. Si nada encaja, el proyecto es la carpeta de primer nivel. Los worktrees heredan el proyecto de su repo principal (agrupados por `git rev-parse --git-common-dir`).
+- **Autores:** el `user.email` global, el de cada repo y los añadidos en Ajustes.
+- **Commits** (`kind=commit`): `git log --all --no-merges --since … --author …` sobre el repo principal de cada grupo, de modo que los worktrees no duplican. Después se filtra por fecha de autor y email exacto. Se marca `pushed=false` si el commit no está en ningún remoto (`rev-list --all --not --remotes`) o si el repo no tiene remoto. `extra` guarda el repo, la rama, el sha corto, los ficheros y las líneas.
+- **WIP** (`kind=wip`): `git status --porcelain` por repo y worktree; una entrada por repo con cambios. Solo se recoge si el rango incluye hoy, y sustituye a todo el WIP anterior porque refleja el estado actual.
+- Salida en UTF-8 con `errors="replace"`. Los errores por repo se acumulan en `errors` y no detienen la recogida.
+
+### 7.2 Notion (`collectors/notion_auth.py`, `collectors/notion.py`)
+
+**Autenticación.** Conexión **OAuth pública** del workspace, con permisos de leer contenido y leer usuarios con email. El flujo arranca en Ajustes: `/settings/notion/connect` lleva a Notion, que vuelve a `/oauth/notion/callback` con un `state` contra CSRF. También se puede hacer por terminal con `python -m collectors.notion_auth`. El token se guarda en `secrets/notion_token.json` y se renueva con `refresh_token`. "Desconectar" borra el token, la página diario y los datos de Notion guardados.
+
+**Diario.** Página o base de datos elegida en Ajustes, con un buscador de páginas compartidas y una vista previa del formato. El parseo es tolerante:
+- **Días** (`day_sections`):
+  - un encabezado de cualquier nivel, o un desplegable, con fecha;
+  - un encabezado con fecha seguido de su contenido como hermanos, hasta el siguiente día del mismo nivel;
+  - una página hija con la fecha en el título;
+  - en un diario que es base de datos, una página por día (fecha en una propiedad o en el título).
+- **Fechas** (`parse_day`): `10/11/2026`, `10-11-26`, `2026-11-10`, «10 de noviembre de 2026», abreviaturas y menciones de fecha de Notion.
+- **Proyectos** (`parse_day_blocks`): un encabezado (lo que le sigue es de ese proyecto) o un desplegable con el proyecto como título. Sin proyecto, el contenido va a «General». Las subviñetas se conservan en `body`.
+- **Pendientes** (`kind=task_plan`): lo que va bajo «Pendiente(s):», «Para mañana:», «Por hacer»…, más las casillas sin marcar. No es trabajo hecho: no entra en lo hecho, en el stand-up ni en el parte de horas, y se lleva a "Qué toca hoy" del día laborable siguiente. Las casillas marcadas son trabajo hecho.
+- **Notas** (`kind=note`): el resto de elementos de lista y párrafos.
+- Las notas y pendientes de un rango **se reemplazan** en cada recogida, así que las ediciones y borrados en Notion se reflejan. El título del diario se refresca en cada recogida. Al cambiar de diario se borran los datos del anterior y se releen en segundo plano los últimos 60 días del nuevo.
+
+**Tareas activas** (`kind=task`): consulta a la base de datos de tareas (`NOTION_TASKS_DATABASE_ID`) con dos condiciones: la propiedad de persona contiene al usuario del token, y `Status` no es ninguno de los estados inactivos. Se guardan el título, el estado y su color de Notion, la prioridad, el tipo y la fecha límite (primera disponible de varias propiedades de fecha). Es una instantánea de hoy y se reemplaza entera.
+
+### 7.3 Conectores de Claude (`collectors/claude_connector.py`, `core/claude_env.py`)
+
+Calendar y Slack se leen ejecutando:
+
+```
+claude -p "<instrucción>" --model haiku --allowedTools <herramientas de lectura> \
+       --output-format stream-json --verbose
+```
+
+- `--allowedTools` incluye **solo** herramientas de lectura concretas. Las de escritura (`send_message`, `create_*`, `update_*`…) nunca se permiten.
+- Los datos salen de los `tool_result` del stream (JSON o texto tal cual lo devuelve el servicio). La respuesta redactada por Claude se ignora.
+- Si no hubo ningún `tool_result` y el stream termina con un `result` con `is_error`, se lanza `ConnectorError` con el motivo real. Si el motivo es la sesión de Claude Code, el mensaje indica cómo arreglarlo.
+- `cwd` en el directorio temporal, lejos de los repos.
+- **Entorno** (`claude_env()`, común a todas las llamadas a `claude`): elimina `ANTHROPIC_API_KEY` y, si `.env` define `CLAUDE_CONFIG_DIR`, lo pasa al subproceso. Es necesario para quien usa Claude Code con una carpeta de configuración propia (p. ej. una cuenta de empresa distinta de la de `~/.claude`). Sin ello, el dashboard usaría otra sesión, que puede no tener los conectores o haber caducado.
+- Coste aproximado: unos 6 s por llamada con Haiku, a cargo de la cuota de la suscripción.
+
+### 7.4 Google Calendar (`collectors/gcal.py`)
+
+- Herramienta permitida: `mcp__claude_ai_Google_Calendar__list_events` sobre el calendario principal, con `timeMin`/`timeMax` del rango y paginación.
+- Se descartan los eventos cancelados, los de tipo `workingLocation`, `outOfOffice` y `birthday`, los rechazados por la persona y los de día completo.
+- `kind=meeting` con `extra.start`/`end`, el número de asistentes y el enlace de Meet. El proyecto se asigna por `meeting_keywords` en el título; si no encaja, va a `company_meetings_project`.
+- Las reuniones de un rango se reemplazan en cada recogida.
+
+### 7.5 Slack (`collectors/slack.py`)
+
+Slack **no es una fuente de actividad**: solo sirve para aprender el formato del stand-up.
+- Herramientas permitidas: `slack_search_channels` y `slack_read_channel`.
+- `parse_messages` interpreta los dos formatos de texto que devuelve `slack_read_channel`. `own_standups` se queda con los N más recientes de la persona, reconocida por sus emails de git o de Notion.
+- Necesita un canal elegido en Ajustes; sin él no se lee Slack.
+- Se guardan en `standup.examples` y se renuevan cada `relearn_days` días, al cambiar de canal o con «Volver a aprender» en Ajustes. Si Slack falla, se conservan los anteriores.
+
+---
+
+## 8. Recogida (`jobs/collect_all.py · run_collect`)
+
+`run_collect(cfg, con, start, end, only=None)` ejecuta las fuentes activas (o solo las de `only`) para el rango y devuelve un informe por fuente. Cuándo se ejecuta:
+
+| Disparador | Rango |
+|---|---|
+| Arranque del servidor (en un hilo, sin bloquear) | Día laborable anterior y hoy |
+| «Actualizar datos» en la vista Día (`POST /collect/{d}`) | Día laborable anterior a `d` y `d` |
+| «Actualizar datos de la semana» (`POST /collect-range/{start}/{end}`) | La semana, hasta hoy |
+| Icono ↻ de una tarjeta (`POST /refresh/{d}/{notes\|commits}`) | Solo Notion o solo git para `d` |
+| Generar notas del diario | Solo Notion para ese día (para no pisar lo recién escrito) |
+| Cambio de diario o de carpetas en Ajustes | Relectura en segundo plano |
+| Terminal: `python -m jobs.collect_all [--date D \| --since A --until B] [--show]` | El indicado |
+
+Un `threading.Lock` garantiza que solo haya una recogida a la vez. Semántica de escritura:
+- Commits: **upsert** por `(source, external_id)`.
+- WIP y tareas: **reemplazo total**, porque son el estado actual.
+- Notas, pendientes y reuniones: **reemplazo por rango**.
+
+Cada fuente actualiza `sync_state` (`last_ok` o `last_error`).
+
+---
+
+## 9. Modelo de datos (`db/schema.sql`)
 
 ```sql
-CREATE TABLE activity (
-  id INTEGER PRIMARY KEY,
-  source TEXT NOT NULL,        -- git | notion | gcal | slack | github
-  kind TEXT NOT NULL,          -- commit | wip | note | task | task_plan | meeting | message | pr | review
-  external_id TEXT NOT NULL,
-  ts TEXT NOT NULL,            -- ISO 8601 con zona
-  work_date TEXT NOT NULL,     -- YYYY-MM-DD en zona del usuario
-  title TEXT, body TEXT, url TEXT, project TEXT, status TEXT,
-  extra_json TEXT,             -- p.ej. {"pushed": false, "branch": "..."}
-  UNIQUE(source, external_id)
-);
-CREATE TABLE summaries (
-  id INTEGER PRIMARY KEY,
-  work_date TEXT, kind TEXT,   -- standup | day_summary | notion_summary | weekly
-  content_md TEXT, input_hash TEXT, created_at TEXT,
-  UNIQUE(work_date, kind)
-);
-CREATE TABLE sync_state (source TEXT PRIMARY KEY, last_ok TEXT, last_error TEXT);
+activity(id, source, kind, external_id, ts, work_date, title, body, url, project, status, extra_json,
+         UNIQUE(source, external_id))          -- índice por work_date
+summaries(id, work_date, kind, content_md, input_hash, created_at, UNIQUE(work_date, kind))
+repo_settings(repo PRIMARY KEY, visible, show_wip)   -- sin fila = todo visible
+app_settings(key PRIMARY KEY, value)                 -- ajustes por persona (sección 6)
+sync_state(source PRIMARY KEY, last_ok, last_error)
 ```
 
-Upserts idempotentes sobre `(source, external_id)`. Todos los colectores implementan una interfaz común `collect(since, until) -> list[Activity]`.
+| `source` | `kind` |
+|---|---|
+| `git` | `commit`, `wip` |
+| `notion` | `note`, `task_plan`, `task` |
+| `gcal` | `meeting` |
+
+Valores de `summaries.kind`: `standup`, `journal_notes` y `timesheet`.
 
 ---
 
-## 5. Conexiones y autenticación (guía para pedirle los pasos al usuario)
+## 10. Fechas (`core/dates.py`)
 
-### 5.1 Notion (workspace `1millionbot`)
-
-Páginas relevantes:
-- **Página "I'M BACK"** (diario de trabajo y destino del resumen) — `https://app.notion.com/p/1millionbot/I-M-BACK-3f3687e73de18073956ac811a2c466e2`
-  ID de página: `3f3687e7-3de1-8073-956a-c811a2c466e2`. Estructura:
-  - **Encabezado 1 desplegable (`heading_1`) por día**, en orden cronológico, con formato `<Día de la semana> <dd>/<mm>/<aaaa>` (verificado: "Martes 10/11/2026", "Miércoles 11/11/2026"). Parsea con tolerancia: tildes, mayúsculas, ceros a la izquierda, año de 2 o 4 cifras. Hay huecos de días (p. ej. del 26/10 al 10/11 no hay entradas).
-  - Los hijos del H1 son una **secuencia plana**: un `heading_3` por proyecto (p. ej. "AI Risk", "Kit migración") seguido de sus `bulleted_list_item` **como hermanos** (no como hijos del H3) hasta el siguiente H3. Las viñetas pueden tener sub-viñetas anidadas (lee recursivamente).
-  - Dentro de cada proyecto, **lista de lo hecho ese día**: cambios de código (poco técnicos), cambios de documentación, reuniones de Calendar con apuntes. Frases como "Pasado a production" indican despliegue.
-  - Ignora viñetas vacías (el día en curso suele tener una).
-  - **Un proyecto vacío significa "aún no apuntado"**, no "no se ha hecho nada": no lo trates como ausencia de trabajo (para "ayer", indica que no hay notas y apóyate en git/Calendar; para "hoy", no saques conclusiones).
-  - La página no está al día en el pasado; el usuario la rellenará a diario desde el 2026-11-11. Si falta el bloque de un día, avisa y usa git/Calendar como respaldo.
-  - **Pendientes para el día siguiente**: dentro de cada proyecto, un subapartado **"Pendiente:"** seguido de la lista de pendientes. Lo que va bajo "Pendiente:" **no es trabajo hecho**: exclúyelo de resúmenes, stand-up "Ayer" y parte de horas, y llévalo a "Hoy" del día laborable siguiente. Parsea con tolerancia (puede ser texto, negrita o un encabezado; con o sin dos puntos; los ítems pueden ser hijos del bloque o los elementos de lista que le siguen hasta el siguiente encabezado). Aún no hay ningún caso real (se empieza a usar el 2026-11-11): cuando aparezca el primero, verifica el parseo con el usuario.
-- **Base de datos "Tareas"** (workspace 1millionbot) — `https://app.notion.com/p/1millionbot/b92ea782b9114e74b4d20998a47c343e?v=1c3a90e3e55343e3b6e1502aa7e7fa31`
-  ID: `b92ea782-b911-4e74-b4d2-0998a47c343e`. Cada tarea es una página. Columnas de estado vistas: **Backlog, In progress, Done, Weekly backlog**. Vistas: "Mis tareas", "Mis tareas activas", "Tareas de todos", "Por proyecto", "Mías", "Tablero", "Tabla".
-  Filtra **solo tareas del usuario y activas**. Verificado el 2026-11-11 con la API (`Notion-Version: 2022-06-28`, `POST /databases/{id}/query`):
-  - "Mis tareas" = propiedad people **`Persona Responsable`** contiene al usuario (Notion user id `356d872b-594c-81c5-a0ce-00025064453c`, "Pablo García Aljibe"). La propiedad `Asignar` no se usa (0 tareas).
-  - Activas = `Status` (tipo status) **distinto de `Done` y `Archived`**. Valores: To assign, Blocked, Paused, Backlog, Weekly backlog, Daily Backlog, In progress, To validate, Done, Archived. Resultado real: 3 activas (2 In progress, 1 Weekly backlog), 120 Done — coincide con el tablero.
-  - Título en `Tarea`. Otras útiles: `Fecha`, `Fecha inicio`, `Fecha Fin`, `Fecha límite`, `Fecha de Vencimiento` (date), `Prioridad`, `Tipo`, `Etiquetas`, `Sprint History`, `ID de la tarea`. La base es compartida por toda la empresa y tiene muchas propiedades de otros equipos: ignóralas.
-  - Orden en "Hoy": In progress → Daily Backlog → To validate → Weekly backlog → Blocked/Paused → Backlog/To assign.
-
-Autenticación (el usuario **no tiene permiso para crear conexiones internas** con token en el workspace; solo puede crear conexiones **OAuth** con alcance de usuario):
-1. ✅ (2026-11-11) Creada la conexión OAuth `dashboard-personal`, espacio de desarrollo 1millionbot, URI de redirección `http://localhost:8765/oauth/notion/callback` (aceptada por Notion).
-2. ✅ Capacidades: solo **Leer contenido** + **leer información de usuario incluidos emails** (para filtrar "mis tareas"). Sin actualizar/insertar ni comentarios.
-3. Copiar *OAuth client ID* y *client secret* → `.env` como `NOTION_CLIENT_ID` y `NOTION_CLIENT_SECRET` (que no los pegue en el chat).
-4. ✅ (2026-11-11) Autorizado con `python -m collectors.notion_auth`: token en `secrets/notion_token.json`, workspace 1millionbot, lectura de I'M BACK y Tareas verificada. Si el token caduca, renuévalo con `grant_type=refresh_token`.
-   - Si Notion no acepta `http://localhost` como redirección o un admin bloquea la instalación, **plan B**: leer Notion a través del conector MCP de Notion de la cuenta de Claude (`claude -p` con salida en bruto, solo lectura, pocas veces al día por el coste de cuota), o pedir a un admin un token interno.
-
-Verifica leyendo la página I'M BACK con `notion-client` y enséñale al usuario el texto extraído para confirmar el parseo.
-
-### 5.2 Google Calendar
-
-✅ **Vía elegida (2026-11-11): conector Google Calendar de Claude** (ver sección 2). Verificado: `claude -p --allowedTools "mcp__claude_ai_Google_Calendar__list_events"` devuelve en el `tool_result` el JSON de eventos de Google (`events[]` con `id`, `summary`, `start.dateTime`, `end.dateTime`, `attendees`, `organizer`, `htmlLink`, `status`, `eventType`, `conferenceUrl`); sin `events` = día sin eventos. Ejemplo real: 2026-11-10 11:00–12:00 "Migración - Revisión kit". Un primer intento dio `Insufficient scope`; se resolvió reconectando el conector en claude.ai marcando todos los permisos.
-- Guarda solo eventos `confirmed` en los que el usuario no haya rechazado (`attendees[self].responseStatus != declined`); ignora eventos de día completo para el parte de horas.
-- ✅ Implementado en `collectors/gcal.py` (`kind=meeting`, `extra.start/end`). Proyecto de la reunión por palabras clave del título (`meeting_keywords` en `config.yaml`); si no encaja → "1MB". Verificado: 3 reuniones del 02 al 11/11/2026.
-
-Alternativa con credenciales propias (solo si el conector deja de servir):
-
-1. `https://console.cloud.google.com` → proyecto nuevo (p. ej. "dashboard-personal") → habilitar **Google Calendar API**.
-2. Pantalla de consentimiento OAuth (usuario interno o de prueba) → crear credenciales **OAuth client ID → Aplicación de escritorio** → descargar `credentials.json` a `dashboard/secrets/` (ignorada por git).
-3. Primera ejecución: abre el navegador para autorizar con scope **`https://www.googleapis.com/auth/calendar.readonly`**; el token queda en `secrets/token.json`.
-4. Pregunta qué calendarios incluir (principal y/o de equipo).
-- (2026-11-11) La **dirección secreta iCal no está disponible** (el admin de Workspace la tiene desactivada; solo aparece "Dirección pública de iCal", que exige hacer público el calendario: **no usarla**). Por eso se va por OAuth (pasos 1–3).
-- Si el admin también bloquea las apps OAuth propias, plan B: leer Calendar con el conector MCP de Google Calendar de la cuenta de Claude (ya conectado), pocas veces al día por el coste de cuota.
-
-### 5.3 Slack
-
-**Vía elegida (2026-11-11): conector Slack de Claude** (ver sección 2), conectado por el usuario. Herramientas **de lectura** permitidas: `mcp__claude_ai_Slack__slack_search_public_and_private`, `slack_search_public`, `slack_read_channel`, `slack_read_thread`, `slack_read_user_profile`, `slack_search_users`, `slack_search_channels`, `slack_list_user_channels`. El conector también expone herramientas de escritura (`slack_send_message`, `slack_send_message_draft`, `slack_schedule_message`, `slack_create_*`, `slack_update_*`, `slack_add_*`…): **prohibidas** en los colectores. (Publicar el stand-up como borrador con `slack_send_message_draft` sería una mejora futura, solo con petición expresa y confirmación.)
-
-Alternativa con credenciales propias (solo si el conector deja de servir):
-
-1. `https://api.slack.com/apps` → **Create New App** (from scratch) en el workspace de la empresa.
-2. *User Token Scopes* de solo lectura: `search:read`, `channels:history`, `groups:history`, `im:history`, `users:read` (ajusta al mínimo necesario).
-3. Instalar en el workspace → copiar *User OAuth Token* (`xoxp-…`) a `.env` como `SLACK_USER_TOKEN`.
-4. **Probable bloqueo:** muchos workspaces exigen aprobación de un administrador para instalar apps. Si pasa, avisa al usuario, deja Slack desactivado (`enabled: false` en config) y continúa con el resto; no es bloqueante.
-5. Qué leer: `search.messages` con `from:@usuario after:<fecha>`, menciones al usuario, y canales concretos que él indique. Guarda texto recortado (≤300 caracteres por mensaje).
-
-### 5.4 GitHub remoto (opcional)
-
-Con el git local casi todo está cubierto. Para PRs y reviews pendientes: token *fine-grained* (solo lectura: `Contents`, `Pull requests`, `Metadata`) en `GITHUB_TOKEN`, o instalar `gh` (`winget install GitHub.cli`) y `gh auth login`. Consultas útiles: PRs abiertas del usuario, PRs en las que se le pide review (`review-requested:@me`).
+- `is_workday`: lunes a viernes y que no esté en `holidays`. `previous_workday`: el lunes da el viernes anterior.
+- `day_bounds(d, tz)`: de 00:00 a 00:00 del día siguiente en la zona de la persona, correcto con los cambios de horario. `to_work_date` convierte un instante a fecha local.
+- En fin de semana, "Hoy" muestra el último día laborable con aviso (`effective_today`).
+- Tests de lunes, fines de semana, cambio de mes y año, y DST.
 
 ---
 
-## 6. Lógica de fechas (implementar y testear primero)
+## 11. Generación con Claude
 
-```python
-def previous_workday(d):  # d: date
-    d -= timedelta(days=1)
-    while d.weekday() >= 5:  # sáb=5, dom=6
-        d -= timedelta(days=1)
-    return d
+### 11.1 Envoltorio (`llm/claude_cli.py`)
+
+```
+claude -p <prompts/<kind>.md> --output-format json --model <claude.model> --tools "" --strict-mcp-config
 ```
 
-- Lunes → viernes anterior. Si el usuario abre el dashboard en fin de semana, "hoy" se muestra como último día laborable (viernes) con aviso, o vista vacía; confírmalo con él.
-- "Ayer" para el stand-up = `previous_workday(hoy)`. El rango del timeline por defecto es ese día completo 00:00–23:59 en la zona del usuario.
-- Tests unitarios obligatorios: lunes, martes, sábado, domingo, cambio de mes/año y cambio horario (DST).
+- Sin herramientas ni conectores. El contexto JSON entra por stdin, el `cwd` es el temporal y el entorno sale de `claude_env()`.
+- **Caché:** `input_hash` = SHA-256 de (prompt + contexto + modelo). Si coincide con el guardado en `summaries`, no se vuelve a llamar a Claude. `force=True` regenera. La interfaz avisa cuando los datos han cambiado desde la última generación.
+- Una validación opcional (`validate`) puede rechazar la respuesta antes de guardarla. Si Claude falla (cuota, sesión…), se muestra el error y se conserva el último resultado. No se reintenta.
+- Regla común en todos los prompts: usar solo la información recibida y decir lo que no esté claro en vez de inventarlo.
+
+### 11.2 Stand-up (`prompts/standup.md`, `core/views.py · standup_context`)
+
+- **Contexto**:
+  - `ayer`: notas del diario del día laborable anterior (fuente principal), commits y reuniones.
+  - `hoy`: pendientes de ayer, tareas activas, reuniones de hoy y trabajo sin terminar.
+  - `ejemplos_formato`: los stand-ups aprendidos de Slack (7.5).
+- **Formato:** imita los ejemplos (saludo, emojis, títulos, viñetas, sangrías, longitud de cada tarea). Sin ejemplos, se usa el formato por defecto del prompt: markdown de Slack con `*Sección*`, `• Proyecto` y `◦ tarea` sangrada 4 espacios.
+- **Copiar:** el botón escribe en el portapapeles `text/plain` y `text/html`. `slackToHtml()` (en `base.html`) convierte el markdown de Slack en HTML con negritas y listas anidadas reales, para que el editor de Slack conserve el formato al pegar. Se activa con `data-copy-as="slack"` en el campo.
+
+### 11.3 Notas para el diario (`prompts/journal_notes.md`, `journal_notes_context`)
+
+Borrador del día a partir de los commits de los repos visibles, con lo ya escrito en el diario ese día para completarlo sin repetirlo. Sale en markdown con el formato del diario (`# Martes 10/11/2026`, `### Proyecto`, viñetas en pasado y poco técnicas), que Notion convierte al pegar. Antes de generar se relee Notion para ese día.
+
+### 11.4 Parte de horas (`core/timesheet.py`, `prompts/timesheet.md`)
+
+El parte se construye en dos partes:
+- **Claude agrupa y titula.** Recibe los commits del día y las notas del diario, y devuelve JSON con tareas: título `<Proyecto> - <tarea>`, proyecto, categoría, commits asignados o minutos estimados. `parse_tasks` valida la respuesta:
+  - descarta commits inventados o repetidos;
+  - una categoría inválida pasa a ser «Desarrollo de negocio»;
+  - los commits sin asignar forman una tarea propia.
+
+  Una respuesta inválida no se guarda.
+- **Python calcula todo lo horario** (`build_blocks`, determinista y con tests):
+  1. Las reuniones son bloques fijos a su hora real.
+  2. La comida dura 60 min y va en el hueco sin commits ni reuniones más cercano a su hora por defecto (dentro de una ventana).
+  3. La jornada (por defecto o la de Ajustes) se alarga si hay commits o reuniones fuera de ella.
+  4. Cada tarea con commits va desde el final del bloque anterior hasta su último commit. Un hueco entre dos tramos de la misma tarea pertenece a esa tarea.
+  5. Los demás huecos se reparten entre las tareas del diario sin commits según su peso estimado. Si no hay, se alarga la tarea anterior.
+  6. Los bordes se redondean a múltiplos de `block_step_minutes` (salvo los fijos), con una duración mínima de `min_block_minutes`. Los bloques contiguos con el mismo título se fusionan y los demasiado cortos se absorben en el vecino.
+  7. Se avisa si el día queda por debajo de `min_daily_hours`.
+- Se cachea por día (`kind=timesheet`). Las categorías y sus colores son los del hub: Desarrollo de negocio, Reunión, Documentación, Tareas administrativas y Formación.
 
 ---
 
-## 7. Funcionalidades y prompts
+## 12. Aplicación web (`web/app.py`)
 
-### 7.1 Vista "Hoy" (principal)
-Secciones: **Tareas de hoy** (tareas activas del usuario en la base Tareas + pendientes apuntados ayer en I'M BACK), **Reuniones** (Calendar), **Trabajo sin commitear / commits sin subir** (para no perder nada), y más adelante **Pendientes de revisión/menciones**. Cada ítem con su origen y enlace.
+### 12.1 Rutas
 
-### 7.0 ter Hoja de ruta: dashboard para cualquier persona de la empresa (2026-11-11)
-Alcance decidido por el usuario: **para la gente de 1MillionBot, no para externos**. Es común a la empresa (y se queda en `config.yaml`): workspace y base "Tareas" de Notion, estados, categorías y horario por defecto del hub, marca, idioma, zona horaria, proyectos y palabras clave de reuniones. Es **de cada persona** (se detecta o se elige en Ajustes) lo de la lista. Hay gente con **Mac**: todo debe funcionar en Windows y macOS.
+| Ruta | Función |
+|---|---|
+| `GET /` → `GET /day/{d}` | Vista Día |
+| `POST /collect/{d}`, `POST /collect-range/{a}/{b}` | Recogida completa (responde `HX-Refresh`) |
+| `POST /refresh/{d}/{notes\|commits}` | Recoge una fuente y devuelve solo su tarjeta |
+| `POST /standup/{d}`, `POST /journal-notes/{d}` | Generan (o devuelven de caché) el texto; `?force=true` regenera |
+| `GET /timesheet` → `GET /timesheet/week/{d}` | Parte de horas semanal |
+| `GET`/`POST /timesheet/day/{d}` | Columna de un día: ver o generar |
+| `GET /settings` y `POST /settings/…` | Ajustes: canal y aprendizaje del stand-up, jornada, emails de autor, carpetas (selector nativo, alta y baja), visibilidad por repo |
+| `GET /settings/notion/connect`, `GET /oauth/notion/callback`, `POST /settings/notion/disconnect` | OAuth de Notion |
+| `GET /settings/notion/pages`, `POST /settings/notion/journal`, `GET /settings/notion/journal-status` | Búsqueda, elección y vista previa del diario |
+| `GET /avatar` | Foto de perfil local |
 
-Orden de trabajo:
-1. **Emails de autor de git, automáticos.** Del `git config user.email` global y del de cada repo; se pueden añadir más a mano en Ajustes. Sin esto otra persona ve 0 commits.
-2. **Instalación y primer arranque.** Scripts `setup.ps1` (Windows) y `setup.sh` (macOS/Linux), lista de "primeros pasos" en Ajustes y aviso en la vista Día mientras falte algo, README para compañeros.
-3. **Stand-up con el formato de cada persona.** Se aprende de sus últimos stand-ups en el canal (conector de Slack): saludo, encabezados, viñetas y emojis. Sin ejemplos, formato por defecto.
-4. **Más formatos de diario.** Días como encabezado de cualquier nivel o desplegable, como páginas hijas o como base de datos con una página por día; más formatos de fecha (dd/mm/aaaa, aaaa-mm-dd, «10 de noviembre de 2026»…); proyectos como encabezados o desplegables (sin ellos, «General»); pendientes con «Pendiente(s):», «Para mañana:» o casillas sin marcar.
-5. **Repo → proyecto por nomenclatura de la empresa**, no por la ruta local: se compara con el nombre del repo o de cualquier carpeta que lo contenga (`airisk-api` y `airiskmanagement` → AI Risk; todo lo de `millie/` → Millie, `ibh/` → IBH…). Los worktrees heredan el proyecto de su repo principal.
-6. **Horario del parte de horas por persona** en Ajustes (el de la empresa por defecto).
-7. **Limpiar configuración sin uso** (`github`, `standup_time`, `weekend_view`).
-8. **Comando `dashboard-tasks` (2026-11-11; antes `dashboard-1mb`, renombrado el 2026-11-12).** `setup.ps1` / `setup.sh` instalan un lanzador en `~/.local/bin` (Windows: `dashboard-tasks.cmd` que llama a `start.ps1`; macOS/Linux: script que hace `exec start.sh`) y añaden esa carpeta al PATH de la persona si falta (Windows: registro de usuario sin expandir variables; macOS/Linux: `.zshrc`, `.bash_profile` o `.bashrc`). `start.*` detecta si el puerto 8765 ya está en uso y en ese caso solo abre el navegador. Si se mueve la carpeta, hay que repetir `setup`. README reescrito con instalación y arranque por sistema, formatos de diario, Día, Parte de horas, Ajustes, privacidad, actualizar y problemas frecuentes.
-- Riesgo anotado: la conexión OAuth de Notion está creada con la cuenta del usuario; conviene que la tenga una cuenta de la empresa.
+Las acciones devuelven fragmentos HTML (`_*.html`) que HTMX coloca en su sitio. No hay API JSON.
 
-### 7.0 bis Dashboard genérico: configuración por usuario desde Ajustes (2026-11-11)
-Objetivo del usuario: que un compañero pueda usar el dashboard sin tocar código. Lo propio de cada persona se elige en **Ajustes** y se guarda en su base de datos local (`app_settings`, `core/settings.py`), no en `config.yaml`:
-- **Notion**: botón "Conectar con Notion" que hace el OAuth desde la propia web (`/settings/notion/connect` → Notion → `/oauth/notion/callback`, que es el redirect registrado; `state` contra CSRF). "Desconectar" borra el token, la página diario y las tareas de esa cuenta. Credenciales de la conexión OAuth en `.env` (compartibles en el equipo; cada uno autoriza con su cuenta). El usuario de Notion (`user_id`) sale del token.
-- **Página diario** (antes fija: "I'M BACK"): buscador de páginas compartidas (búsqueda de Notion sin filas de bases de datos) → "Usar como diario". Vista previa del formato (nº de días con encabezado 1 + fecha, primer y último día). Los textos de la web usan el título de la página elegida. Guía desplegable con los pasos y el formato esperado.
-  - El título se refresca en cada recogida de Notion (si se renombra la página, la web usa el nombre nuevo).
-  - Al cambiar a otra página se borran las notas y pendientes guardados de la anterior y se releen en segundo plano los últimos 60 días de la nueva (verificado: ≈ 12 s).
-- **Carpeta de repositorios**: botón "Elegir carpeta…" que abre el **selector de carpetas nativo** (tkinter en el servidor local, siempre encima) y alternativa de escribir la ruta a mano (validada). Al guardar se recogen los commits de nuevo en segundo plano.
-- **Varias carpetas (2026-11-11)**: Ajustes › Repositorios › Carpetas es una lista (`git.repos_roots`, JSON; la antigua `git.repos_root` se migra sola). Cada carpeta muestra cuántos repos tiene (o "No se encuentra") y un × para quitarla; "Añadir otra carpeta…" abre el selector junto a la última, o se escribe la ruta a mano (se rechazan duplicadas e inexistentes). Se puede elegir un repo directamente como carpeta. Las carpetas anidadas no duplican repos. Cada repo se nombra relativo a su carpeta (clave de Ajustes y de la actividad); si dos carpetas tienen un repo con el mismo nombre, el segundo lleva delante el nombre de su carpeta. Al quitar una carpeta se borran los commits guardados de los repos que solo estaban en ella. La tabla "Qué se muestra" lista los repos de todas las carpetas.
-- Sin configurar, los colectores avisan ("elige la página diario / la carpeta en Ajustes") en vez de fallar.
-- Diseño de Ajustes: tarjetas separadas (20 px) con cabecera (título, descripción, estado) y filas "etiqueta + ayuda | control" separadas por líneas; los controles de una tarjeta comparten borde izquierdo y ancho (680 px). En ≤ 760 px las filas se apilan; en ≤ 600 px la tabla de repos oculta "Proyecto" y acorta la cabecera para que quepan los dos interruptores.
-- Pendiente para más adelante (sigue en `config.yaml` y es de la empresa o de esta persona): base de tareas de Notion y su propiedad de persona, autores de git, mapeo repo → proyecto, palabras clave de reuniones, jornada del parte de horas.
+### 12.2 Datos de las vistas (`core/views.py`)
 
-### 7.0 Barra superior: nombre del usuario (2026-11-11)
-- En lugar de "Dashboard", la barra muestra el **nombre y la foto de quien usa el dashboard**, deducidos de las herramientas conectadas, **nunca fijos en código ni en config** (`core/identity.py`). Nombre: usuario de Notion que autorizó la conexión (`owner.user.name` del token OAuth) → `git config --global user.name` → parte local del primer email de `git_authors` → "Dashboard". Foto: `owner.user.avatar_url` de Notion, descargada una vez a `db/avatar.img` (fuera de git) y servida en `/avatar`; si no hay o falla, se ven las iniciales. Se calcula al arrancar el servidor.
-- Google no sirve para esto (decisión del usuario 2026-11-11: usar Notion): el conector de Google Calendar solo expone el email (id del calendario), sin nombre ni foto.
-- En móvil (≤ 520 px) solo se ve el avatar; el nombre sigue en el `aria-label` del enlace.
-- Navegación Día / Parte de horas: la sección activa va en negrita con una barra inferior que **se desliza entre páginas** (View Transitions entre documentos, `@view-transition { navigation: auto }`; solo se anima la barra, 280 ms). Cada enlace reserva el ancho de su texto en negrita (`::after` invisible con `attr(data-text)`), porque el salto al cambiar de sección lo causaba el cambio de peso (106,6 → 110,3 px), no la barra. Ajustes (la rueda) no lleva barra.
+- `day_data` reúne en una consulta lo de un día: notas, commits, pendientes del día anterior, tareas y WIP, agrupados por proyecto.
+- `visible_git` aplica `repo_settings`: «Visible» oculta commits, WIP y commits sin subir de un repo; «Cambios sin commitear» oculta solo su WIP. El filtro se aplica aquí, al preparar los datos, así que **lo oculto tampoco llega a Claude**. Los datos se siguen recogiendo y reaparecen al reactivar el repo.
+- Ocultar un worktree solo oculta su WIP, porque los commits son del repo principal.
+- Los primeros pasos (Claude Code instalado, Notion conectado, diario elegido, carpeta de repos, Calendar sincronizado…) se calculan en `/settings`. Mientras falte alguno, la vista Día muestra un aviso.
 
-### 7.1 ter Vista Día: etiquetas con estilo de Notion (2026-11-11)
-- El estado de cada tarea activa lleva **su color de Notion** (se guarda `extra.status_color` al leer las tareas: In progress = blue, Weekly backlog = orange, Done = green…) con la paleta de etiquetas de Notion (fondo, texto y punto) en versión clara y oscura.
-- La etiqueta de origen "Notion" se sustituye por el **logo de Notion** (Simple Icons, CC0, en línea en `_macros.html`), del mismo alto que las etiquetas.
+### 12.3 Identidad (`core/identity.py`)
 
-### 7.1 bis Vista Día: cabecera y tarjetas (2026-11-11)
-- Título con la fecha completa, "Miércoles 11 de noviembre 2026", sin subtítulo. Navegación al estilo Google Calendar: botón **Hoy** (relleno en rojo cuando ya estás en hoy) y flechas ‹ › con SVG; la siguiente se desactiva si es futuro. El parte de horas usa el mismo componente con "Esta semana".
-- "Hoy" / "Esta semana" sin seleccionar va en gris apagado (`--muted`). Entre ‹ y › hay un **icono de calendario** que abre un calendario mensual clásico (lunes primero) bajo el icono: flechas de mes y de año, sábados, domingos y días futuros no elegibles, hoy marcado y el día elegido en rojo. Cierra con Escape (el foco vuelve al icono) o con clic fuera. En el parte de horas, elegir un día lleva a su semana.
-- Ajustes › Parte de horas: Jornada y Comida como rangos "inicio – fin" **en la misma línea** (56 px entre ellos; si no caben, la comida baja debajo con 22 px) y "Horas mínimas al día" en la línea siguiente con la misma etiqueta.
-- **Actualizar por tarjeta**: icono de actualizar (flechas en círculo) a la derecha de "Notas en I'M BACK" y de "Commits". `POST /refresh/{día}/{notes|commits}` recoge **solo** su fuente (`run_collect(..., only={"notion"})` o `{"git"}`) para ese día y devuelve la tarjeta, que HTMX sustituye sin recargar la página. Notas ≈ 2,6 s y commits ≈ 2 s, sin pasar por Claude. "Actualizar datos" sigue recogiendo todo.
-- **Proyectos plegables** en ambas tarjetas (`<details>` con chevron y número de elementos); los plegados se recuerdan en `localStorage` (también tras actualizar la tarjeta).
+En la barra se muestra el nombre y la foto de quien usa el dashboard, deducidos de sus herramientas.
+- **Nombre**, en este orden: el usuario de Notion del token, `git config --global user.name`, la parte local del email de autor y, por último, «Dashboard».
+- **Foto:** el avatar de Notion, descargado una vez a `db/avatar.img`. Si no hay, se muestran las iniciales.
 
-### 7.2 Timeline por día/rango
-Selector de fecha (saltando fines de semana con las flechas), filtros por fuente y repo, marcas "solo local" en commits sin push.
-
-### 7.3 Resumen para I'M BACK
-Selector de día o rango → botón **Generar** → borrador con el formato de I'M BACK (encabezado de fecha → un apartado por proyecto → lista de lo hecho, poco técnico; reuniones con hueco para apuntes), en markdown que se pegue bien en Notion, con botón **Copiar**. Editable en pantalla antes de copiar. Si ese día ya tiene notas en I'M BACK, muestra solo lo que falta (commits/reuniones no reflejados). Agrupa repos por proyecto (p. ej. `airisk-api` + `airiskmanagement` → "AI Risk"): mapeo repo→proyecto en `config.yaml`, a confirmar con el usuario.
-
-### 7.4 Stand-up (para `#equipo-tecnologia-stand-up`, canal `C056VQM4E74`)
-Prompt guardado en `prompts/standup.md`. Contexto JSON: **bloque de I'M BACK de `previous_workday(hoy)`** como fuente principal (sin lo de "Pendiente:") + commits/reuniones de ese día como apoyo; para "hoy": pendientes de I'M BACK, tareas activas de Notion y reuniones de hoy. Sin inventar nada que no esté en los datos, sin mencionar este repo. Si "ayer" no tiene notas en I'M BACK, dilo y resume desde git/Calendar. Editable y botón **Copiar**.
-
-**Formato exacto** (el que el usuario ya publica en el canal; verificado leyendo **solo sus propios mensajes** del 10 y 11/11/2026 — del canal solo interesa ese formato, no el contenido de otros miembros). Markdown de Slack (`*negrita*`), viñetas `•` por proyecto y `◦` sangradas con 4 espacios por tarea:
-```
-Buenos días! :saluting_face:
-*Tareas realizadas el último día*
-• AI Risk
-    ◦ Revisar permisos de roles en aprobaciones de Alta dirección y Soporte
-    ◦ Corregir incidencias del flujo de casos de uso
-    ◦ Subir cambios a producción
-*Tareas que haré durante hoy*
-• AI Risk
-    ◦ Probar flujo completo con un caso de uso de prueba
-• Kit migración
-    ◦ Reunión revisión kit
-```
-- Sin sección de "Bloqueos" (el usuario no la usa).
-- Cada tarea: frase corta en infinitivo, poco técnica, ~4–10 palabras ("Corregir…", "Revisar…", "Subir a producción"). Condensa las notas largas de I'M BACK en 5–9 puntos por proyecto como máximo; los "Pasado a production" se agrupan en un único "Subir cambios a producción".
-- Reuniones de hoy van en "hoy" bajo su proyecto como "Reunión <tema>".
-
-### 7.4 bis Notas para el diario (2026-11-11)
-- En la vista Día, la tarjeta de textos tiene dos **pestañas**: **Stand-up** y **Notas para <diario>** (se recuerda la última; flechas ← → con el teclado; la barra roja se desliza entre pestañas igual que la de Día / Parte de horas: 280 ms, ease-in-out, solo `transform`).
-- "Notas para <diario>" redacta con `claude -p` (**Sonnet**, el alias resuelve a `claude-sonnet-5-5`; ≈ 9 s) un borrador del día **a partir de los commits** de los repos visibles, con el formato del diario: `# Martes 10/11/2026`, `### Proyecto`, viñetas en primera persona y pasado, poco técnicas, agrupadas por tema con subviñetas (`prompts/journal_notes.md`). Markdown que Notion convierte al pegar. Se cachea por día (`kind=journal_notes`) y avisa si hay commits nuevos desde que se generó.
-- **Regenerar** es un icono de reinicio (↻): en la vista Día, en la esquina superior derecha de la tarjeta (actúa sobre la pestaña visible); en el parte de horas, al pie de cada día, donde estaba el botón.
-- Los prompts ya no nombran a una persona concreta ("la persona usuaria").
-- **Copiar** (stand-up y notas): icono gris discreto, sin fondo y de 16 px, **dentro de la caja del texto, arriba a la derecha**, al estilo de los bloques de Claude; al copiar pasa a ✓. El texto reserva margen derecho para no quedar debajo. (El parte de horas mantiene su botón de copiar.)
-
-### 7.5 Parte de horas (calendario para 1million hub)
-
-En la plataforma interna **1million hub** (Trabajo → Tareas → Mis tareas) cada empleado apunta en un calendario semanal (L–V) las tareas realizadas cada día con su franja horaria y categoría; se contabilizan las horas diarias y la semana se envía a aprobación. El hub ya importa las reuniones de Google Calendar por su cuenta (y tiene un botón "Notion" por día que **no funciona bien: ignóralo**). **El dashboard no tiene acceso al hub**: solo genera la propuesta para que el usuario la copie a mano.
-
-- **Selector:** un día o una semana (L–V). Vista en **rejilla de calendario** parecida a la del hub (columnas = días, filas = horas), y también como lista de texto copiable.
-- **Jornada por defecto** (configurable en `config.yaml`): **08:30–17:30** con comida **generalmente 14:00–15:00**. **Mínimo 8 h trabajadas al día** (puede superarse; no tiene que cuadrar exacto).
-- **Duraciones en cuartos de hora** (decisión del usuario, 2026-11-11): cada tarea dura **15 min como mínimo** y siempre un múltiplo de 15 (15 min, 30 min, 45 min, 1 h, 1 h 15…), según lo que estimen los commits; inicios y finales en :00, :15, :30 o :45. Las reuniones conservan su hora real de Calendar. Configurable (`min_block_minutes`, `block_step_minutes`).
-- **Estimación de duración a partir de los commits:** ordena los commits del día por hora; el tiempo de una tarea ≈ desde el fin del bloque anterior (o inicio de jornada, vuelta de comer o fin de reunión) hasta el último commit de esa tarea. El hueco entre commits indica cuánto se tardó. **No un bloque por commit**: agrupa varios commits/cambios relacionados (mismo repo/rama/tema y entrada de I'M BACK) en una sola tarea. Referencia de cómo queda: el lunes 2026-11-09 en el hub (≈10 bloques de "AI Risk - …" de duración variable entre 08:30 y 17:30).
-- **Categorías** (exactamente estas): **Desarrollo de negocio**, **Reunión**, **Documentación**, **Tareas administrativas**, **Formación**. En el hub, el trabajo de desarrollo/código se apunta como *Desarrollo de negocio*; documentación técnica o de producto como *Documentación*.
-- **Títulos** con el formato del hub: `<Proyecto> - <tarea>` (p. ej. "AI Risk - Permisos de Soporte e incidencias por rol").
-- **Cómo se construye:**
-  1. Las **reuniones de Calendar** se colocan en su hora real como *Reunión* (son fijas).
-  2. Las **tareas hechas ese día según I'M BACK** (fuente principal; nunca lo de "Pendiente:") se colocan en el orden y con la duración que indiquen sus commits (paso anterior). Tareas sin commits (documentación, revisiones…) ocupan los huecos restantes. Si no hay notas en I'M BACK, propone desde git y avisa.
-  3. Preprocesado **determinista** en Python (orden de commits, huecos, reuniones fijas, comida) y Claude solo **agrupa y titula** (`claude -p`, prompt `prompts/timesheet.md`): sin solapes, bloques ≥ 15 min en múltiplos de 15, total ≥ 8 h, sin inventar tareas que no estén en los datos.
-- Cada bloque es **editable** en pantalla (mover, cambiar duración, categoría o título) antes de copiar. Muestra el total de horas por día y aviso si baja de 8 h.
-- Salida de `claude -p` en JSON estructurado (`[{date, start, end, project, title, category}]`) para pintar la rejilla; validar el JSON (sin solapes, bloques ≥ 15 min, total ≥ 8 h, categoría válida) antes de mostrarlo. Se guarda en `summaries` con `kind=timesheet`.
-
-**Implementado (2026-11-11)** — `/timesheet` (enlace "Parte de horas" en la barra):
-- Vista semanal tipo hub: columnas L–V sobre rejilla 07:00–20:00, bloques coloreados por categoría, total por día y de la semana. Cada día se genera por separado (botón "Generar" o "Generar semana", en paralelo) y se cachea; si los datos cambian se avisa y se puede "Regenerar". "Texto para copiar" por día (editable) con "Copiar". "Actualizar datos de la semana" recoge git + Notion + Calendar del rango.
-- `core/timesheet.py` (determinista, con tests): comida de 60 min en el hueco sin commits ni reuniones más cercano a las 14:00 (entre 13:00 y 16:00, en cuartos de hora); la jornada se alarga si hay commits o reuniones fuera de 08:30–17:30; cada tarea va del final de la anterior a su último commit; huecos entre dos tramos de la misma tarea (p. ej. cortada por una reunión) son de esa tarea; los demás huecos, para tareas de I'M BACK sin commits según su peso estimado; si no hay, se alarga la tarea anterior; bordes redondeados al cuarto de hora (salvo los fijos de reuniones y comida), bloques contiguos con el mismo título fusionados, bloques < 15 min absorbidos por el vecino; aviso si el día baja de 8 h.
-- `prompts/timesheet.md`: Claude solo devuelve JSON con tareas (título, proyecto, categoría, commits o minutos estimados). `parse_tasks` valida: commits inventados o repetidos fuera, categoría inválida → "Desarrollo de negocio", commits sin asignar → tarea propia. Una respuesta inválida no se guarda.
-- Cada bloque es un botón: al pulsarlo se abre un modal con el nombre completo de la tarea, horario, duración, tipo (con su color) y proyecto. Resuelve los títulos cortados en bloques de 15–30 min. Se cierra con Esc, la × o pulsando fuera.
-- Limitación conocida: como los commits ocupan casi toda la jornada, las tareas sin commits (documentación, informes) suelen quedar con poco tiempo al final del día. Revisarlo con el usuario; mejora futura: edición de bloques en la rejilla.
-
-### 7.6 Ajustes (icono ⚙ en la barra superior, `/settings`)
-- Tabla con todos los repos descubiertos (proyecto, si es worktree) y dos interruptores por repo: **Visible** (oculta commits, WIP y commits sin subir de ese repo) y **Cambios sin commitear** (oculta solo el WIP).
-- Se guarda en SQLite (`repo_settings`), no en `config.yaml`. El filtro se aplica al preparar los datos de las vistas (`core/views.py`), así que **lo oculto tampoco se envía a Claude**. Los datos se siguen recogiendo: al reactivar aparece al momento.
-- Sin lista de excluidos: todos los repos aparecen aquí salvo el propio dashboard, que el colector nunca recoge.
-- Los worktrees comparten commits con su repo principal: ocultar un worktree solo oculta su WIP.
-
-Los prompts (`standup.md`, `day_summary.md`, `notion_summary.md`, `timesheet.md`) viven en ficheros para que el usuario los ajuste sin tocar código. Regla común en todos: *"Usa solo la información proporcionada. Si algo no está claro, dilo en vez de inventarlo."*
+Se calcula al arrancar y se recalcula al conectar o desconectar Notion.
 
 ---
 
-## 8. Estructura del proyecto
+## 13. Interfaz
 
-```
-C:\Users\daxte\Documents\1MillionBot\dashboard-tasks\
-├─ PLAN_TECNICO.md
-├─ README.md
-├─ CONTRIBUTING.md        # convención de commits (Conventional Commits, en inglés)
-├─ config.yaml            # emails, usuario, tz, repos_root, exclude_repos, fuentes activas, hora stand-up
-├─ .env / .env.example    # tokens (el .env fuera de git)
-├─ secrets/               # credentials.json, token.json (fuera de git)
-├─ core/                  # config.py · dates.py (días laborables) · db.py (SQLite) · views.py (datos por vista y contexto para Claude)
-├─ collectors/            # base.py · git_local.py · notion_auth.py · notion.py · gcal.py · slack.py · github.py
-├─ llm/claude_cli.py      # envoltorio de claude -p + caché por hash
-├─ prompts/               # standup.md · day_summary.md · notion_summary.md
-├─ web/                   # app.py · templates/ · static/
-├─ db/                    # schema.sql · dashboard.db (fuera de git)
-├─ jobs/                  # collect_all.py · morning_job.py
-├─ tests/                 # fechas, parseo git, filtros de exclusión
-└─ .gitignore             # .env, secrets/, db/*.db
-```
-
-Inicializa este directorio como repo git propio (`git init`) con `.gitignore` correcto **antes** del primer commit, para que ningún secreto se versione.
-
----
-
-## 9. Fases y criterios de aceptación
-
-**Fase 1 — MVP con git local (sin credenciales externas)**
-- ✅ (2026-11-11) `config.yaml`, SQLite, colector git local con commits (incluidos no pushed) y WIP: `python -m jobs.collect_all [--date D | --since A --until B] [--show]`. Verificado con datos reales: 16 commits el 10/11 (todos subidos), 5 "solo local" y 2 repos con WIP el 11/11; worktrees deduplicados; `dashboard/`, `Kanvas` y `shannon` excluidos.
-- ✅ Lógica de día laborable con tests (`python -m pytest`: 14 tests, incluidos DST y cambio de año).
-- ✅ Web (`python -m web.app`, http://127.0.0.1:8765): vista por día con flechas que saltan fines de semana, notas de I'M BACK, commits con marca "solo local", y para hoy "Qué toca hoy" (pendientes del día anterior, tareas activas, WIP y commits sin subir). Botones "Actualizar datos" y "Generar stand-up" / "Regenerar" / "Copiar".
-- ✅ Adelantado de la Fase 2: colector de Notion (`collectors/notion.py`) con notas (`kind=note`) y pendientes (`kind=task_plan`) de I'M BACK y tareas activas (`kind=task`). Las notas de un rango se reemplazan en cada recogida (las ediciones y borrados en Notion se reflejan).
-- ✅ `llm/claude_cli.py`: `claude -p --tools "" --strict-mcp-config` (sin herramientas ni conectores), contexto por stdin, `cwd` fuera de los repos, caché por hash en `summaries`; si falla se muestra el error y se conserva el último resultado.
-- ⏳ Pendiente de validar por el usuario: stand-up generado para el 11/11 comparado con el que publicó.
-- ✅ Aceptación: ejecutar para "ayer laborable" lista commits reales de los repos del usuario, marca los no subidos, **no aparece nada del repo `dashboard-tasks/`**, y genera un stand-up coherente que el usuario valida.
-
-**Fase 2 — Notion**
-- Lectura de I'M BACK y de tareas explícitas; vista "Hoy" con tareas del día.
-- Apartado "Resumen para Notion" (día o rango) con botón Copiar.
-- ✅ Aceptación: el usuario ve en "Hoy" lo que apuntó el día laborable anterior, y puede copiar un resumen del día en el formato de su página.
-
-**Fase 3 — Google Calendar, parte de horas y Slack**
-- Reuniones del día/ayer.
-- **Parte de horas** (7.5) para día y semana.
-- Señales de Slack (si el workspace lo permite).
-- ✅ Aceptación: para un día con notas en I'M BACK, commits y reuniones, la propuesta suma ≥ 8 h sin solapes, con bloques ≥ 15 min (múltiplos de 15) que agrupan commits relacionados, duraciones coherentes con los huecos entre commits, reuniones a su hora y solo las cinco categorías.
-
-**Fase 4 — Automatización**
-- `schtasks`: colectores cada 30 min (laborables) y job matinal (stand-up a la hora configurada, solo L–V). Notificación de Windows al terminar.
-- Resumen semanal; búsqueda en el historial; GitHub remoto (PRs/reviews).
-
-**Mejoras futuras (solo con petición expresa):** escribir el resumen en Notion con confirmación previa, publicar el stand-up en Slack con confirmación.
+- **Marca 1MillionBot:**
+  - colores: rojo `#CD3434` en rellenos (botones, filete, día de hoy) y coral `#FE6565` como acento puntual;
+  - texto `#1D1D1D` y grises `#D2D2D2` y `#949494`;
+  - tipografía Montserrat, con Verdana de reserva;
+  - logo: se muestra si existe `web/static/logo.png`.
+- **Temas claro y oscuro:**
+  - por defecto sigue `prefers-color-scheme`. Se cambia en Ajustes › Apariencia, la elección se guarda en `localStorage` y «Sistema» la olvida. Un script en `<head>` aplica el tema antes de pintar, sin parpadeo;
+  - el oscuro usa `#242424` de fondo y `#2C2C2C` en tarjetas. El texto rojo pasa a `#EE6A6A` para cumplir AA;
+  - las categorías del parte tienen colores propios por tema (tokens `--dev-*`, `--doc-*`, `--meet-*`, `--admin-*`, `--learn-*`).
+- **Tokens** (`web/static/style.css`):
+  - radios `--r-sm` 4 px, `--r-md` 8 px, `--r-lg` 12 px y `--r-pill`;
+  - curvas `--ease-out` y `--ease-in-out`, y duraciones `--press` y `--fast`.
+- **Movimiento:** solo `transform`, `opacity` y colores.
+  - escala al pulsar y spinner en botones con petición en curso;
+  - fundido del contenido que llega por HTMX, modal con `<dialog>` y View Transitions en el cambio de tema;
+  - barras de navegación y de pestañas que se deslizan;
+  - `prefers-reduced-motion` desactiva escalas y desplazamientos.
+- **Componentes:**
+  - navegación por días al estilo Google Calendar (Hoy, ‹ ›, calendario mensual que no deja elegir fines de semana ni el futuro);
+  - tarjetas con proyectos plegables (recordados en `localStorage`);
+  - pestañas Stand-up / Notas para el diario;
+  - botón de copiar solo con icono dentro del texto;
+  - estados de tarea con el color de Notion;
+  - parte de horas en una rejilla de 07:00 a 20:00 a 0,8 px/min, con un modal de detalle por bloque.
+- **Accesibilidad y robustez:**
+  - «Saltar al contenido», `aria-label` en los controles de solo icono y región `role="status"` para cargas y «Copiado»;
+  - foco visible y `tabular-nums`;
+  - aviso antes de perder un texto editado;
+  - Ajustes confirma cada guardado y deshace el cambio si falla;
+  - HTMX servido en local, así que funciona sin internet.
+- Los cambios de interfaz se revisan con capturas de Playwright.
 
 ---
 
-## 10. Cómo trabajar con el usuario
+## 14. Instalación y arranque
 
-- Un paso cada vez; confirma que cada conexión funciona (muestra datos reales leídos) antes de la siguiente.
-- Usa `AskUserQuestion`/preguntas concretas para lo pendiente de aclarar. **Lista de preguntas abiertas:**
-  1. Calendarios de Google a incluir (de momento solo el principal) y canales/palabras clave de Slack relevantes.
-  2. Festivos.
-- **GitHub remoto** (PRs/reviews): aplazado por decisión del usuario (2026-11-11); queda en Fase 4.
-- **Resueltas (2026-11-11):** autor git `pablogarcia@1millionbot.com`; GitHub `pablogarcia11`; stand-up 08:30 L–V, zona `Europe/Madrid`; en fin de semana "Hoy" muestra el último viernes con aviso; I'M BACK es el diario de trabajo y destino del resumen (estructura en 5.1); fuentes de "Hoy" (7.1); stand-up basado en I'M BACK para `#equipo-tecnologia-stand-up`; pendientes en I'M BACK = subapartado "Pendiente:" dentro del proyecto; parte de horas para 1million hub (7.5); mapeo repo → proyecto y proyecto "1MB" (4.1); Kanvas y shannon excluidos; Calendar y Slack vía conectores de Claude (sección 2); Notion vía OAuth propio.
-- Commits del propio dashboard: **en inglés y con Conventional Commits** (`feat: …`, `fix(git): …`), igual que el resto de repos de la empresa; norma completa en `CONTRIBUTING.md`. Sin secretos, y recuerda que la actividad de este repo nunca debe aparecer en sus resúmenes.
-- Si algo requiere permisos de administrador de la empresa (Slack, Workspace, Notion), no insistas: marca la fuente como pendiente y avanza con las demás.
+- **`setup.ps1` / `setup.sh`:**
+  1. comprueban requisitos (Python ≥ 3.11 o `uv`, git, Claude Code);
+  2. crean `.venv` e instalan `requirements.txt`;
+  3. crean `.env` desde `.env.example`;
+  4. instalan el lanzador `dashboard-tasks` en `~/.local/bin` (en Windows, un `.cmd` en la página de códigos de la consola) y añaden esa carpeta al PATH si falta. En Windows se edita el registro sin expandir variables; en macOS y Linux, el fichero de arranque del shell;
+  5. borran el lanzador antiguo `dashboard-1mb`.
+
+  Si se mueve la carpeta, hay que repetir `setup`.
+- **`start.ps1` / `start.sh`:** si el puerto 8765 ya está en uso, solo abren el navegador. Si no, arrancan `python -m web.app` y abren el navegador.
+- **Puerto fijo 8765:** la URI de redirección del OAuth de Notion está registrada con él.
+
+---
+
+## 15. Seguridad y privacidad
+
+- Secretos solo en `.env` y `secrets/`. Ni esas carpetas ni `db/` se versionan (`.gitignore`).
+- El servidor escucha solo en `127.0.0.1`. El OAuth de Notion usa `state`.
+- Los permisos externos son de solo lectura: Notion con lectura de contenido y usuarios, y los conectores limitados con `--allowedTools`.
+- A Claude solo llega contexto recortado (títulos de commit, notas, títulos de reuniones y tareas) de los repos visibles. Los diffs y los mensajes de otras personas nunca se envían.
+- Toda la IA pasa por la suscripción de la persona, nunca por API key.
+
+---
+
+## 16. Tests
+
+`python -m pytest -q`. Hay un fichero de tests por módulo:
+- `dates`: días laborables, DST y cambio de año;
+- `git_local`: descubrimiento, worktrees, exclusión del propio repo y parseo de `git log`;
+- `notion`: formatos de día, fecha, proyecto y pendientes;
+- `gcal` y `slack`: parseo del stream y de los mensajes;
+- `claude_connector`: errores de ejecución y entorno;
+- `settings`, `identity` y `views`;
+- `timesheet`: colocación de la comida, redondeos, fusiones y validación de la respuesta de Claude.
+
+Los colectores se prueban con datos de ejemplo, sin red.
+
+---
+
+## 17. Limitaciones conocidas
+
+- La conexión OAuth de Notion pertenece a la cuenta que la creó. Conviene que la administre una cuenta de la empresa.
+- Calendar y Slack dependen de que la sesión de Claude Code de la persona tenga los conectores autorizados, con todos sus permisos.
+- En el parte de horas, como los commits ocupan casi toda la jornada, las tareas sin commits (documentación, informes) suelen quedarse con poco tiempo. Los bloques todavía no se pueden editar sobre la rejilla.
+- No hay recogida programada: los datos se refrescan al arrancar y con los botones de actualizar.
+- No hay colector de GitHub remoto (PRs o reviews pendientes): el trabajo se lee del git local.

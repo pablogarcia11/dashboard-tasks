@@ -2,13 +2,10 @@
 
 user:
   # El nombre de la cabecera no se configura: sale de git (user.name global) o de Notion (core/identity.py)
-  github: pablogarcia11
   timezone: Europe/Madrid
   # Los emails de autor de git se detectan solos (git config); se pueden añadir más en Ajustes
 
 schedule:
-  standup_time: "08:30"     # solo lunes a viernes
-  weekend_view: last_friday # en fin de semana, "Hoy" muestra el último viernes con aviso
   holidays: []              # fechas YYYY-MM-DD no laborables
 
 timesheet:                  # parte de horas para 1million hub (aproximado)
@@ -27,9 +24,9 @@ timesheet:                  # parte de horas para 1million hub (aproximado)
     - Formación
 
 # La página diario y la carpeta de repos de cada persona se eligen en Ajustes (se guardan en db/).
-# El usuario de Notion sale de la propia conexión OAuth.
+# El usuario de Notion sale de la propia conexión OAuth. La base de datos de tareas va en .env
+# (NOTION_TASKS_DATABASE_ID), junto con las credenciales de la conexión.
 notion:
-  tasks_database_id: b92ea782-b911-4e74-b4d2-0998a47c343e
   redirect_uri: http://localhost:8765/oauth/notion/callback
   tasks_person_property: Persona Responsable
   tasks_inactive_statuses: [Done, Archived]
@@ -57,15 +54,14 @@ meeting_keywords:
   AI Risk: [ai risk, airisk, oia]
   Kit migración: [migración, migracion, kit]
 
-# Stand-up: canal del equipo (cada persona puede cambiarlo en Ajustes). El formato se aprende de sus
-# últimos stand-ups en el canal (conector de Slack de Claude, solo lectura).
+# Stand-up: cada persona elige su canal en Ajustes. El formato se aprende de sus últimos stand-ups
+# en ese canal (conector de Slack de Claude, solo lectura).
 standup:
-  channel: equipo-tecnologia-stand-up
   examples: 3          # cuántos stand-ups suyos se usan como ejemplo
   relearn_days: 7      # cada cuánto se vuelven a leer
 
 claude:
-  command: claude   # ruta absoluta si el programador de tareas no lo encuentra en el PATH
+  command: claude   # ruta absoluta si no está en el PATH
   model: sonnet
   timeout_seconds: 300
 
@@ -73,7 +69,6 @@ sources:
   git: { enabled: true }
   notion: { enabled: true }
   gcal: { enabled: true, via: claude_connector }
-  github: { enabled: false }
 
 server:
   host: 127.0.0.1

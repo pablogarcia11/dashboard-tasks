@@ -1,6 +1,21 @@
 import sqlite3
 
+import pytest
+
 from core import db, settings
+
+
+@pytest.fixture(autouse=True)
+def env_vacio(tmp_path, monkeypatch):
+    """Los tests no leen el .env real de quien los ejecuta."""
+    monkeypatch.setattr(settings, "ROOT", tmp_path)
+
+
+def test_base_de_tareas_desde_env(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "notion_owner", lambda: {})
+    (tmp_path / ".env").write_text("NOTION_TASKS_DATABASE_ID=db-del-env", encoding="utf-8")
+    out = settings.effective_config({"notion": {"tasks_database_id": "db"}}, connect(tmp_path))
+    assert out["notion"]["tasks_database_id"] == "db-del-env"
 
 
 def connect(tmp_path):

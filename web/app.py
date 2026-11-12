@@ -85,8 +85,8 @@ def load_identity() -> None:
 
 
 def standup_channel() -> str:
-    """Canal de stand-up de la persona (Ajustes) o el del equipo (config.yaml)."""
-    return settings.get_all(db.connect()).get(settings.STANDUP_CHANNEL) or cfg["standup"]["channel"]
+    """Canal de stand-up de la persona (Ajustes); "" si aún no lo ha elegido."""
+    return settings.get_all(db.connect()).get(settings.STANDUP_CHANNEL) or cfg["standup"].get("channel") or ""
 
 
 def user_emails(con) -> set[str]:
@@ -104,6 +104,8 @@ def standup_examples(con, force: bool = False) -> dict:
     except ValueError:
         stored = {}
     channel, scfg = standup_channel(), cfg["standup"]
+    if not channel:   # sin canal elegido no hay de dónde aprender: formato por defecto
+        return {"channel": "", "examples": [], "error": None}
     age = (datetime.now().astimezone() - datetime.fromisoformat(stored["fetched_at"])).days \
         if stored.get("fetched_at") else None
     if not force and stored.get("channel") == channel and age is not None and age < scfg.get("relearn_days", 7):
