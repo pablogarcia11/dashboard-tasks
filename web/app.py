@@ -561,7 +561,7 @@ def timesheet_week(request: Request, d: str):
 def timesheet_column(request: Request, d: str, generate_now: bool = False, force: bool = False):
     day = date.fromisoformat(d)
     ctx = {"day": day, "ppm": PPM, "grid_start": GRID_START, "grid_height": (GRID_END - GRID_START) * PPM,
-           "blocks": [], "warnings": [], "state": "ok", "error": None, "total": 0}
+           "blocks": [], "warnings": [], "state": "ok", "error": None, "total": 0, "is_today": day == today()}
     if day > today() or not is_workday(day, HOLIDAYS):
         ctx["state"] = "future" if day > today() else "holiday"
         return templates.TemplateResponse(request, "_timesheet_day.html", ctx)

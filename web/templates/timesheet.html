@@ -15,7 +15,7 @@
     </div>
   </div>
   <div class="actions">
-    <button type="button" class="btn ghost" hx-post="/collect-range/{{ days[0].isoformat() }}/{{ collect_end.isoformat() }}"
+    <button type="button" class="btn ghost" id="collect-btn" hx-post="/collect-range/{{ days[0].isoformat() }}/{{ collect_end.isoformat() }}"
             hx-swap="none" hx-indicator="#collecting" hx-disabled-elt="this">Actualizar datos de la semana</button>
     <button type="button" class="btn" id="generate-week" onclick="generateWeek(this)">Generar semana</button>
     <span id="collecting" class="htmx-indicator muted">Recogiendo…</span>
@@ -53,7 +53,7 @@
 <div class="legend">
   {% for c, cls in [("Desarrollo de negocio", "dev"), ("Reunión", "meet"), ("Documentación", "doc"),
                     ("Tareas administrativas", "admin"), ("Formación", "learn")] %}
-  <span><i class="ts-block cat-{{ cls }}"></i>{{ c }}</span>
+  <span><i class="ts-block cat-{{ cls }}"></i>{{ c }} <b class="cat-total" data-category="{{ c }}"></b></span>
   {% endfor %}
 </div>
 
@@ -81,9 +81,41 @@
     let total = 0;
     document.querySelectorAll(".ts-day[data-minutes]").forEach(el => total += Number(el.dataset.minutes));
     document.getElementById("week-total").textContent = total ? formatMinutes(total) : "—";
+    // Horas de la semana por categoría, junto a la leyenda (es lo que pide el hub)
+    const byCategory = {};
+    document.querySelectorAll(".ts-day .ts-block[data-category]:not(.is-empty)").forEach(b => {
+      byCategory[b.dataset.category] = (byCategory[b.dataset.category] || 0) + Number(b.dataset.minutes);
+    });
+    document.querySelectorAll(".cat-total").forEach(el => {
+      const minutes = byCategory[el.dataset.category];
+      el.textContent = minutes ? formatMinutes(minutes) : "";
+    });
+    placeNow();
+    scrollToToday();
     if (!document.querySelector(".ts-day .htmx-request")) {
       document.getElementById("generate-week").classList.remove("htmx-request");
     }
+  }
+
+  // Línea de la hora actual en la columna de hoy; fuera de la rejilla (antes de las 7 o después de las 20) no se ve
+  function placeNow() {
+    const line = document.querySelector(".ts-now");
+    if (!line) return;
+    const now = new Date(), minutes = now.getHours() * 60 + now.getMinutes();
+    const top = (minutes - Number(line.dataset.gridStart)) * Number(line.dataset.ppm);
+    line.hidden = top < 0 || top > line.parentElement.clientHeight;
+    line.style.transform = `translateY(${top}px)`;
+  }
+  setInterval(placeNow, 60000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) placeNow(); });
+
+  // En pantallas estrechas la semana no cabe: al abrir, la columna de hoy queda a la vista (una sola vez)
+  let scrolledToToday = false;
+  function scrollToToday() {
+    const scroller = document.querySelector(".ts-scroll"), head = document.querySelector(".ts-head.is-today");
+    if (scrolledToToday || !head || scroller.scrollWidth <= scroller.clientWidth) return;
+    scrolledToToday = true;
+    scroller.scrollLeft = head.offsetLeft - 56;   // 56 px: deja visible el eje de horas
   }
 
   function generateWeek(btn) {
