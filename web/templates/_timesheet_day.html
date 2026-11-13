@@ -1,6 +1,6 @@
 {% from "_macros.html" import copy_button, regen_button %}
 {% set id = "ts-" ~ day.isoformat() %}
-<div id="{{ id }}" class="ts-day{% if is_today %} is-today{% endif %}" data-label="{{ day | long_date | capitalize }}" {% if state in ("ok", "empty") %}data-minutes="{{ total }}"{% endif %}>
+<div id="{{ id }}" class="ts-day{% if is_today %} is-today{% endif %}" data-label="{{ day | long_date | capitalize }}" data-state="{{ state }}" {% if state in ("ok", "empty") %}data-minutes="{{ total }}"{% endif %}>
   <div class="ts-grid" style="height: {{ grid_height }}px; --hour: {{ 60 * ppm }}px">
     {# Línea de la hora actual (solo hoy): la coloca timesheet.html y la mueve cada minuto #}
     {% if is_today %}<div class="ts-now" data-grid-start="{{ grid_start }}" data-ppm="{{ ppm }}" aria-hidden="true" hidden></div>{% endif %}

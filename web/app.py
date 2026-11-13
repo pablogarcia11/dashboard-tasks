@@ -637,6 +637,8 @@ def timesheet_week(request: Request, d: str):
         "weekly": weekly_state(db.connect(), monday),
         "categories": cfg["timesheet"]["categories"], "category_class": CATEGORY_CLASS,
         "step": cfg["timesheet"].get("block_step_minutes", 15), "grid_end": GRID_END,
+        # Minutos que dan un día por completo (la página lo celebra al llegar): los del horario de la persona
+        "min_minutes": round(float(effective_config(cfg, db.connect())["timesheet"].get("min_daily_hours", 8)) * 60),
     })
 
 

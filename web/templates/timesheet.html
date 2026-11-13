@@ -36,9 +36,15 @@
   <div class="ts-week">
     <div class="ts-head"></div>
     {% for d in days %}
-    <h2 class="ts-head {% if d == today %}is-today{% endif %}" {% if d == today %}aria-current="date"{% endif %}>
+    <h2 class="ts-head {% if d == today %}is-today{% endif %}" id="ts-head-{{ d.isoformat() }}" {% if d == today %}aria-current="date"{% endif %}>
       <span class="muted small">{{ (d | long_date).split(" ")[0] | capitalize }}</span>
-      <strong>{{ d.day }}</strong>
+      {# Día con la jornada completa (clase is-complete, la pone markComplete): marca verde junto al número #}
+      <span class="day-num">
+        <strong>{{ d.day }}</strong>
+        <i class="day-ring" aria-hidden="true"></i>
+        <span class="day-done" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M4.2 8.4l2.6 2.6 5-5.6" pathLength="1"/></svg></span>
+      </span>
+      <span class="sr-only" data-done-text hidden>Jornada completa</span>
     </h2>
     {% endfor %}
 
@@ -132,11 +138,34 @@
       const minutes = byCategory[el.dataset.category] || 0;
       setTotal(el, minutes, minutes ? formatMinutes(minutes) : "");
     });
+    markComplete();
     placeNow();
     scrollToToday();
     document.getElementById("copy-week").disabled = !document.querySelector(".ts-day textarea");
     if (!document.querySelector(".ts-day .htmx-request")) {
       document.getElementById("generate-week").classList.remove("htmx-request");
+    }
+  }
+
+  // Jornada completa: el día llega a las horas mínimas (Ajustes › Horario). Se marca junto al número del día y,
+  // si acaba de completarse (no al abrir la página), se celebra. Con toda la semana completa (los días libres
+  // no cuentan), salta confeti desde el total: una sola vez por semana, se recuerda en localStorage
+  const MIN_MINUTES = {{ min_minutes }}, WEEK_KEY = "week-done:{{ days[0].isoformat() }}";
+  const wasComplete = {};
+  function markComplete() {
+    const days = [...document.querySelectorAll(".ts-day")], fresh = [];
+    days.forEach(day => {
+      const done = Number(day.dataset.minutes) >= MIN_MINUTES, head = document.getElementById("ts-head-" + day.id.slice(3));
+      head.classList.toggle("is-complete", done);
+      head.querySelector("[data-done-text]").hidden = !done;
+      if (done && wasComplete[day.id] === false) fresh.push(head);
+      wasComplete[day.id] = done;
+    });
+    let week = days.length === 5 && days.some(d => wasComplete[d.id])
+      && days.every(d => wasComplete[d.id] || d.dataset.state === "holiday");
+    try { week = week && !localStorage.getItem(WEEK_KEY); } catch (e) { week = false; }
+    if ((fresh.length || week) && motion("celebrate", fresh, week)) {
+      try { localStorage.setItem(WEEK_KEY, "1"); } catch (e) {}
     }
   }
 

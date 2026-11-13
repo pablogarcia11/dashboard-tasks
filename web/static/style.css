@@ -498,6 +498,26 @@ table.settings { margin: 0; }
 .ts-head { text-align: center; padding: 4px 0 12px; display: flex; flex-direction: column; margin: 0; font-size: inherit; font-weight: 500; }
 .ts-head strong { font-size: 1.4rem; font-weight: 800; }
 .ts-head.is-today strong { color: var(--white); background: var(--red); border-radius: 50%; width: 2em; height: 2em; display: inline-grid; place-items: center; margin: 0 auto; }
+/* Jornada completa: marca verde en la esquina del número. Al completarse, motion.js hace saltar el número,
+   dibuja la marca y abre un aro; con «reducir movimiento» la marca solo aparece */
+.day-num { position: relative; align-self: center; display: inline-grid; place-items: center; }
+.day-done {
+  position: absolute; left: calc(100% - 1px); top: -1px; width: 16px; height: 16px; border-radius: 50%;
+  background: var(--learn-line); color: var(--surface); pointer-events: none;
+  opacity: 0; transform: scale(0.6); transition: opacity var(--fast) ease, transform var(--fast) var(--ease-out);
+}
+.ts-head.is-today .day-done { left: calc(100% - 11px); top: -3px; box-shadow: 0 0 0 2px var(--surface); }
+.ts-head.is-complete .day-done { opacity: 1; transform: none; }
+.day-done svg { display: block; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.day-done path { stroke-dasharray: 1; }
+.day-ring {
+  position: absolute; left: 50%; top: 50%; width: 36px; height: 36px; margin: -18px 0 0 -18px; border-radius: 50%;
+  border: 2px solid var(--learn-line); opacity: 0; pointer-events: none;
+}
+/* Semana completa: confeti con los colores de las categorías, desde el total (motion.js) */
+.burst { position: fixed; z-index: 30; width: 0; height: 0; pointer-events: none; }
+.burst i { position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; border-radius: 2px; }
+.burst i.is-round { left: -3px; top: -3px; width: 6px; height: 6px; border-radius: 50%; }
 .ts-axis { position: relative; }
 .ts-axis span { position: absolute; right: 6px; transform: translateY(-50%); font-size: .72em; color: var(--detail); font-variant-numeric: tabular-nums; }
 #week-total, .ts-foot strong, .ts-meta { font-variant-numeric: tabular-nums; }
@@ -1110,6 +1130,7 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   .writing i, .tab-panel:has(.regen.htmx-request) textarea, .weekly:has(.regen.htmx-request) textarea { animation: none; opacity: .6; }
   .ts-now::after { animation: none; opacity: 0; }
   .is-popped { animation: none; }
+  .day-done, .ts-head.is-complete .day-done { transform: none; }
   /* Arrastre: sin levantarse, sin muelle y sin negar con la cabeza; el aro rojo se queda quieto */
   .ts-day .ts-block:is(.is-dragging, .is-dropped) { scale: none; rotate: none; }
   .ts-day .ts-block.is-dragging, .ts-day .ts-block.is-settling { transition: none; }

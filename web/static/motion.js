@@ -29,13 +29,14 @@
 
   // La página acaba de abrirse: lo que llega en este rato es su entrada, no un cambio (los totales cuentan
   // desde cero una vez, sin salto final). Con atajo de teclado no hay entrada
-  var arriving = !Motion.quiet;
-  setTimeout(function () { arriving = false; }, 1600);
+  var fresh = true, arriving = !Motion.quiet;
+  setTimeout(function () { fresh = arriving = false; }, 1600);
 
   var list = function (root, sel) { return Array.prototype.slice.call(root.querySelectorAll(sel)); };
   // GSAP deja estilos en línea (y pasa translate/rotate/scale a «none»): al acabar no queda ni rastro,
   // para que las clases de estado (arrastre, pulsación) sigan mandando
-  var PROPS = ["transform", "translate", "rotate", "scale", "opacity", "transform-origin", "transition"];
+  var PROPS = ["transform", "translate", "rotate", "scale", "opacity", "transform-origin", "transition",
+               "stroke-dashoffset"];
   // Mientras GSAP mueve algo, su transición CSS de transform se aparta (si no, iría siempre un paso por detrás)
   function hold(els) {
     els.forEach(function (el) { el.style.transition = "none"; });
@@ -236,6 +237,64 @@
     });
     return true;
   };
+
+  // ---- Jornada completa: el número del día toma impulso y salta, se abre un aro y se dibuja la marca ----
+  // Espera a que el total termine de contar. week: además, confeti desde el total de la semana.
+  // Devuelve si ha lanzado el confeti (timesheet.html lo recuerda: una vez por semana)
+  Motion.celebrate = function (heads, week) {
+    if (Motion.reduced) return false;            // la marca aparece con su fundido (CSS) y nada más
+    if (fresh && Motion.quiet) week = false;     // se llegó con el teclado: la página no hace entrada
+    var wait = Math.max(0, Motion.countAfter - performance.now()) / 1000 + (fresh ? 0.7 : 0.45);
+    heads.forEach(function (head, i) {
+      var num = head.querySelector("strong"), ring = head.querySelector(".day-ring");
+      var badge = head.querySelector(".day-done"), path = badge.querySelector("path"), all = [num, ring, badge, path];
+      gsap.killTweensOf(all);
+      hold(all);
+      gsap.timeline({ delay: wait + i * 0.08, onComplete: function () { tidy(all); } })
+        .to(num, { keyframes: [{ scale: 0.82, duration: 0.12, ease: "power2.in" },
+                               { scale: 1, duration: 0.45, ease: "back.out(2)" }] }, 0)
+        .fromTo(ring, { scale: 1, opacity: 0.8 },
+                { scale: 2.4, opacity: 0, duration: 0.6, ease: "power2.out", immediateRender: false }, 0.12)
+        .fromTo(badge, { scale: 0.4, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2.4)" }, 0.2)
+        .fromTo(path, { strokeDashoffset: 1 }, { strokeDashoffset: 0, duration: 0.26, ease: "power2.out" }, 0.3);
+    });
+    if (week) gsap.delayedCall(wait + (heads.length ? 0.5 : 0), burst, [heads]);
+    return !!week;
+  };
+
+  // Sale del total de la semana; si queda fuera de la vista (se está abajo, en la rejilla), del total del día
+  // que acaba de completarse
+  function burst(heads) {
+    var onScreen = function (el) {
+      var r = el && el.getBoundingClientRect();
+      return r && r.width && r.top > 0 && r.bottom < innerHeight;
+    };
+    var feet = heads.map(function (h) { return document.querySelector("#ts-" + h.id.slice(8) + " .ts-foot strong"); });
+    var src = [document.getElementById("week-total")].concat(feet, list(document, ".ts-foot strong")).filter(onScreen)[0];
+    if (!src || Motion.reduced) return;
+    var r = src.getBoundingClientRect(), box = document.createElement("div"), random = gsap.utils.random;
+    box.className = "burst";
+    box.setAttribute("aria-hidden", "true");
+    box.style.left = r.left + r.width / 2 + "px";
+    box.style.top = r.top + r.height / 2 + "px";
+    ["dev", "doc", "meet", "admin", "learn"].forEach(function (cat, c) {
+      for (var k = 0; k < (c < 1 ? 4 : 3); k++) {   // 16 piezas
+        var bit = document.createElement("i");
+        bit.style.background = "var(--" + cat + "-line)";
+        if (k === 1) bit.className = "is-round";
+        box.appendChild(bit);
+        var up = random(34, 96), time = random(0.75, 0.9);
+        gsap.timeline()
+          .to(bit, { x: random(-120, 120), rotation: random(-420, 420), duration: time, ease: "power2.out" }, 0)
+          .to(bit, { y: -up, duration: time * 0.4, ease: "power2.out" }, 0)
+          .to(bit, { y: random(10, 60), duration: time * 0.6, ease: "power2.in" }, time * 0.4)
+          .to(bit, { opacity: 0, scale: 0.5, duration: time * 0.35, ease: "power1.in" }, time * 0.65);
+      }
+    });
+    body.appendChild(box);
+    Motion.replay(src, "is-popped", 300);
+    gsap.delayedCall(1, function () { box.remove(); });
+  }
 
   // El bloque que se borra se encoge antes de pedir el cambio; si el servidor no lo acepta, vuelve
   Motion.leave = function (el) {
