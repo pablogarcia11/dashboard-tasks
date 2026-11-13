@@ -17,7 +17,14 @@
   <div class="actions">
     <button type="button" class="btn ghost" id="collect-btn" hx-post="/collect-range/{{ days[0].isoformat() }}/{{ collect_end.isoformat() }}"
             hx-swap="none" hx-indicator="#collecting" hx-disabled-elt="this">Actualizar datos de la semana</button>
-    <button type="button" class="btn ghost" id="copy-week" onclick="copyWeek(this)" disabled>Copiar semana</button>
+    {# Los dos textos ocupan el mismo hueco (el botón no cambia de ancho): al copiar se funden uno en otro #}
+    <button type="button" class="btn ghost btn-swap" id="copy-week" onclick="copyWeek(this)" disabled>
+      <span class="swap-a">Copiar semana</span>
+      <span class="swap-b" aria-hidden="true">
+        <svg class="check-draw" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-6.5" pathLength="1"/></svg>
+        <span data-count>5 días</span>
+      </span>
+    </button>
     <button type="button" class="btn" id="generate-week" onclick="generateWeek(this)">Generar semana</button>
     <span id="collecting" class="htmx-indicator muted">Recogiendo…</span>
   </div>
@@ -195,11 +202,18 @@
     const days = [...document.querySelectorAll(".ts-day")].filter(d => d.querySelector("textarea"));
     const text = days.map(d => d.dataset.label + "\n" + d.querySelector("textarea").value.trim()).join("\n\n");
     navigator.clipboard.writeText(text).then(() => {
+      const s = days.length === 1 ? "" : "s";
       days.forEach(d => delete d.querySelector("textarea").dataset.dirty);
-      btn.textContent = "Semana copiada";
-      announce(`Parte de ${days.length} día${days.length === 1 ? "" : "s"} copiado al portapapeles`);
+      btn.querySelector("[data-count]").textContent = `${days.length} día${s}`;   // el aviso completo, en announce()
+      btn.classList.add("is-copied");
+      announce(`Parte de ${days.length} día${s} copiado al portapapeles`);
+      // Un destello recorre de arriba abajo cada columna copiada, una tras otra (style.css)
+      days.forEach((d, i) => {
+        d.style.setProperty("--sweep", i);
+        motion("replay", d, "is-swept", 500 + i * 60);
+      });
       clearTimeout(btn._reset);
-      btn._reset = setTimeout(() => { btn.textContent = "Copiar semana"; }, 1800);
+      btn._reset = setTimeout(() => btn.classList.remove("is-copied"), 1800);
     });
   }
 

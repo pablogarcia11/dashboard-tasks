@@ -669,6 +669,29 @@ textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-text) 22%, t
 .copy-inline:hover { background: var(--hover-bg); color: var(--text); }
 .copy-inline.is-copied { color: var(--doc-line); }
 @keyframes pop { from { transform: scale(0.6); opacity: 0; } }
+/* «Copiar semana»: el texto se funde (con un punto de desenfoque que une los dos estados) en «✓ N días»,
+   con la marca dibujándose; los dos textos comparten celda y el botón no cambia de tamaño */
+.btn-swap { display: inline-grid; }
+.btn.btn-swap.is-copied { background: var(--text); border-color: var(--text); color: var(--bg); }   /* también con el ratón encima */
+.btn-swap > span {
+  grid-area: 1 / 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: opacity 200ms ease, filter 200ms ease;
+}
+.btn-swap .swap-b, .btn-swap.is-copied .swap-a { opacity: 0; filter: blur(2px); }
+.btn-swap.is-copied .swap-b { opacity: 1; filter: none; }
+.check-draw { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.check-draw path { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 0s 200ms; }
+.is-copied .check-draw path { stroke-dashoffset: 0; transition: stroke-dashoffset 260ms var(--ease-out) 100ms; }
+/* …y un destello baja por cada columna copiada (60 ms entre una y otra) */
+.ts-day.is-swept .ts-grid { clip-path: inset(0 -12px); }
+.ts-day.is-swept .ts-grid::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 28%; z-index: 4; pointer-events: none;
+  background: linear-gradient(to bottom, transparent,
+    light-dark(rgb(255 255 255 / .8), rgb(255 255 255 / .22)) 60%, transparent);
+  animation: copy-sweep 350ms var(--ease-out) calc(var(--sweep, 0) * 60ms) both;
+}
+@keyframes copy-sweep { from { transform: translateY(-100%); } to { transform: translateY(360%); } }
+@keyframes tint-flash { 0%, 100% { opacity: 0; } 33% { opacity: 1; } }
 
 /* Saltar al contenido: oculto hasta que recibe el foco con el teclado */
 .skip-link {
@@ -1130,6 +1153,15 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   .writing i, .tab-panel:has(.regen.htmx-request) textarea, .weekly:has(.regen.htmx-request) textarea { animation: none; opacity: .6; }
   .ts-now::after { animation: none; opacity: 0; }
   .is-popped { animation: none; }
+  /* Copiar semana: fundido sin desenfoque ni trazo; las columnas copiadas se tiñen un instante */
+  .btn-swap > span { transition: opacity 150ms ease; filter: none; }
+  .btn-swap .swap-b, .btn-swap.is-copied .swap-a { filter: none; }
+  .check-draw path, .is-copied .check-draw path { transition: none; }
+  .ts-day.is-swept .ts-grid { clip-path: none; }
+  .ts-day.is-swept .ts-grid::after {
+    height: 100%; background: color-mix(in srgb, var(--red) 12%, transparent);
+    animation: tint-flash 450ms ease both;
+  }
   .day-done, .ts-head.is-complete .day-done { transform: none; }
   /* Arrastre: sin levantarse, sin muelle y sin negar con la cabeza; el aro rojo se queda quieto */
   .ts-day .ts-block:is(.is-dragging, .is-dropped) { scale: none; rotate: none; }
