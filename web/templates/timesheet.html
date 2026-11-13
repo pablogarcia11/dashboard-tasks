@@ -346,6 +346,12 @@
     setDialogOrigin(origin);
     dialog.showModal();
     dialog._height = dialog.offsetHeight;   // para la próxima vez (cerrado no mide nada)
+    // El foco va al nombre de la tarea (showModal lo deja en la ×), con el cursor al final. En pantallas táctiles
+    // se queda en el formulario, para no abrir el teclado sin que se pida
+    if (matchMedia("(pointer: fine)").matches) {
+      field.title.focus();
+      field.title.setSelectionRange(field.title.value.length, field.title.value.length);
+    }
   }
 
   // Mientras se guarda, el formulario sigue abierto con lo escrito y sus botones desactivados.
@@ -399,9 +405,13 @@
     saveFromDialog(dayBlocks(editing.dayEl).filter(b => b.el !== editing.el), { leave: editing.el });
   });
 
-  let dragEndedAt = 0;
+  let dragEndedAt = 0, dragCancelled = false, pressedOnBackdrop = false;
+  // Un clic que empieza en un campo y acaba en el fondo (al seleccionar texto) llega al <dialog>: solo se
+  // cierra si también se pulsó en el fondo
+  dialog.addEventListener("pointerdown", event => { pressedOnBackdrop = event.target === dialog; });
   document.addEventListener("click", event => {
     if (Date.now() - dragEndedAt < 350) return;   // el clic que cierra un arrastre no abre el formulario
+    if (dragCancelled) { dragCancelled = false; return; }   // arrastre cancelado con Esc: soltar no abre nada
     const add = event.target.closest("[data-add-block]");
     if (add) {   // tarea nueva de una hora tras la última del día (o a primera hora)
       const dayEl = add.closest(".ts-day"), last = Math.max(0, ...dayBlocks(dayEl).map(b => b.end));
@@ -417,7 +427,7 @@
                       event.detail ? block : null);   // detail 0: abierto con el teclado, sin viaje
     }
     // Cerrar con la ×, Cancelar, o pulsando fuera (el propio <dialog> es el fondo)
-    if (event.target === dialog || event.target.closest("#task-dialog [data-close]")) dialog.close();
+    if ((event.target === dialog && pressedOnBackdrop) || event.target.closest("#task-dialog [data-close]")) dialog.close();
   });
 
   // Arrastre con ratón o lápiz (en pantallas táctiles se edita con el formulario, para no pelear con el scroll)
@@ -510,8 +520,14 @@
         if (!motion("glide", d.el, back)) back();
       });
   }
-  document.addEventListener("pointerup", () => endDrag(true));
+  document.addEventListener("pointerup", () => {
+    endDrag(true);
+    // Si se canceló con Esc, el clic de soltar (que llega justo después) se ignora; si no llega, se olvida
+    if (dragCancelled) setTimeout(() => { dragCancelled = false; });
+  });
   document.addEventListener("pointercancel", () => endDrag(false));
-  document.addEventListener("keydown", event => { if (event.key === "Escape" && drag && drag.moved) endDrag(false); });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && drag && drag.moved) { dragCancelled = true; endDrag(false); }
+  });
 </script>
 {% endblock %}
