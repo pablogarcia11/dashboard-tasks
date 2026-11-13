@@ -172,3 +172,11 @@ def test_festivos_de_empresa_sin_comillas_en_yaml():
     # YAML convierte 2026-12-25 (sin comillas) en una fecha: el job y la web lo comparan como texto
     assert settings.company_holidays({"schedule": {"holidays": [date(2026, 12, 25), "2026-12-26"]}}) == [
         "2026-12-25", "2026-12-26"]
+
+
+def test_parte_editado_que_ya_no_es_valido_no_da_error_500(client, monkeypatch):
+    monkeypatch.setattr(web, "timesheet_inputs", lambda con, day, cfg: {
+        "context": {"fecha": DAY}, "commits": [], "meetings": [], "has_work": True})
+    db.save_summary(db.connect(), DAY, web.TIMESHEET_EDIT, "esto no es json", "")
+    r = client.get(f"/timesheet/day/{DAY}")
+    assert r.status_code == 200 and "No se pueden mostrar los cambios" in r.text and "Deshacer mis cambios" in r.text

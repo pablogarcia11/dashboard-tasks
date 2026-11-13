@@ -673,7 +673,15 @@ def timesheet_column(request: Request, d: str, generate_now: bool = False, force
         db.delete_summary(con, d, TIMESHEET_EDIT)
         edit = None
     if edit:   # la persona ha movido o cambiado bloques: mandan sobre lo calculado
-        blocks = parse_edited(edit["content_md"], cats)
+        try:
+            blocks = parse_edited(edit["content_md"], cats)
+        except ValueError as e:
+            # Guardado con otra configuración (u otras reglas) y ya no es válido: se explica y se ofrece volver a
+            # la propuesta, en lugar de un error 500 que deja el día sin columna
+            ctx.update(edited=True, text="", warnings=[
+                f"No se pueden mostrar los cambios que hiciste a mano en este día ({e}). "
+                "«Deshacer mis cambios» vuelve a la propuesta."])
+            return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
         # Se guarda con qué datos se editó: si después llegan commits o reuniones nuevos, se avisa (no entran
         # solos, para no pisar lo editado). Las ediciones anteriores a guardarlo no tienen con qué comparar
         ctx["stale"] = bool(edit["input_hash"]) and edit["input_hash"] != input_hash(cfg, "timesheet", inputs["context"])

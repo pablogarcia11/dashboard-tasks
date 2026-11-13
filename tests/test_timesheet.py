@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from core.timesheet import (Block, build_blocks, edited_json, fmt, free_intervals, hm, lanes, parse_edited,
+from core.timesheet import (Block, as_text, build_blocks, edited_json, fmt, free_intervals, hm, lanes, parse_edited,
                             parse_tasks, place_lunch, short_day_warning)
 
 CFG = {"day_start": "08:30", "day_end": "17:30", "lunch_start": "14:00", "lunch_end": "15:00",
@@ -178,3 +178,12 @@ def test_lanes_reparte_los_solapes_y_deja_el_resto_a_todo_el_ancho():
     # A y B se pisan; C cabe en el carril de A cuando acaba; D y E no se solapan con nada
     assert lanes(blocks) == [(0, 2), (1, 2), (0, 2), (0, 1), (0, 1)]
     assert lanes([]) == []
+
+
+def test_titulos_en_una_sola_linea_para_el_texto_para_copiar():
+    raw = json.dumps([{"start": 540, "end": 600, "title": "Informe\nde riesgos", "project": "AI\nRisk",
+                       "category": "Documentación"}])
+    b = parse_edited(raw, CATS)[0]
+    assert (b.title, b.project) == ("Informe de riesgos", "AI Risk")
+    # Los de Calendar llegan sin pasar por parse_edited: as_text también los deja en una línea
+    assert as_text([Block(540, 600, "Reunión\r\ncon cliente", "", "Reunión", "meeting")]).count("\n") == 0

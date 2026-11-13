@@ -240,13 +240,14 @@ def parse_edited(raw: str, categories: list[str]) -> list[Block]:
             start, end = round(float(item["start"])), round(float(item["end"]))
         except (KeyError, TypeError, ValueError, OverflowError):
             raise ValueError("Falta el horario de una tarea.")
-        title = str(item.get("title") or "").strip()[:200]
+        # Una línea: un salto de línea en el nombre partiría el «Texto para copiar» (una tarea por línea)
+        title = " ".join(str(item.get("title") or "").split())[:200]
         if not title:
             raise ValueError("Escribe el nombre de la tarea.")
         if not (0 <= start < end <= 24 * 60):
             raise ValueError(f"«{title}»: la hora de fin tiene que ser posterior a la de inicio.")
         category = item.get("category") if item.get("category") in categories else DEFAULT_CATEGORY
-        blocks.append(Block(start, end, title, str(item.get("project") or "").strip()[:80], category,
+        blocks.append(Block(start, end, title, " ".join(str(item.get("project") or "").split())[:80], category,
                             kind="meeting" if category == "Reunión" else "task"))
     blocks.sort(key=lambda b: (b.start, b.end))
     for i, b in enumerate(blocks):
@@ -297,4 +298,5 @@ def lanes(blocks: list[Block]) -> list[tuple[int, int]]:
 
 
 def as_text(blocks: list[Block]) -> str:
-    return "\n".join(f"{fmt(b.start)}–{fmt(b.end)}  {b.title}  ({b.category})" for b in blocks)
+    """Una línea por tarea. Los títulos se dejan en una sola línea (los de Calendar pueden traer saltos)."""
+    return "\n".join(f"{fmt(b.start)}–{fmt(b.end)}  {' '.join(b.title.split())}  ({b.category})" for b in blocks)
