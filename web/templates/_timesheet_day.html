@@ -6,16 +6,22 @@
     {% if is_today %}<div class="ts-now" data-grid-start="{{ grid_start }}" data-ppm="{{ ppm }}" aria-hidden="true" hidden></div>{% endif %}
     {# Bloques que se solapan (reuniones a la vez): se reparten el ancho en carriles, como en el calendario #}
     {% set layout = blocks | lanes %}
+    {# Bloques fuera de la rejilla (07:00–20:00), p. ej. con commits a las 21:40: si asoman, se recortan en el borde
+       (is-cut: se ven pero no se arrastran, para no moverlos sin querer); si quedan del todo fuera, se listan debajo #}
+    {% set off = namespace(blocks=[]) %}
     {% for b in blocks %}
     {% set lane, nlanes = layout[loop.index0] %}
     {% set span = (b.start | fmt) ~ "–" ~ (b.end | fmt) %}
+    {% set vis_start, vis_end = [b.start, grid_start] | max, [b.end, grid_end] | min %}
+    {% if vis_end <= vis_start %}{% set off.blocks = off.blocks + [b] %}{% else %}
+    {% set cut = vis_start != b.start or vis_end != b.end %}
     {# Líneas que caben (≈13,5 px cada una): el título se recorta con "…" y el horario solo si hay sitio.
        Los bloques bajos (< 20 px) van en una sola línea compacta. #}
-    {% set height = b.minutes * ppm %}
+    {% set height = (vis_end - vis_start) * ppm %}
     {% set lines = ((height - 6) / 13.5) | int %}
     <button type="button" aria-haspopup="dialog"
-            class="ts-block cat-{{ b.category | cat_class }}{% if b.title == 'Por definir' %} is-empty{% endif %}{% if height < 20 %} is-tiny{% endif %}{% if nlanes > 1 %} in-lane{% endif %}"
-            style="top: {{ (b.start - grid_start) * ppm }}px; height: {{ height }}px; --i: {{ loop.index0 }}{% if nlanes > 1 %}; --lane: {{ lane }}; --lanes: {{ nlanes }}{% endif %}"
+            class="ts-block cat-{{ b.category | cat_class }}{% if b.title == 'Por definir' %} is-empty{% endif %}{% if height < 20 %} is-tiny{% endif %}{% if nlanes > 1 %} in-lane{% endif %}{% if cut %} is-cut{% if vis_start != b.start %} cut-start{% endif %}{% if vis_end != b.end %} cut-end{% endif %}{% endif %}"
+            style="top: {{ (vis_start - grid_start) * ppm }}px; height: {{ height }}px; --i: {{ loop.index0 }}{% if nlanes > 1 %}; --lane: {{ lane }}; --lanes: {{ nlanes }}{% endif %}"
             data-title="{{ b.title }}" data-time="{{ span }}" data-minutes="{{ b.minutes }}"
             data-start="{{ b.start }}" data-end="{{ b.end }}"
             data-category="{{ b.category }}" data-project="{{ b.project }}"
@@ -24,8 +30,9 @@
       {% if lines >= 2 %}<span class="ts-meta">{{ span }} · {{ b.category }}</span>{% endif %}
       {# Borde inferior: se arrastra para alargar o acortar la tarea (timesheet.html). En bloques de menos de
          12 px taparía el bloque entero y arrastrarlo lo alargaría en vez de moverlo: su duración, en el formulario #}
-      {% if b.title != 'Por definir' and height >= 12 %}<span class="ts-resize" aria-hidden="true"></span>{% endif %}
+      {% if b.title != 'Por definir' and height >= 12 and not cut %}<span class="ts-resize" aria-hidden="true"></span>{% endif %}
     </button>
+    {% endif %}
     {% endfor %}
     {% if state == "pending" %}
     <div class="ts-center">
@@ -43,7 +50,20 @@
       <p><strong>{{ total // 60 }} h {{ "%02d" | format(total % 60) }} min</strong></p>
       {% if state == "empty" %}<p class="muted small">Sin commits ni notas ese día: completa a mano.</p>{% endif %}
       {% if edited %}<p class="muted small">Editado a mano.</p>{% endif %}
-      {% if stale %}<p class="notice small">Los datos han cambiado desde que se generó.</p>{% endif %}
+      {% if stale and edited %}<p class="notice small">Hay commits o reuniones nuevos desde que lo editaste. «Regenerar» los incluye, pero descarta tus cambios.</p>
+      {% elif stale %}<p class="notice small">Los datos han cambiado desde que se generó.</p>{% endif %}
+      {% if off.blocks %}
+      <div class="ts-offgrid-list">
+        <p class="muted small">Fuera del horario que se ve ({{ grid_start | fmt }}–{{ grid_end | fmt }}):</p>
+        {% for b in off.blocks %}
+        {% set span = (b.start | fmt) ~ "–" ~ (b.end | fmt) %}
+        <button type="button" aria-haspopup="dialog" class="ts-block ts-offgrid cat-{{ b.category | cat_class }}"
+                data-title="{{ b.title }}" data-time="{{ span }}" data-minutes="{{ b.minutes }}"
+                data-start="{{ b.start }}" data-end="{{ b.end }}" data-category="{{ b.category }}" data-project="{{ b.project }}"
+                aria-label="{{ b.title }}, {{ span }}, {{ b.category }}"><span class="ts-meta">{{ span }}</span> <span class="ts-title">{{ b.title }}</span></button>
+        {% endfor %}
+      </div>
+      {% endif %}
       {% for w in warnings %}<p class="notice small">{{ w }}</p>{% endfor %}
     {% endif %}
     {% if error %}<p class="notice error small">{{ error }}<span class="hint">{{ claude_hint }}</span></p>{% endif %}
@@ -64,7 +84,7 @@
         {{ copy_button(id ~ "-text", small=True) }}
       </details>
       {{ regen_button("/timesheet/day/" ~ day.isoformat() ~ "?force=true", "Regenerar el parte del " ~ (day | long_date),
-                      target="#" ~ id, trigger="click, generate-week from:body" if stale else "click",
+                      target="#" ~ id, trigger="click, generate-week from:body" if stale and not edited else "click",
                       confirm="Se perderán los cambios que has hecho a mano en este día. ¿Regenerar?" if edited else "") }}
     {% endif %}
   </div>

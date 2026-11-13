@@ -646,7 +646,7 @@ def timesheet_column(request: Request, d: str, generate_now: bool = False, force
     day = date.fromisoformat(d)
     ctx = {"day": day, "ppm": PPM, "grid_start": GRID_START, "grid_height": (GRID_END - GRID_START) * PPM,
            "blocks": [], "warnings": [], "state": "ok", "error": None, "total": 0, "is_today": day == today(),
-           "edited": False}
+           "edited": False, "grid_end": GRID_END}
     if day > today() or not is_workday(day, holidays()):
         ctx["state"] = "future" if day > today() else "holiday"
         return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
@@ -671,6 +671,9 @@ def timesheet_column(request: Request, d: str, generate_now: bool = False, force
         edit = None
     if edit:   # la persona ha movido o cambiado bloques: mandan sobre lo calculado
         blocks = parse_edited(edit["content_md"], cats)
+        # Se guarda con qué datos se editó: si después llegan commits o reuniones nuevos, se avisa (no entran
+        # solos, para no pisar lo editado). Las ediciones anteriores a guardarlo no tienen con qué comparar
+        ctx["stale"] = bool(edit["input_hash"]) and edit["input_hash"] != input_hash(cfg, "timesheet", inputs["context"])
         ctx.update(blocks=blocks, edited=True, total=sum(b.minutes for b in blocks), text=as_text(blocks),
                    warnings=short_day_warning(blocks, ts_cfg))
         return templates.TemplateResponse(request, "_timesheet_day.html", ctx)
@@ -708,7 +711,8 @@ async def timesheet_day_edit(request: Request, d: str):
         blocks = parse_edited(form.get("blocks", ""), ts_cfg["categories"])
     except ValueError as e:
         return Response(str(e), status_code=422)
-    db.save_summary(con, d, TIMESHEET_EDIT, edited_json(blocks), "")
+    context = timesheet_inputs(con, day, cfg)["context"]
+    db.save_summary(con, d, TIMESHEET_EDIT, edited_json(blocks), input_hash(cfg, "timesheet", context))
     return timesheet_column(request, d)
 
 

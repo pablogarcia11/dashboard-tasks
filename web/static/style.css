@@ -553,6 +553,18 @@ table.settings { margin: 0; }
 .ts-block.is-empty .ts-meta { color: var(--muted); }
 .ts-center { position: absolute; top: 40%; left: 0; right: 0; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
 .ts-foot { padding: 10px 4px 0; font-size: .88em; }
+/* Bloques que se salen de la rejilla (07:00–20:00): el borde recortado se desvanece; los que quedan del todo
+   fuera se listan bajo el día, como bloques pequeños que se pulsan para editarlos */
+.ts-block.cut-start { mask-image: linear-gradient(to bottom, transparent, #000 10px); }
+.ts-block.cut-end { mask-image: linear-gradient(to top, transparent, #000 10px); }
+.ts-block.cut-start.cut-end { mask-image: linear-gradient(to bottom, transparent, #000 10px calc(100% - 10px), transparent); }
+.ts-offgrid-list { display: flex; flex-direction: column; gap: 4px; margin: 6px 0; }
+.ts-offgrid-list .muted { margin: 0; }
+.ts-day .ts-block.ts-offgrid {
+  position: static; width: 100%; min-height: 24px; padding: 3px 7px; display: block;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.ts-offgrid .ts-meta, .ts-offgrid .ts-title { display: inline; }
 .ts-foot p { margin: 4px 0; }
 .ts-foot strong { font-weight: 800; }
 .ts-foot textarea { font-size: 12px; margin: 6px 0; }
@@ -985,7 +997,7 @@ html:active-view-transition-type(theme)::view-transition-new(root) {
 .ts-resize { position: absolute; left: 0; right: 0; bottom: 0; height: 7px; }
 .ts-block.is-tiny .ts-resize { height: 4px; }
 @media (hover: hover) and (pointer: fine) {
-  .ts-day .ts-block[data-title]:not(.is-empty) { cursor: grab; }
+  .ts-day .ts-block[data-title]:not(.is-empty, .is-cut, .ts-offgrid) { cursor: grab; }
   .ts-resize { cursor: ns-resize; }
   .ts-resize::after {
     content: ""; position: absolute; left: 50%; bottom: 2px; width: 18px; height: 2px; margin-left: -9px;

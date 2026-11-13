@@ -131,3 +131,26 @@ def test_regenerar_conserva_lo_editado_si_claude_falla(client, monkeypatch):
     r = client.post(f"/timesheet/day/{DAY}?force=true")
     assert r.status_code == 200 and "Editado a mano" not in r.text
     assert db.get_summary(con, DAY, web.TIMESHEET_EDIT) is None
+
+
+def test_dia_editado_avisa_si_llegan_datos_nuevos(client, monkeypatch):
+    inputs = {"context": {"fecha": DAY, "commits": ["a1"]}, "commits": [], "meetings": [], "has_work": True}
+    monkeypatch.setattr(web, "timesheet_inputs", lambda con, day, cfg: inputs)
+    r = client.post(f"/timesheet/day/{DAY}/blocks", data=blocks_form((540, 600, "Lo mío", "Documentación")))
+    assert r.status_code == 200 and "desde que lo editaste" not in r.text
+
+    inputs["context"] = {"fecha": DAY, "commits": ["a1", "b2"]}   # un commit nuevo después de editar
+    r = client.get(f"/timesheet/day/{DAY}")
+    assert "desde que lo editaste" in r.text and "Lo mío" in r.text   # se avisa, sin pisar lo editado
+    assert "generate-week from:body" not in r.text   # «Generar semana» no lo regenera (perdería los cambios)
+
+
+def test_bloques_fuera_de_la_rejilla_se_recortan_o_se_listan(client):
+    r = client.post(f"/timesheet/day/{DAY}/blocks", data=blocks_form(
+        (1140, 1245, "Despliegue", "Desarrollo de negocio"), (1260, 1320, "Guardia", "Tareas administrativas")))
+    assert r.status_code == 200
+    # 19:00–20:45 asoma: se pinta recortado en las 20:00, sin borde para alargarlo
+    assert "is-cut" in r.text and "cut-end" in r.text
+    # 21:00–22:00 queda del todo fuera: se lista bajo el día y sigue contando en el total
+    assert "ts-offgrid" in r.text and 'data-start="1260" data-end="1320"' in r.text
+    assert "2 h 45 min" in r.text

@@ -435,7 +435,8 @@
   document.addEventListener("pointerdown", event => {
     if (event.button !== 0 || event.pointerType === "touch") return;
     const el = event.target.closest(".ts-day .ts-block[data-title]");
-    if (!el || el.dataset.title === "Por definir") return;
+    // Los que se salen de la rejilla (recortados o listados debajo) se editan con el formulario
+    if (!el || el.dataset.title === "Por definir" || el.matches(".is-cut, .ts-offgrid")) return;
     const start = Number(el.dataset.start), end = Number(el.dataset.end);
     drag = { el, dayEl: el.closest(".ts-day"), resize: !!event.target.closest(".ts-resize"), y: event.clientY,
              id: event.pointerId, start, end, newStart: start, newEnd: end, moved: false, clash: false };
