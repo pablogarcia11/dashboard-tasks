@@ -44,6 +44,16 @@
     }
     // Lo lee static/motion.js: quien llega con un atajo de teclado tampoco ve la entrada de la página
     var arrivedByKeyboard = keyboardNav(false);
+    // Entrada de la página (style.css, clase page-enter): las tarjetas del día suben escalonadas, etc. Solo un
+    // momento (lo que llegue después por HTMX no la repite), nunca tras un atajo de teclado ni con «reducir
+    // movimiento», y tampoco al pasar de un día a otro: ahí el movimiento es el de la hoja que pasa (pagereveal)
+    (function () {
+      var root = document.documentElement;
+      if (arrivedByKeyboard) root.classList.add("arrived-kbd");
+      if (arrivedByKeyboard || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+      root.classList.add("page-enter");
+      setTimeout(function () { root.classList.remove("page-enter"); }, 1400);
+    })();
     window.addEventListener("pageswap", function (e) {
       if (!e.viewTransition) return;
       if (keyboardNav(false)) return e.viewTransition.skipTransition();
@@ -55,7 +65,7 @@
       if (!e.viewTransition) return;
       if (kbd) return e.viewTransition.skipTransition();
       var dir = navDirection(window.navigation && navigation.activation);
-      if (dir) e.viewTransition.types.add(dir);
+      if (dir) { e.viewTransition.types.add(dir); document.documentElement.classList.remove("page-enter"); }
     });
 
     // Dónde se pulsó por última vez: el cambio de tema se abre en círculo desde ahí

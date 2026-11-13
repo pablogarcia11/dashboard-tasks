@@ -9,7 +9,9 @@
                 "/day/" ~ prev.isoformat(), "Día laborable anterior",
                 "/day/" ~ next.isoformat() if next else None, "Día laborable siguiente",
                 "/day/{date}", day, today) }}
-    <h1>{{ day | title_date }}</h1>
+    {# Cada palabra con su nombre de View Transition: al pasar de un día a otro ruedan hacia el lado al que se
+       navega, una tras otra (style.css). Para quien lee, sigue siendo un solo título #}
+    <h1 class="day-title">{% for w in (day | title_date).split(" ") %}<span class="dt-w" style="view-transition-name: dt-{{ loop.index0 }}">{{ w }}</span>{{ " " if not loop.last }}{% endfor %}</h1>
   </div>
   <div class="actions">
     {# «Actualizado hace 5 min»: lo calcula base.html a partir de data-since y lo mantiene al día #}

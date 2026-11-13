@@ -933,9 +933,38 @@ html:active-view-transition-type(forward)::view-transition-new(root) { animation
 html:active-view-transition-type(back)::view-transition-old(root) { animation: 150ms var(--ease-out) both page-out-right; }
 html:active-view-transition-type(back)::view-transition-new(root) { animation: 280ms var(--ease-out) 40ms both page-in-left; }
 @keyframes page-out-left { to { opacity: 0; transform: translateX(-18px); } }
-@keyframes page-in-right { from { opacity: 0; transform: translateX(18px); } }
+@keyframes page-in-right { from { opacity: 0; transform: translateX(32px); } }
 @keyframes page-out-right { to { opacity: 0; transform: translateX(18px); } }
-@keyframes page-in-left { from { opacity: 0; transform: translateX(-18px); } }
+@keyframes page-in-left { from { opacity: 0; transform: translateX(-32px); } }
+/* …y la fecha del título rueda palabra a palabra (40 ms entre ellas) hacia el mismo lado: cada palabra va en su
+   ventana (overflow: clip), la vieja sale por arriba y la nueva entra por abajo (al revés al ir hacia atrás) */
+.dt-w { display: inline-block; view-transition-class: dt-w; }
+::view-transition-group(*.dt-w) { overflow: clip; animation-duration: 500ms; animation-timing-function: var(--ease-out); }
+html:active-view-transition-type(forward)::view-transition-old(*.dt-w) { animation: 500ms var(--ease-out) var(--dt, 0ms) both dt-out-up; }
+html:active-view-transition-type(forward)::view-transition-new(*.dt-w) { animation: 500ms var(--ease-out) var(--dt, 0ms) both dt-in-up; }
+html:active-view-transition-type(back)::view-transition-old(*.dt-w) { animation: 500ms var(--ease-out) var(--dt, 0ms) both dt-out-down; }
+html:active-view-transition-type(back)::view-transition-new(*.dt-w) { animation: 500ms var(--ease-out) var(--dt, 0ms) both dt-in-down; }
+::view-transition-old(dt-1), ::view-transition-new(dt-1) { --dt: 40ms; }
+::view-transition-old(dt-2), ::view-transition-new(dt-2) { --dt: 80ms; }
+::view-transition-old(dt-3), ::view-transition-new(dt-3) { --dt: 120ms; }
+::view-transition-old(dt-4), ::view-transition-new(dt-4) { --dt: 160ms; }
+::view-transition-old(dt-5), ::view-transition-new(dt-5) { --dt: 200ms; }
+::view-transition-old(dt-6), ::view-transition-new(dt-6) { --dt: 240ms; }
+@keyframes dt-out-up { to { transform: translateY(-100%); } }
+@keyframes dt-in-up { from { transform: translateY(100%); } }
+@keyframes dt-out-down { to { transform: translateY(100%); } }
+@keyframes dt-in-down { from { transform: translateY(-100%); } }
+@keyframes fade-out { to { opacity: 0; } }
+
+/* Al abrir el día (clase page-enter, de base.html), las tarjetas suben una tras otra (60 ms entre ellas) y la de
+   textos llega desde la derecha. Entre días no: ahí ya se mueve la página entera */
+.page-enter .grid:has(#card-writer) > .col > .card { animation: card-in 420ms var(--ease-out) both; }
+.page-enter .grid:has(#card-writer) > .col > .card:nth-child(2) { animation-delay: 60ms; }
+.page-enter .grid:has(#card-writer) > .col > .card:nth-child(3) { animation-delay: 120ms; }
+.page-enter .grid:has(#card-writer) > .col > .card:nth-child(n + 4) { animation-delay: 180ms; }
+.page-enter .grid:has(#card-writer) > .col-side > .card { animation-name: card-in-side; animation-delay: 90ms; }
+@keyframes card-in { from { opacity: 0; transform: translateY(16px); } }
+@keyframes card-in-side { from { opacity: 0; transform: translateX(16px); } }
 
 /* 2. El filete rojo de la barra es también el indicador de actividad: mientras hay una petición en curso
       (recoger datos, redactar con Claude) lo recorre un destello. Solo transform y opacity. */
@@ -1172,6 +1201,15 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
 }
 .pr-state.is-review { border-color: transparent; background: var(--red-tint); color: var(--red-text); }
 .prs .repo { margin-left: 6px; }
+/* Al abrir la página (no al teclear en el buscador, que repinta a cada pulsación), las pull requests y los
+   resultados de la búsqueda llegan uno tras otro: 40 ms entre ellos, hasta 6 */
+.page-enter .prs li, .page-enter .search-day { animation: list-in 300ms var(--ease-out) both; }
+.page-enter .prs li:nth-child(2), .page-enter .search-day:nth-of-type(2) { animation-delay: 40ms; }
+.page-enter .prs li:nth-child(3), .page-enter .search-day:nth-of-type(3) { animation-delay: 80ms; }
+.page-enter .prs li:nth-child(4), .page-enter .search-day:nth-of-type(4) { animation-delay: 120ms; }
+.page-enter .prs li:nth-child(5), .page-enter .search-day:nth-of-type(5) { animation-delay: 160ms; }
+.page-enter .prs li:nth-child(n + 6), .page-enter .search-day:nth-of-type(n + 6) { animation-delay: 200ms; }
+@keyframes list-in { from { opacity: 0; transform: translateY(6px); } }
 
 /* Menos movimiento: fuera desplazamientos y escalas; se mantienen fundidos breves */
 @media (prefers-reduced-motion: reduce) {
@@ -1208,6 +1246,8 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   /* Actividad: el filete entero se aclara, sin barrido; las líneas de espera y el aro de la hora, quietos */
   body.is-busy .appbar::after { width: 100%; transform: none; animation: none; opacity: .6; }
   .writing i, .tab-panel:has(.regen.htmx-request) textarea, .weekly:has(.regen.htmx-request) textarea { animation: none; opacity: .6; }
+  .writing i::after, .is-shining .copy-wrap::after { content: none; }
+  .just-generated .copy-inline { animation: fade 150ms ease 300ms both; }
   .ts-day.col-enter, .ts-day.col-enter .ts-now { animation: none; }
   .ts-day.col-enter .ts-now::after { animation: none; opacity: 0; }
   .is-popped { animation: none; }
