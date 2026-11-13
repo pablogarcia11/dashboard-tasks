@@ -442,7 +442,7 @@ pre.example {
 }
 .chip .muted { padding-right: 6px; }
 .chip-remove {
-  display: inline-grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 50%;
+  display: inline-grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 50%;
   background: transparent; color: var(--muted); font-size: 1rem; line-height: 1; cursor: pointer;
 }
 .chip-remove:hover { background: var(--hover-bg); color: var(--red-text); }
@@ -579,6 +579,8 @@ table.settings { margin: 0; }
 .ts-foot strong { font-weight: 800; }
 .ts-foot textarea { font-size: 12px; margin: 6px 0; }
 .ts-foot summary { cursor: pointer; color: var(--red-text); font-weight: 700; }
+/* Objetivos táctiles de al menos 24 px de alto (WCAG 2.5.8): el texto es pequeño, la zona que se pulsa no */
+.ts-foot details > summary { display: flex; align-items: center; min-height: 28px; width: fit-content; }
 .legend { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 14px; font-size: .85em; color: var(--muted); }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .legend .ts-block { position: static; width: 16px; height: 16px; padding: 0; }
@@ -1192,7 +1194,7 @@ body.is-dragging-block { user-select: none; cursor: grabbing; }
 .ts-block[data-gone] { pointer-events: none; }   /* el que se está borrando */
 .ts-title, .ts-meta { transform-origin: 0 0; }    /* motion.js les quita la escala de un bloque que cambia de duración */
 .ts-edit { display: flex; flex-wrap: wrap; gap: 0 14px; }
-.ts-edit .link-btn { color: var(--red-text); font-weight: 700; }
+.ts-edit .link-btn { color: var(--red-text); font-weight: 700; min-height: 28px; }
 .ts-edit .link-btn:hover { color: var(--text); }
 
 /* Formulario de una tarea */

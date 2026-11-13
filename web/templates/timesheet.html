@@ -403,6 +403,8 @@
     saveFromDialog([...others, mine], { from: editing.origin, to: { title: mine.title, start, end } });
   });
   document.getElementById("task-delete").addEventListener("click", () => {
+    const title = editing.el && editing.el.dataset.title;
+    if (!confirm(`¿Eliminar «${title}» de este día?`)) return;
     saveFromDialog(dayBlocks(editing.dayEl).filter(b => b.el !== editing.el), { leave: editing.el });
   });
 

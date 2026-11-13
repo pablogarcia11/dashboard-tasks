@@ -242,6 +242,16 @@
       if (scope && scope.querySelector("textarea[data-dirty]")
           && !confirm("Has editado el texto y se perderá al regenerarlo. ¿Continuar?")) e.preventDefault();
     });
+    // Botones con indicador propio (hx-indicator: «Recogiendo…», «Agrupando con Claude…»): HTMX marca el indicador
+    // y no el botón, que se quedaba desactivado al 50 % y sin spinner. Se marca también el botón mientras dura
+    document.body.addEventListener("htmx:beforeSend", function (e) {
+      var el = e.detail.elt;
+      if (el.matches && el.matches(".btn[hx-indicator]")) el.classList.add("htmx-request");
+    });
+    document.body.addEventListener("htmx:afterRequest", function (e) {
+      var el = e.detail.elt;
+      if (el.matches && el.matches(".btn[hx-indicator]")) el.classList.remove("htmx-request");
+    });
     // Anuncia el indicador de carga ("Recogiendo…", "Redactando con Claude…") a lectores de pantalla
     document.body.addEventListener("htmx:beforeRequest", function (e) {
       if (e.defaultPrevented || !e.target.getAttribute) return;
