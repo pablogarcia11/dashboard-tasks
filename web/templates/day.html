@@ -169,6 +169,21 @@
     {% endif %}
   </div>
 </div>
+<script>
+  // Tira semanal: un día que tenía commits sin apuntar (coral) y ya tiene notas (verde) lo celebra con un salto
+  // de su marca la primera vez que se ve así. Se recuerda en esta pestaña cómo estaba cada día
+  (function () {
+    let seen = {};
+    try { seen = JSON.parse(sessionStorage.getItem("week-marks") || "{}"); } catch (e) {}
+    document.querySelectorAll(".week-strip a.week-day").forEach(a => {
+      const key = a.getAttribute("href"), state = a.classList.contains("is-notes") ? "notes"
+        : a.classList.contains("is-missing") ? "missing" : "other";
+      if (seen[key] === "missing" && state === "notes") a.classList.add("just-noted");
+      seen[key] = state;
+    });
+    try { sessionStorage.setItem("week-marks", JSON.stringify(seen)); } catch (e) {}
+  })();
+</script>
 {% if is_today and auto_refresh_minutes %}
 <script>
   // Recogida automática: cada {{ auto_refresh_minutes }} min, con la pestaña a la vista, se vuelven a leer el diario

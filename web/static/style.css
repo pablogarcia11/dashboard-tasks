@@ -832,6 +832,16 @@ a.week-day:hover { background: var(--hover-bg); color: var(--text); }
   background: var(--coral); box-shadow: 0 0 0 2px color-mix(in srgb, var(--coral) 30%, transparent);
 }
 .week-legend { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+/* Al abrir la página, el punto coral (días por apuntar) emite dos ondas para llamar la atención. Un día que pasa
+   de coral a verde (ya tiene notas) lo celebra con un salto de su marca (day.html, clase just-noted) */
+.week-day.is-missing > .week-mark { position: relative; }
+.week-day.is-missing > .week-mark::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--coral); opacity: 0; pointer-events: none;
+}
+html:not(.arrived-kbd) .week-day.is-missing > .week-mark::after { animation: mark-ping 1.4s var(--ease-out) 500ms 2; }
+@keyframes mark-ping { from { opacity: .6; transform: scale(1); } to { opacity: 0; transform: scale(2.6); } }
+.week-day.just-noted > .week-mark { animation: mark-noted 420ms var(--ease-back) 300ms both; }
+@keyframes mark-noted { from { transform: scale(.5); opacity: 0; background: var(--coral); } 60% { transform: scale(1.6); opacity: 1; } }
 /* Barra del día mostrado: se desliza entre días (mismo lenguaje que la de la barra superior) */
 .week-indicator {
   position: absolute; left: 10px; right: 10px; bottom: 2px; height: 2px; border-radius: var(--r-pill);
@@ -854,7 +864,13 @@ a.week-day:hover { background: var(--hover-bg); color: var(--text); }
 
 /* Reuniones de hoy: la siguiente dice cuánto falta; las pasadas se apagan */
 .meetings { list-style: none; padding: 0; }
-.meetings li { transition: opacity 200ms ease; }
+.meetings li { position: relative; isolation: isolate; transition: opacity 200ms ease; }
+/* La reunión en curso se resalta con un fondo suave; su píldora late tres veces al empezar */
+.meetings li::before {
+  content: ""; position: absolute; inset: -3px -8px; z-index: -1; border-radius: var(--r-md);
+  background: var(--red-tint); opacity: 0; transition: opacity 300ms ease;
+}
+.meetings li.is-now::before { opacity: 1; }
 .meetings .time { margin-right: 6px; }
 .meetings .is-past { opacity: .5; }
 .meeting-when:not(:empty) {
@@ -862,6 +878,10 @@ a.week-day:hover { background: var(--hover-bg); color: var(--text); }
   background: var(--meet-bg); color: var(--cat-text); white-space: nowrap; vertical-align: middle;
 }
 .is-now > .meeting-when { background: var(--red); color: var(--white); }
+.meeting-when:not(:empty) { display: inline-block; transition: background-color 300ms ease, color 300ms ease; }
+.is-soon > .meeting-when { background: var(--red-tint); color: var(--red-text); }
+.is-now > .meeting-when { animation: pill-beat 900ms var(--ease-in-out) 3; }
+@keyframes pill-beat { 50% { transform: scale(1.08); } }
 
 /* Escritorio: la tarjeta de textos acompaña al desplazamiento (la columna izquierda es mucho más larga) */
 @media (min-width: 900px) {
@@ -1159,6 +1179,13 @@ body.is-dragging-block { user-select: none; cursor: grabbing; }
   opacity: 1; visibility: visible; transform: none;
   transition: opacity 150ms var(--ease-out), transform 150ms var(--ease-out), visibility 0s;
 }
+/* Los días del desplegable llegan en cascada (40 ms entre ellos) */
+.more:hover .more-menu a, .more:focus-within .more-menu a { animation: menu-item-in 200ms var(--ease-out) both; }
+.more:is(:hover, :focus-within) .more-menu a:nth-child(2) { animation-delay: 40ms; }
+.more:is(:hover, :focus-within) .more-menu a:nth-child(3) { animation-delay: 80ms; }
+.more:is(:hover, :focus-within) .more-menu a:nth-child(4) { animation-delay: 120ms; }
+.more:is(:hover, :focus-within) .more-menu a:nth-child(n + 5) { animation-delay: 160ms; }
+@keyframes menu-item-in { from { opacity: 0; transform: translateX(-6px); } }
 .more-menu a { padding: 6px 10px; border-radius: var(--r-sm); text-decoration: none; white-space: nowrap; }
 .more-menu a:hover, .more-menu a:focus-visible { background: var(--hover-bg); color: var(--red-text); }
 
@@ -1190,7 +1217,7 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
 .weekly { margin-top: 22px; max-width: 860px; }
 .weekly .card-head .regen { margin-right: -8px; }
 .weekly:has(.btn.htmx-request, .htmx-indicator.htmx-request) .writing { display: grid; gap: 10px; }
-.weekly:has(.regen.htmx-request) textarea { animation: writing 1.4s ease-in-out infinite; }
+.weekly:has(.regen.htmx-request) textarea { animation: writing 1.4s ease-in-out 3 both; }
 
 /* Pull requests en «Qué toca hoy» */
 .prs { list-style: none; padding: 0; }
@@ -1251,6 +1278,8 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   .ts-day.col-enter, .ts-day.col-enter .ts-now { animation: none; }
   .ts-day.col-enter .ts-now::after { animation: none; opacity: 0; }
   .is-popped { animation: none; }
+  .is-now > .meeting-when { animation: none; }
+  li.is-new, .count.count-pop, .icon-btn svg.spun { animation: none; }
   /* Copiar semana: fundido sin desenfoque ni trazo; las columnas copiadas se tiñen un instante */
   .btn-swap > span { transition: opacity 150ms ease; filter: none; }
   .btn-swap .swap-b, .btn-swap.is-copied .swap-a { filter: none; }

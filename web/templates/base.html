@@ -425,6 +425,11 @@
         var id = e.detail.target && e.detail.target.id, el = id && generated[id] && document.getElementById(id);
         if (id) delete generated[id];
         if (el) el.classList.add("just-generated");
+        // Texto redactado: una franja de luz lo cruza al llegar (style.css); la clase se va al acabar
+        if (el && el.querySelector(".copy-wrap")) {
+          el.classList.add("is-shining");
+          setTimeout(function () { el.classList.remove("is-shining"); }, 1300);
+        }
       });
     })();
 
@@ -457,7 +462,7 @@
         else if (key === "r") { var b = document.getElementById("collect-btn"); if (b && !b.disabled) b.click(); }
         else if (key === "c") {
           var copy = document.querySelector(".tab-panel:not([hidden]) .copy-inline");
-          if (copy) copy.click();
+          if (copy) { copy.dataset.byKey = "1"; copy.click(); }   // con el teclado, sin animación (copyFrom)
         }
         else if (key === "?") help.showModal();
         else return;
