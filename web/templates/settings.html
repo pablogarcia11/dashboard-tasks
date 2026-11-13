@@ -66,6 +66,25 @@
     {% endfor %}
   </ol>
 </section>
+{% else %}
+{# Todo hecho. La tarjeta viene oculta y solo se ve una vez: si en esta pestaña quedaban pasos pendientes
+   (script de abajo, sessionStorage), las marcas se dibujan, se celebra y se pliega. Si no, no aparece #}
+<section class="card settings-card setup-done" id="setup" aria-labelledby="setup-title" data-setup-done hidden>
+  <header class="settings-card-head">
+    <div>
+      <h2 id="setup-title">Todo listo</h2>
+      <p class="muted small">Has completado los {{ steps | length }} primeros pasos: el dashboard ya tiene todo lo que necesita.</p>
+    </div>
+  </header>
+  <ol class="steps">
+    {% for s in steps %}
+    <li class="done">
+      <span class="step-mark" aria-hidden="true"><svg class="check-draw" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" pathLength="1"/></svg></span>
+      <div><span class="step-label">{{ s.label }}</span></div>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
 {% endif %}
 
 {# ---------- Notion ---------- #}
@@ -465,8 +484,17 @@
     themeToggle.setAttribute("aria-checked", dark);
     themeSystem.setAttribute("aria-pressed", !savedTheme());   // pulsado = se sigue al sistema
   }
-  themeToggle.addEventListener("click", () =>
-    chooseTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark"));
+  themeToggle.addEventListener("click", () => {
+    chooseTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
+    // Con el puntero (como el círculo del tema), el icono que se enciende gira y crece hasta su sitio
+    if (lastPointer && Date.now() - lastPointer.at < 800) {
+      themeToggle.classList.remove("just-switched");
+      void themeToggle.offsetWidth;
+      themeToggle.classList.add("just-switched");
+      clearTimeout(themeToggle._spin);
+      themeToggle._spin = setTimeout(() => themeToggle.classList.remove("just-switched"), 500);
+    }
+  });
   themeSystem.addEventListener("click", () => { if (savedTheme()) chooseTheme(null); });
   document.addEventListener("themechange", syncTheme);
   syncTheme();
@@ -480,6 +508,10 @@
     clearTimeout(saveStatus._hide);
     saveStatus._hide = setTimeout(() => saveStatus.classList.remove("show"), isError ? 5000 : 1800);
   }
+  // El interruptor que se pulsa se anima (style.css, is-touched); los demás llegan quietos al cargar
+  document.addEventListener("change", event => {
+    if (event.target.matches(".switch input")) event.target.closest(".switch").classList.add("is-touched");
+  });
   document.body.addEventListener("htmx:afterRequest", event => {
     const input = event.target;
     if (!input.matches || !input.matches(".switch input")) return;
@@ -506,6 +538,37 @@
     if (box) box.hidden = true;
   });
 
+  // Festivos, movimiento (GSAP + Flip, de base.html; sin ellos, sin animar): al quitar un día su chip se encoge
+  // mientras se guarda; cuando llega la lista nueva, los que siguen se deslizan a su sitio (Flip, data-flip-id)
+  // y el nuevo entra con un pequeño rebote. Con «reducir movimiento», un fundido corto
+  let chipsBefore = null;
+  const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.body.addEventListener("htmx:beforeRequest", event => {
+    const chip = event.detail.elt.closest && event.detail.elt.closest("#days-off-control .chip");
+    if (chip && window.gsap && !reduced()) gsap.to(chip, { scale: 0.8, opacity: 0, duration: 0.16, ease: "power2.out" });
+  });
+  document.body.addEventListener("htmx:afterRequest", event => {   // no se ha quitado: el chip vuelve
+    const chip = event.detail.elt.closest && event.detail.elt.closest("#days-off-control .chip");
+    if (chip && !event.detail.successful && window.gsap) {
+      gsap.to(chip, { scale: 1, opacity: 1, duration: 0.2, ease: "power2.out", clearProps: "all" });
+    }
+  });
+  document.body.addEventListener("htmx:beforeSwap", event => {
+    if (event.detail.target.id !== "days-off-control" || !window.Flip || !event.detail.shouldSwap) return;
+    chipsBefore = Flip.getState("#days-off-control .chip:not([data-gone])");
+  });
+  document.body.addEventListener("htmx:afterSwap", event => {
+    if (event.detail.target.id !== "days-off-control" || !chipsBefore) return;
+    const state = chipsBefore, chips = document.querySelectorAll("#days-off-control .chip");
+    chipsBefore = null;
+    if (reduced()) return gsap.from(chips, { opacity: 0, duration: 0.15, clearProps: "opacity" });
+    Flip.from(state, {
+      targets: chips, duration: 0.3, ease: "power3.inOut", simple: true,
+      onEnter: els => gsap.fromTo(els, { scale: 0.8, opacity: 0 },
+                                  { scale: 1, opacity: 1, duration: 0.28, ease: "back.out(1.6)", clearProps: "all" }),
+    });
+  });
+
   // Festivos: la lista llega ya actualizada (_days_off.html). Se anuncia el cambio y, si el foco estaba
   // en lo que se ha sustituido (la × del día quitado, el botón Añadir), vuelve al campo «Desde»
   document.body.addEventListener("htmx:afterSwap", event => {
@@ -516,6 +579,61 @@
       // Tras quitar un día, el foco va a «Deshacer» (Intro lo recupera); si no, al campo «Desde»
       (document.getElementById("days-off-undo") || document.getElementById("days-off-start")).focus({ preventScroll: true });
     }
+  });
+
+  // Primeros pasos: mientras falte alguno se recuerda en esta pestaña. Al volver a Ajustes con todos hechos, la
+  // tarjeta «Todo listo» aparece una sola vez: sus marcas se dibujan una tras otra, el título salta con confeti
+  // en los colores de las categorías y, al rato, se pliega. Con «reducir movimiento», sin saltos ni confeti.
+  // Espera a DOMContentLoaded: GSAP y announce() llegan después de este script (defer, base.html)
+  document.addEventListener("DOMContentLoaded", function () {
+    const card = document.getElementById("setup");
+    if (!card) return;
+    let wasPending = false;
+    try { wasPending = sessionStorage.getItem("setup-pending") === "1"; } catch (e) {}
+    if (!card.hasAttribute("data-setup-done")) {
+      try { sessionStorage.setItem("setup-pending", "1"); } catch (e) {}
+      return;
+    }
+    try { sessionStorage.removeItem("setup-pending"); } catch (e) {}
+    if (!wasPending) return;
+    card.hidden = false;
+    announce("Primeros pasos completados: el dashboard está listo");
+    const paths = card.querySelectorAll(".check-draw path"), marks = card.querySelectorAll(".step-mark");
+    const title = card.querySelector("h2");
+    const fold = () => gsap.to(card, {
+      height: 0, opacity: 0, paddingTop: 0, paddingBottom: 0, marginBottom: 0, borderWidth: 0,
+      duration: 0.45, ease: "power3.inOut", onStart: () => { card.style.overflow = "hidden"; }, onComplete: () => card.remove(),
+    });
+    if (!window.gsap) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      paths.forEach(p => { p.style.strokeDashoffset = 0; });
+      gsap.from(card, { opacity: 0, duration: 0.15 });
+      return gsap.delayedCall(4, () => gsap.to(card, { opacity: 0, duration: 0.15, onComplete: () => card.remove() }));
+    }
+    const colors = ["dev", "doc", "meet", "admin", "learn"].map(c => getComputedStyle(document.documentElement).getPropertyValue(`--${c}-line`));
+    const burst = () => {
+      const box = document.createElement("div");
+      box.className = "burst setup-burst";
+      box.setAttribute("aria-hidden", "true");
+      title.append(box);
+      for (let i = 0; i < 16; i++) {
+        const piece = document.createElement("i");
+        piece.style.background = colors[i % colors.length];
+        box.append(piece);
+        gsap.fromTo(piece, { x: 0, y: 0, rotation: 0, opacity: 1 },
+          { x: gsap.utils.random(-150, 150), y: gsap.utils.random(-70, 40), rotation: gsap.utils.random(-220, 220),
+            opacity: 0, duration: 0.9, ease: "power2.out" });
+      }
+      gsap.delayedCall(1, () => box.remove());
+    };
+    gsap.timeline()
+      .from(card, { opacity: 0, y: 12, duration: 0.35, ease: "power3.out" })
+      .from(marks, { scale: 0.6, opacity: 0, duration: 0.3, stagger: 0.08, ease: "back.out(2)" }, "-=0.1")
+      .to(paths, { strokeDashoffset: 0, duration: 0.26, stagger: 0.08, ease: "power2.out" }, "<0.1")
+      .to(title, { keyframes: [{ scale: 1.12, duration: 0.18, ease: "power2.out" }, { scale: 1, duration: 0.35, ease: "back.out(2)" }],
+                   transformOrigin: "0 60%" })
+      .call(burst, null, "<")
+      .add(fold, "+=2.4");
   });
 </script>
 {% endblock %}

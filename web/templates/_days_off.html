@@ -4,12 +4,12 @@
   {% if days_off.company or days_off.own %}
   <ul class="chip-list">
     {% for a, b in days_off.company %}
-    <li class="chip">{{ a | short_date }}{% if b != a %} – {{ b | short_date }}{% endif %} {{ b.year }}
+    <li class="chip" data-flip-id="company:{{ a.isoformat() }}">{{ a | short_date }}{% if b != a %} – {{ b | short_date }}{% endif %} {{ b.year }}
       <span class="muted small">de la empresa</span></li>
     {% endfor %}
     {% for a, b in days_off.own %}
     {% set label = (a | short_date) ~ ((" – " ~ (b | short_date)) if b != a else "") ~ " " ~ b.year %}
-    <li class="chip{% if b < days_off.today %} is-past{% endif %}">{{ label }}
+    <li class="chip{% if b < days_off.today %} is-past{% endif %}" data-flip-id="own:{{ a.isoformat() }}:{{ b.isoformat() }}">{{ label }}
       <button type="button" class="chip-remove" hx-post="/settings/days-off" hx-target="#days-off-control"
               hx-swap="outerHTML" data-done="Quitado: {{ label }}"
               hx-vals='{"action": "remove", "start": "{{ a.isoformat() }}", "end": "{{ b.isoformat() }}"}'

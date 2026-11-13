@@ -158,6 +158,9 @@ html:active-view-transition-type(section-nav)::view-transition-new(root) { anima
 :root[data-theme="light"] .theme-toggle .sun,
 :root[data-theme="dark"] .theme-toggle .moon { background: var(--red); color: var(--white); }
 .theme-toggle:hover { border-color: var(--red-text); }
+:root[data-theme="light"] .theme-toggle.just-switched .sun,
+:root[data-theme="dark"] .theme-toggle.just-switched .moon { animation: icon-turn 400ms var(--ease-spring); }
+@keyframes icon-turn { from { transform: rotate(-90deg) scale(.6); } }
 
 /* Cabecera de página */
 .top { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 22px; }
@@ -424,6 +427,10 @@ pre.example {
   border: 1px solid var(--line); color: var(--muted); font-size: .8em; font-weight: 700; font-variant-numeric: tabular-nums;
 }
 .steps .done .step-mark { border-color: var(--doc-line); background: color-mix(in srgb, var(--doc-line) 18%, var(--surface)); color: var(--text); }
+/* «Todo listo» (una sola vez, settings.html): marcas dibujadas y confeti que sale del título */
+.setup-done .check-draw { width: 14px; height: 14px; }
+.setup-done h2 { position: relative; display: inline-block; }
+.burst.setup-burst { position: absolute; left: 50%; top: 50%; z-index: 5; }
 .steps .done .step-label { color: var(--muted); }
 .steps .todo .step-label { font-weight: 700; }
 
@@ -446,6 +453,9 @@ pre.example {
 .days-off-form .field { width: 11em; font-variant-numeric: tabular-nums; }
 .chip.is-past { color: var(--muted); }
 .undo-bar { display: flex; align-items: baseline; gap: 10px; margin: 10px 0 0; color: var(--muted); }
+/* «Deshacer» llega con un pequeño rebote, desde abajo (los chips los anima settings.html con Flip) */
+.undo-bar { animation: undo-in 280ms var(--ease-back) both; }
+@keyframes undo-in { from { opacity: 0; transform: translateY(6px); } }
 .undo-bar .link-btn { color: var(--red-text); font-weight: 700; }
 
 /* Desplegables de ayuda */
@@ -471,7 +481,7 @@ pre.example {
 .card-head h2 { margin: 0; }
 .save-status {
   margin: 0; font-size: .85em; font-weight: 700; color: var(--muted);
-  opacity: 0; transform: translateY(2px); transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  opacity: 0; transform: translateY(6px); transition: opacity 200ms var(--ease-out), transform 320ms var(--ease-spring);
 }
 .save-status.show { opacity: 1; transform: none; }
 .save-status.is-error { color: var(--red-text); }
@@ -621,6 +631,12 @@ table.settings { margin: 0; }
 textarea { transition: border-color var(--fast) ease, box-shadow var(--fast) ease; }
 textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-text) 22%, transparent); }
 .switch span::before { transition: transform 200ms var(--ease-out); }
+/* Al pulsarlo, el pulgar se estira a mitad de camino y se posa con un muelle (is-touched: solo tras tocarlo,
+   no al cargar la página; lo pone settings.html). Los dos nombres distintos hacen que cada cambio la relance */
+.switch.is-touched input:checked + span::before { animation: thumb-on 320ms var(--ease-spring); }
+.switch.is-touched input:not(:checked) + span::before { animation: thumb-off 320ms var(--ease-spring); }
+@keyframes thumb-on { from { transform: translateX(0); } 45% { transform: translateX(9px) scaleX(1.25); } to { transform: translateX(18px); } }
+@keyframes thumb-off { from { transform: translateX(18px); } 45% { transform: translateX(9px) scaleX(1.25); } to { transform: translateX(0); } }
 .switch span { transition: background-color 200ms ease; }
 
 /* Petición en curso: el botón conserva su texto y muestra un spinner */
@@ -1328,6 +1344,12 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   .ts-day.col-enter, .ts-day.col-enter .ts-now { animation: none; }
   .ts-day.col-enter .ts-now::after { animation: none; opacity: 0; }
   .is-popped { animation: none; }
+  body:not(.is-dragging-block) .ts-day .ts-block[data-title]:not(.is-empty, .is-cut, .ts-offgrid):hover { translate: none; }
+  a.week-day:hover .week-num { transform: none; }
+  :root[data-theme] .theme-toggle.just-switched :is(.sun, .moon) { animation: none; }
+  .switch.is-touched input + span::before { animation: none; }
+  .save-status { transform: none; }
+  .undo-bar { animation: fade 150ms ease both; }
   .is-now > .meeting-when { animation: none; }
   li.is-new, .count.count-pop, .icon-btn svg.spun { animation: none; }
   /* Copiar semana: fundido sin desenfoque ni trazo; las columnas copiadas se tiñen un instante */
