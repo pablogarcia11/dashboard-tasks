@@ -26,6 +26,11 @@ STANDUP_EXAMPLES = "standup.examples"  # JSON: sus últimos stand-ups del canal,
 DAYS_OFF = "schedule.days_off"      # JSON: festivos y vacaciones de la persona (fechas ISO), además de los de config.yaml
 
 
+def company_holidays(config: dict) -> list[str]:
+    """Festivos de la empresa (config.yaml) en ISO. YAML convierte una fecha sin comillas en `date`: se normaliza."""
+    return [str(d) for d in config["schedule"].get("holidays") or []]
+
+
 def days_off(con: sqlite3.Connection) -> list[str]:
     try:
         return sorted(set(json.loads(get_all(con).get(DAYS_OFF) or "[]")))

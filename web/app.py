@@ -49,10 +49,10 @@ cfg = load_config()
 collect_lock = threading.Lock()
 
 
-def holidays() -> tuple[str, ...]:
-    """Días no laborables: los de la empresa (config.yaml) y los festivos y vacaciones de la persona (Ajustes)."""
-    company = [str(d) for d in cfg["schedule"].get("holidays") or []]
-    return tuple(sorted(set(company) | set(settings.days_off(db.connect()))))
+def holidays(con=None) -> tuple[str, ...]:
+    """Días no laborables: los de la empresa (config.yaml) y los festivos y vacaciones de la persona (Ajustes).
+    Lee la base de datos: en una misma vista, se calcula una vez y se pasa (`con` evita abrir otra conexión)."""
+    return tuple(sorted(set(settings.company_holidays(cfg)) | set(settings.days_off(con or db.connect()))))
 
 
 def today() -> date:
@@ -163,18 +163,21 @@ def index():
 @app.get("/day/{d}", response_class=HTMLResponse)
 def day_view(request: Request, d: str):
     requested = date.fromisoformat(d)
-    shown, weekend = effective_today(requested, holidays())
-    if shown != requested and requested != today():
-        return RedirectResponse(f"/day/{shown.isoformat()}")
     con = db.connect()
-    nxt = next_workday(shown, holidays())
+    hol, now = holidays(con), today()
+    shown, weekend = effective_today(requested, hol)
+    if shown != requested and requested != now:
+        return RedirectResponse(f"/day/{shown.isoformat()}")
+    nxt = next_workday(shown, hol)
+    current = effective_today(now, hol)[0]   # el «hoy» que se enseña (en fin de semana, el viernes)
     return templates.TemplateResponse(request, "day.html", {
-        "day": shown, "is_today": shown == effective_today(today(), holidays())[0], "weekend": weekend,
-        "today": today(),
-        "prev": previous_workday(shown, holidays()), "next": nxt if nxt <= today() else None,
-        "data": day_data(con, shown, holidays()), "sync": db.sync_states(con),
-        "week": week_overview(con, shown, today(), holidays()), "last_sync": last_sync(con),
-        "unnoted": unnoted_days(con, today(), holidays()),
+        "day": shown, "is_today": shown == current, "weekend": weekend,
+        "today": now,
+        "prev": previous_workday(shown, hol), "next": nxt if nxt <= now else None,
+        "data": day_data(con, shown, hol), "sync": db.sync_states(con),
+        "week": week_overview(con, shown, now, hol), "last_sync": last_sync(con),
+        # Días anteriores al «hoy» que se enseña: en fin de semana, el viernes no se avisa a sí mismo
+        "unnoted": unnoted_days(con, current, hol),
         "auto_refresh_minutes": cfg["server"].get("auto_refresh_minutes", 10),
         "standup": db.get_summary(con, shown.isoformat(), "standup"),
         "journal_notes": journal_notes_state(con, shown),
@@ -494,7 +497,7 @@ async def timesheet_schedule(request: Request):
 
 
 def days_off_state(con) -> dict:
-    return {"company": date_ranges([str(d) for d in cfg["schedule"].get("holidays") or []]),
+    return {"company": date_ranges(settings.company_holidays(cfg)),
             "own": date_ranges(settings.days_off(con)), "today": today()}
 
 

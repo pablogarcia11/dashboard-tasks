@@ -154,3 +154,21 @@ def test_bloques_fuera_de_la_rejilla_se_recortan_o_se_listan(client):
     # 21:00–22:00 queda del todo fuera: se lista bajo el día y sigue contando en el total
     assert "ts-offgrid" in r.text and 'data-start="1260" data-end="1320"' in r.text
     assert "2 h 45 min" in r.text
+
+
+def test_en_fin_de_semana_el_aviso_no_incluye_el_viernes_que_se_ve(client, monkeypatch):
+    from collectors.base import Activity
+    monkeypatch.setattr(web, "today", lambda: date(2026, 11, 14))   # sábado: se enseña el viernes 13
+    db.upsert_activities(db.connect(), [
+        Activity("git", "commit", sha, f"{d}T10:00:00+01:00", d, title="trabajo", extra={"repo": "r", "sha": sha})
+        for sha, d in (("v", "2026-11-13"), ("j", "2026-11-12"))])
+    r = client.get("/day/2026-11-14")
+    assert r.status_code == 200 and "viernes 13 de noviembre" in r.text.lower()
+    aviso = r.text.split('class="unnoted', 1)[1].split("</p>", 1)[0]
+    assert "12 de noviembre" in aviso and "13 de noviembre" not in aviso
+
+
+def test_festivos_de_empresa_sin_comillas_en_yaml():
+    # YAML convierte 2026-12-25 (sin comillas) en una fecha: el job y la web lo comparan como texto
+    assert settings.company_holidays({"schedule": {"holidays": [date(2026, 12, 25), "2026-12-26"]}}) == [
+        "2026-12-25", "2026-12-26"]
