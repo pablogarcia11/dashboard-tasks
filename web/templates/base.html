@@ -42,8 +42,10 @@
         return !!k;
       } catch (e) { return false; }
     }
-    // Lo lee static/motion.js: quien llega con un atajo de teclado tampoco ve la entrada de la página
-    var arrivedByKeyboard = keyboardNav(false);
+    // Lo lee static/motion.js: quien llega con un atajo de teclado tampoco ve la entrada de la página.
+    // La marca la borra pagereveal; sin ese evento (sin View Transitions entre páginas) se borra aquí mismo,
+    // o todas las cargas siguientes contarían como llegadas con el teclado
+    var arrivedByKeyboard = keyboardNav(!("onpagereveal" in window));
     // Entrada de la página (style.css, clase page-enter): las tarjetas del día suben escalonadas, etc. Solo un
     // momento (lo que llegue después por HTMX no la repite), nunca tras un atajo de teclado ni con «reducir
     // movimiento», y tampoco al pasar de un día a otro: ahí el movimiento es el de la hoja que pasa (pagereveal)
