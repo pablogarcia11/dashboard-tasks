@@ -87,10 +87,12 @@ Mientras falte algo, la vista Día te lo recuerda.
 - «Generar» por día o «Generar semana». Si los datos cambian, te avisa para regenerar.
 - Pulsa un bloque para ver la tarea completa (horario, duración, tipo y proyecto).
 - **Corrige la propuesta sobre la rejilla**: arrastra una tarea para moverla, tira de su borde inferior para alargarla o acortarla, o púlsala para cambiar su nombre, horario, tipo y proyecto o eliminarla. «Añadir tarea» crea una nueva y «Deshacer mis cambios» vuelve a la propuesta.
+- Las reuniones que coinciden en el tiempo se reparten el ancho de la columna, como en Google Calendar. Los bloques de menos de 15 minutos no tienen borde para alargarlos (taparía el bloque entero): arrástralos para moverlos y cambia su duración en el formulario.
 - «Copiar semana» copia el parte de todos los días de una vez.
 - Cada día tiene su «Texto para copiar», editable. Revísalo y pásalo al hub. Avisa si un día baja de 8 h.
 
 - La columna de hoy marca la hora actual, y bajo la semana se ven las horas por categoría.
+- Cuando un día llega a su jornada (8 h por defecto, o la que pongas en Ajustes), aparece una marca verde junto a su número y se celebra con una pequeña animación. Si completas toda la semana (los festivos no cuentan), sale confeti, una sola vez por semana y navegador.
 - **Resumen de la semana**: debajo, Claude redacta lo conseguido en cada proyecto a partir de tu diario, para la Sprint Review. Se copia con el icono.
 
 ### Buscar
@@ -101,13 +103,17 @@ La lupa de la barra (o la tecla **/**) busca en tus commits, notas, pendientes y
 
 Pulsa **?** en cualquier pantalla para verlos: ← → cambian de día o de semana, **T** vuelve a hoy, **D** y **P** cambian de sección, **R** actualiza los datos, **C** copia el stand-up o las notas y **/** abre el buscador.
 
+### Animaciones
+
+La interfaz se mueve con propósito: las tareas se deslizan a su sitio al editarlas, se levantan al arrastrarlas, caen en ola al generar el parte, los totales cuentan hasta su valor y el formulario de tarea sale del bloque que pulsas. Al navegar con el teclado (← → T D P) no se anima nada. Si tu sistema tiene activado «reducir movimiento», todo se limita a fundidos cortos y no hay saltos ni confeti.
+
 ### Ajustes
 
 - **Apariencia**: modo claro u oscuro (por defecto, el de tu sistema).
 - **Notion**: conectar o desconectar la cuenta y cambiar de página diario.
 - **GitHub** (opcional): cómo crear el token para ver tus pull requests y si se están leyendo bien.
 - **Stand-up**: el canal donde publicas y «Volver a aprender» tu formato (se renueva solo cada semana).
-- **Festivos y vacaciones**: los días que no trabajas, sueltos o por rangos. No cuentan como «ayer» en el stand-up ni piden parte.
+- **Festivos y vacaciones**: los días que no trabajas, sueltos o por rangos. No cuentan como «ayer» en el stand-up ni piden parte. Al quitar un día aparece «Deshacer» para recuperarlo.
 - **Parte de horas**: tu jornada y tu comida si no son las de la empresa (jornada parcial, intensiva…).
 - **Repositorios**: carpetas, emails de autor y **qué se muestra**: por cada repo, «Visible» y «Cambios sin commitear».
 
@@ -154,4 +160,5 @@ python -m web.app                                            # servidor sin abri
 - Prompts que usa Claude: `prompts/`. Diseño y decisiones: [PLAN_TECNICO.md](PLAN_TECNICO.md). Commits: [CONTRIBUTING.md](CONTRIBUTING.md).
 - Scripts: `setup.ps1` / `setup.sh` (instalación y comando `dashboard-tasks`), `start.ps1` / `start.sh` (arranque).
 - Capturas de la interfaz con Playwright: instala `requirements-dev.txt` y `python -m playwright install chromium`.
+- Animaciones: `web/static/motion.js` con GSAP y su plugin Flip, ya incluidos en `web/static/vendor/` (licencia «Standard no charge» de GreenSock). No hace falta `npm` ni ninguna instalación; sin `motion.js` las páginas funcionan igual, sin animar. Los valores comunes (curvas y duraciones) están como variables al principio de `web/static/style.css`.
 - Logo: copia el PNG oficial de 1MillionBot en `web/static/logo.png`.
