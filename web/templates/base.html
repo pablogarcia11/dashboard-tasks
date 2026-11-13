@@ -362,11 +362,24 @@
 
     // Actividad: mientras haya peticiones de HTMX en curso, el filete de la barra superior se anima
     (function () {
-      var pending = 0, body = document.body;
-      body.addEventListener("htmx:beforeSend", function () { pending++; body.classList.add("is-busy"); });
+      var pending = 0, body = document.body, busySince = 0;
+      body.addEventListener("htmx:beforeSend", function () {
+        if (!pending) busySince = Date.now();
+        pending++;
+        body.classList.add("is-busy");
+      });
       body.addEventListener("htmx:afterRequest", function () {
         pending = Math.max(0, pending - 1);
-        if (!pending) body.classList.remove("is-busy");
+        if (pending) return;
+        body.classList.remove("is-busy");
+        // Tras una espera larga, el filete se llena y se apaga (style.css): ya está
+        if (Date.now() - busySince > 600) {
+          body.classList.remove("busy-done");
+          void body.offsetWidth;
+          body.classList.add("busy-done");
+          clearTimeout(body._busyDone);
+          body._busyDone = setTimeout(function () { body.classList.remove("busy-done"); }, 500);
+        }
       });
 
       // Texto o parte recién generado por Claude: se descubre (clase just-generated). No cuenta guardar
