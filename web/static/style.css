@@ -500,6 +500,7 @@ table.settings { margin: 0; }
 .ts-head.is-today strong { color: var(--white); background: var(--red); border-radius: 50%; width: 2em; height: 2em; display: inline-grid; place-items: center; margin: 0 auto; }
 /* Jornada completa: marca verde en la esquina del número. Al completarse, motion.js hace saltar el número,
    dibuja la marca y abre un aro; con «reducir movimiento» la marca solo aparece */
+.ts-head { position: relative; }   /* su texto para lectores de pantalla (absoluto) no se sale de la rejilla desplazable */
 .day-num { position: relative; align-self: center; display: inline-grid; place-items: center; }
 .day-done {
   position: absolute; left: calc(100% - 1px); top: -1px; width: 16px; height: 16px; border-radius: 50%;
@@ -1175,7 +1176,7 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   .theme-system .icon-check, .theme-system[aria-pressed="true"] .icon-monitor { transform: none; filter: none; }
   .theme-system .icon-check path { transition: none; }
   .date-picker, .date-picker.is-open { transform: translateX(-50%); }
-  .task-dialog, .task-dialog[open] { transform: none; }
+  .task-dialog, .task-dialog[open], .task-dialog.has-origin, .task-dialog.has-origin[open] { transform: none; }
   .task-dialog.is-shaking { animation: none; }
   .btn.htmx-request::before { animation-duration: 1.5s; }
   .btn.is-copied .i-check { animation: none; }

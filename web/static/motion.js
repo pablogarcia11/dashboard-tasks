@@ -229,7 +229,9 @@
   }
 
   // ---- Totales (semana, día, categoría): ruedan hasta el valor nuevo en pasos de 15 min ----
-  // Mientras rueda se escriben siempre horas y minutos, para que el ancho no baile; al acabar, el texto final
+  // El total no cambia de ancho mientras rueda (el de la semana está en la cabecera y, al ensancharse, mandaría
+  // los botones a otra línea a mitad de la cuenta): reserva el ancho del más largo de sus dos extremos y escribe
+  // siempre horas y minutos, o solo horas, de una en una, si los dos extremos son horas en punto
   function clock(minutes) {
     var m = Math.round(minutes), rest = m % 60;
     return Math.floor(m / 60) + " h " + (rest < 10 ? "0" : "") + rest + " min";
@@ -239,18 +241,28 @@
     var running = el._count && el._count.tween.isActive() ? el._count : null, intro = false;
     if (running) { from = running.v; running.tween.kill(); }
     if (from === undefined && arriving && to) { from = 0; intro = true; }
-    if (Motion.reduced || from === undefined || from === to) { el.textContent = text; return true; }
+    if (Motion.reduced || from === undefined || from === to) {
+      el.textContent = text;
+      el.style.minWidth = "";
+      return true;
+    }
     var o = el._count = { v: from };
-    el.textContent = clock(from);
+    var whole = from % 60 === 0 && to % 60 === 0 && text.indexOf("min") === -1;
+    var show = whole ? function (m) { return Math.round(m / 60) + " h"; } : clock;
+    var width = el.offsetWidth;
+    el.textContent = text;
+    el.style.minWidth = Math.max(width, el.offsetWidth) + "px";
+    el.textContent = show(from);
     o.tween = gsap.to(o, {
-      v: to, duration: 0.6, ease: "power3.out", snap: { v: 15 },
+      v: to, duration: 0.6, ease: "power3.out", snap: { v: whole ? 60 : 15 },
       delay: Math.max(0, Motion.countAfter - performance.now()) / 1000,
       onUpdate: function () {
-        var now = clock(o.v);
+        var now = show(o.v);
         if (now !== el.textContent) el.textContent = now;
       },
       onComplete: function () {
         el.textContent = text;
+        el.style.minWidth = "";
         if (!intro && !arriving) Motion.replay(el, "is-popped", 300);
       },
     });
