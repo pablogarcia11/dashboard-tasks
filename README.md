@@ -105,7 +105,7 @@ Pulsa **?** en cualquier pantalla para verlos: ← → cambian de día o de sema
 
 ### Animaciones
 
-La interfaz se mueve con propósito: las tareas se deslizan a su sitio al editarlas, se levantan al arrastrarlas, caen en ola al generar el parte, los totales cuentan hasta su valor y el formulario de tarea sale del bloque que pulsas. Al navegar con el teclado (← → T D P) no se anima nada. Si tu sistema tiene activado «reducir movimiento», todo se limita a fundidos cortos y no hay saltos ni confeti.
+La interfaz se mueve con propósito: las tareas se deslizan a su sitio al editarlas, se levantan al arrastrarlas, caen en ola al generar el parte, los totales cuentan hasta su valor y el formulario de tarea sale del bloque que pulsas. En la vista Día, la fecha rueda palabra a palabra al cambiar de día, las tarjetas entran escalonadas, lo nuevo se despliega al actualizar, la reunión que empieza late y Claude deja una franja de luz sobre el texto que acaba de redactar. Al navegar con el teclado (← → T D P) no se anima nada. Si tu sistema tiene activado «reducir movimiento», todo se limita a fundidos cortos y no hay saltos ni confeti.
 
 ### Ajustes
 
