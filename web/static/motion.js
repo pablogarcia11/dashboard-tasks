@@ -84,6 +84,8 @@
     var day = e.detail.target;
     if (!day || !day.classList || !day.classList.contains("ts-day") || !e.detail.shouldSwap) return;
     var blocks = blocksOf(day), snap = pending[day.id] = { minutes: day.dataset.minutes, state: null, rects: {} };
+    var foot = day.querySelector(".ts-foot strong");
+    if (foot && foot._count) foot._count.tween.kill();   // su total, si aún rodaba, se va con la columna
     if (!blocks.length) return;
     tag(day);
     blocks.forEach(function (b) { snap.rects[b.dataset.flipId] = b.getBoundingClientRect(); });
