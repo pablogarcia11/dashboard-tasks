@@ -205,8 +205,20 @@
     function copyFrom(id, btn) {
       navigator.clipboard.writeText(document.getElementById(id).value).then(function () {
         delete document.getElementById(id).dataset.dirty;  // copiado: ya no se pierde nada
+        // Copiado con el atajo C: el icono cambia, pero sin onda ni destello (lo que se hace con el teclado no se anima)
+        var byKey = btn.dataset.byKey === "1";
+        delete btn.dataset.byKey;
+        btn.classList.toggle("by-key", byKey);
         btn.classList.add("is-copied");
         btn.title = "Copiado";
+        // El borde del texto copiado se enciende en verde un momento (style.css)
+        if (!byKey) {
+          var field = document.getElementById(id);
+          field.classList.remove("just-copied");
+          void field.offsetWidth;
+          field.classList.add("just-copied");
+          setTimeout(function () { field.classList.remove("just-copied"); }, 700);
+        }
         announce("Copiado al portapapeles");
         clearTimeout(btn._reset);
         btn._reset = setTimeout(function () { btn.classList.remove("is-copied"); btn.title = "Copiar"; }, 1600);
@@ -338,6 +350,7 @@
           var toStart = (start - now) / 60000;
           li.classList.toggle("is-past", now >= end);
           li.classList.toggle("is-now", now >= start && now < end);
+          li.classList.toggle("is-soon", toStart > 0 && toStart <= 5);   // a punto de empezar: la píldora vira a coral
           when.textContent = now >= start && now < end ? "ahora" : toStart > 0 && toStart <= 90 ? relative(toStart) : "";
         });
       }
@@ -406,9 +419,17 @@
         }
         if (path.indexOf("/refresh/") !== 0) return;
         if (before && before.id === el.id) {
+          var added = 0;
           el.querySelectorAll("li").forEach(function (li) {
-            if (before.rows.indexOf(rowKey(li)) === -1) li.classList.add("is-new");
+            if (before.rows.indexOf(rowKey(li)) !== -1) return;
+            li.classList.add("is-new");
+            // El contador de su proyecto da un salto, y el ↻ de la tarjeta una vuelta: ha traído algo
+            var count = li.closest("details") && li.closest("details").querySelector(":scope > summary .count");
+            if (count) count.classList.add("count-pop");
+            added++;
           });
+          var icon = added && el.querySelector(".card-head .icon-btn svg");
+          if (icon) icon.classList.add("spun");
         }
         before = null;
         // El foco estaba en la tarjeta sustituida: vuelve al elemento equivalente (o a la propia tarjeta)

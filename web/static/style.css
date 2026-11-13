@@ -669,6 +669,21 @@ textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-text) 22%, t
 .btn.is-copied { background: var(--text); border-color: var(--text); color: var(--bg); }
 .btn.is-copied .i-copy, .copy-inline.is-copied .i-copy { display: none; }
 .btn.is-copied .i-check, .copy-inline.is-copied .i-check { display: block; animation: pop 220ms var(--ease-out); }
+/* Al copiar: la marca se dibuja, sale una onda del botón y el borde del texto se enciende en verde */
+.is-copied .i-check path { stroke-dasharray: 1; animation: check-stroke 260ms var(--ease-out) 80ms both; }
+@keyframes check-stroke { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.btn-copy { position: relative; }
+.btn-copy.is-copied::after, .copy-inline.is-copied::after {
+  content: ""; position: absolute; inset: 0; border-radius: var(--r-md); pointer-events: none;
+  border: 2px solid var(--doc-line); animation: copy-ripple 450ms var(--ease-out) both;
+}
+@keyframes copy-ripple { from { opacity: .7; transform: scale(.6); } to { opacity: 0; transform: scale(1.8); } }
+/* Va junto a write-in (el texto recién redactado): misma especificidad que su regla y con su nombre en la lista,
+   para que esa animación no se reinicie al quitar la clase */
+.by-key.is-copied .i-check, .by-key.is-copied .i-check path { animation: none; }
+.btn-copy.by-key.is-copied::after, .copy-inline.by-key.is-copied::after { content: none; }
+textarea.just-copied, .just-generated textarea.just-copied { animation: write-in 0s both, copied-flash 600ms ease-out; }
+@keyframes copied-flash { from { border-color: var(--doc-line); box-shadow: 0 0 0 3px color-mix(in srgb, var(--doc-line) 30%, transparent); } }
 
 /* Copiar discreto dentro de la caja del texto (stand-up, notas), al estilo de los bloques de Claude:
    gris, sin fondo, arriba a la derecha; el texto deja hueco para que nunca quede debajo */
@@ -1002,13 +1017,33 @@ body.is-busy .appbar::after { opacity: 1; transition-delay: 150ms; animation: bu
 .writing { display: none; margin-top: 16px; }
 /* HTMX marca como «en curso» el indicador (hx-indicator) o, si no lo hay, el propio botón */
 .tab-panel:has(.btn.htmx-request, .htmx-indicator.htmx-request) .writing { display: grid; gap: 10px; }
+/* Las líneas laten y un brillo las recorre, pero solo los primeros segundos (ningún bucle pasa de 5 s): si
+   Claude tarda más, se quedan quietas y el filete de la barra sigue diciendo que está trabajando */
 .writing i {
+  position: relative; overflow: hidden;
   width: var(--w); height: 9px; border-radius: var(--r-pill); background: var(--line);
-  animation: writing 1.4s ease-in-out infinite; animation-delay: calc(var(--i) * 110ms);
+  animation: writing 1.4s ease-in-out calc(var(--i) * 110ms) 3 both;
 }
-.tab-panel:has(.regen.htmx-request) textarea { animation: writing 1.4s ease-in-out infinite; }
+.writing i::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, light-dark(rgb(255 255 255 / .9), rgb(255 255 255 / .25)), transparent);
+  animation: writing-shine 1.2s linear calc(var(--i) * 110ms) 4;
+}
+@keyframes writing-shine { to { transform: translateX(100%); } }
+.tab-panel:has(.regen.htmx-request) textarea { animation: writing 1.4s ease-in-out 3 both; }
 @keyframes writing { 0%, 100% { opacity: .4; } 50% { opacity: 1; } }
 .just-generated textarea { animation: write-in 600ms var(--ease-out) both; }
+/* Al llegar, una franja de luz cruza el texto y el botón de copiar aparece con un rebote: ya se puede copiar */
+/* is-shining dura lo que el barrido (base.html): el recorte no puede quedarse, taparía el anillo de foco */
+.is-shining .copy-wrap { overflow: clip; border-radius: var(--r-md); }
+.is-shining .copy-wrap::after {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 45%; pointer-events: none;
+  background: linear-gradient(100deg, transparent, light-dark(rgb(255 255 255 / .75), rgb(255 255 255 / .14)), transparent);
+  transform: translateX(-110%); animation: text-shine 700ms var(--ease-out) 350ms both;
+}
+@keyframes text-shine { to { transform: translateX(250%); } }
+.just-generated .copy-inline { animation: copy-arrive 320ms var(--ease-back) 600ms both; }
+@keyframes copy-arrive { from { opacity: 0; transform: scale(.6); } }
 @keyframes write-in { from { clip-path: inset(0 0 100% 0); opacity: .3; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
 /* Cada bloque cae desde un poco más arriba y rebota al llegar. motion.js reparte la oleada: --wave-step entre
    bloques (35 ms, menos si son muchos: la oleada no pasa de 400 ms) y --wave-delay entre columnas que llegan
@@ -1027,6 +1062,16 @@ body.is-busy .appbar::after { opacity: 1; transition-delay: 150ms; animation: bu
   background: var(--red-tint); animation: new-row 2.4s ease-out both;
 }
 @keyframes new-row { 0%, 30% { opacity: 1; } 100% { opacity: 0; } }
+/* …y se abre desde arriba (su contador da un salto y el ↻ de la tarjeta una vuelta: base.html) */
+li.is-new { animation: row-open 300ms var(--ease-out) both; }
+@keyframes row-open {
+  from { opacity: 0; transform: translateY(-6px); clip-path: inset(0 0 100% 0); }
+  to { opacity: 1; transform: none; clip-path: inset(-4px -10px); }
+}
+.count.count-pop { animation: count-pop 260ms var(--ease-back) 150ms both; }
+@keyframes count-pop { 50% { transform: scale(1.25); } }
+.icon-btn svg.spun { animation: spin-once 600ms var(--ease-out); }
+@keyframes spin-once { from { transform: rotate(-360deg); } }
 
 /* 5. Cambio de tema desde el interruptor: el tema nuevo se abre en círculo desde donde se pulsó.
       (El cambio que viene del sistema sigue siendo un fundido.) */
@@ -1257,6 +1302,8 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   .task-dialog.is-shaking { animation: none; }
   .btn.htmx-request::before { animation-duration: 1.5s; }
   .btn.is-copied .i-check { animation: none; }
+  .is-copied .i-check path { animation: none; }
+  .btn-copy.is-copied::after, .copy-inline.is-copied::after { content: none; }
   ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 150ms; }
   /* Plegables: sin cambio de altura animado, solo un fundido corto */
   .project-group::details-content, .guide::details-content {
@@ -1270,6 +1317,9 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   html:active-view-transition-type(back)::view-transition-new(root),
   html:active-view-transition-type(theme)::view-transition-new(root) { animation: 150ms ease both fade; }
   ::view-transition-group(week-indicator) { animation-duration: 0s; }
+  ::view-transition-group(*.dt-w) { animation-duration: 0s; }
+  html:active-view-transition-type(forward, back)::view-transition-old(*.dt-w) { animation: 150ms ease both fade-out; }
+  html:active-view-transition-type(forward, back)::view-transition-new(*.dt-w) { animation: 150ms ease both fade; }
   /* Actividad: el filete entero se aclara, sin barrido; las líneas de espera y el aro de la hora, quietos */
   body.is-busy .appbar::after { width: 100%; transform: none; animation: none; opacity: .6; }
   .writing i, .tab-panel:has(.regen.htmx-request) textarea, .weekly:has(.regen.htmx-request) textarea { animation: none; opacity: .6; }
@@ -1298,5 +1348,8 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   .ts-block.is-settling::before { animation: none; opacity: 0; }
   .cat-option:active { transform: none; }
   .more-menu, .more:hover .more-menu, .more:focus-within .more-menu { transform: none; }
+  .more:hover .more-menu a, .more:focus-within .more-menu a { animation: none; }
+  html:not(.arrived-kbd) .week-day.is-missing > .week-mark::after { animation: none; }
+  .week-day.just-noted > .week-mark { animation: fade 150ms ease both; }
   .just-generated textarea, .ts-day.just-generated .ts-block { animation: fade 200ms ease both; animation-delay: 0s; }
 }
