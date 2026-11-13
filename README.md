@@ -70,7 +70,7 @@ Mientras falte algo, la vista Día te lo recuerda.
 ### Día
 
 - Qué toca hoy (pendientes de ayer, tareas activas de Notion, pull requests si conectas GitHub, reuniones, cambios sin commitear y commits sin subir), tus notas del diario y tus commits, agrupados por proyecto. Los proyectos se pueden plegar y el dashboard lo recuerda.
-- Para moverte: **Hoy**, las flechas ‹ › (saltan fines de semana) o el **calendario** entre ellas para ir a cualquier día. En fin de semana o festivo se muestra el último día laborable.
+- Para moverte: **Hoy**, las flechas ‹ › (saltan fines de semana) o el **calendario** entre ellas para ir a cualquier día laborable (no deja elegir tus días libres). En fin de semana o festivo se muestra el último día laborable.
 - El icono ↻ de cada tarjeta vuelve a leer solo esa parte; «Actualizar datos» lo lee todo. Con la vista de hoy abierta, el diario y los commits se releen solos cada 10 minutos.
 - Si algún día anterior tiene commits y no lo apuntaste en tu diario, un aviso te lleva a él para generar sus notas.
 - La tarjeta de la derecha tiene dos pestañas (en los días anteriores, solo las notas: el stand-up es del día en curso):
@@ -86,7 +86,7 @@ Mientras falte algo, la vista Día te lo recuerda.
 - La semana en formato calendario, como en el hub: reuniones a su hora, tareas agrupadas y horas estimadas a partir de tus commits, en tramos de 15 minutos y con la comida respetada.
 - «Generar» por día o «Generar semana». Si los datos cambian, te avisa para regenerar.
 - Pulsa un bloque para ver la tarea completa (horario, duración, tipo y proyecto).
-- **Corrige la propuesta sobre la rejilla**: arrastra una tarea para moverla, tira de su borde inferior para alargarla o acortarla, o púlsala para cambiar su nombre, horario, tipo y proyecto o eliminarla. «Añadir tarea» crea una nueva y «Deshacer mis cambios» vuelve a la propuesta.
+- **Corrige la propuesta sobre la rejilla**: arrastra una tarea para moverla, tira de su borde inferior para alargarla o acortarla, o púlsala para cambiar su nombre, horario, tipo y proyecto o eliminarla. «Añadir tarea» crea una nueva y «Deshacer mis cambios» vuelve a la propuesta. Eliminar una tarea pide confirmación.
 - Las reuniones que coinciden en el tiempo se reparten el ancho de la columna, como en Google Calendar. Los bloques de menos de 15 minutos no tienen borde para alargarlos (taparía el bloque entero): arrástralos para moverlos y cambia su duración en el formulario.
 - «Copiar semana» copia el parte de todos los días de una vez.
 - Cada día tiene su «Texto para copiar», editable. Revísalo y pásalo al hub. Avisa si un día baja de 8 h.
