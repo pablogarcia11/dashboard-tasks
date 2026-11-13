@@ -1210,6 +1210,11 @@ body.is-dragging-block { user-select: none; cursor: grabbing; }
 .task-duration { margin: 0 0 10px; color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
 .task-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
 .task-actions .spacer { flex: 1; }
+/* Móvil: los tres no caben en una fila y «Guardar» quedaba suelto debajo. La acción principal va arriba, a todo
+   el ancho; «Eliminar» y «Cancelar», en la fila de abajo */
+@media (max-width: 420px) {
+  .task-actions button[type="submit"] { order: -1; flex-basis: 100%; }
+}
 #task-error { margin: 14px 0 0; }
 
 /* Tipo de tarea: opciones con el color de su categoría (el mismo que el bloque en el calendario) */
