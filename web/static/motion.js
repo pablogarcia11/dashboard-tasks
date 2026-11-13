@@ -97,7 +97,10 @@
 
   body.addEventListener("htmx:afterSwap", function (e) {
     var old = e.detail.target, snap = old && old.id && pending[old.id];
-    if (!snap) return;
+    if (!snap) {
+      if (old && /^ts-\d/.test(old.id || "")) enter(old.id);   // la columna llega por primera vez
+      return;
+    }
     delete pending[old.id];
     var hint = expected[old.id], day = document.getElementById(old.id);
     delete expected[old.id];
@@ -116,6 +119,22 @@
     if (day) marks[id](day);
     if (id) delete marks[id];
   });
+
+  // Al abrir la semana, las columnas entran una tras otra, de izquierda a derecha, lleguen en el orden que
+  // lleguen (cada una pide sus datos por su cuenta). La animación es CSS (clase col-enter)
+  var firstColumn = 0;
+  function enter(id) {
+    var day = document.getElementById(id);
+    // (recién insertada aún no lleva sus clases: HTMX se las pone al asentarla, y ahí arranca la animación)
+    if (!arriving || Motion.reduced || !day || !day.querySelector(".ts-grid")) return;
+    var now = performance.now(), columns = list(day.parentNode, ":scope > div[id^='ts-']");
+    firstColumn = firstColumn || now;
+    var delay = Math.max(0, firstColumn + columns.indexOf(day) * 60 - now);
+    mark(day, function (el) {
+      el.classList.add("col-enter");
+      el.style.setProperty("--col-delay", delay + "ms");
+    });
+  }
 
   function flipBlocks(day, snap, hint) {
     tag(day);

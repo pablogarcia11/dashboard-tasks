@@ -861,16 +861,26 @@ a.week-day:hover { background: var(--hover-bg); color: var(--text); }
 
 /* ---------- Parte de horas: hora actual y horas por categoría ---------- */
 
-/* Línea de la hora actual en la columna de hoy. El aro late tres veces al cargar y se queda quieto */
+/* Al abrir la semana, las columnas entran una tras otra (clase col-enter y --col-delay, de motion.js: 60 ms
+   entre columnas). No ocurre si se llegó con un atajo de teclado ni cuando una columna se repinta */
+.ts-day.col-enter { animation: col-in 300ms var(--ease-out) var(--col-delay, 0ms) both; }
+@keyframes col-in { from { opacity: 0; transform: translateY(8px); } }
+
+/* Línea de la hora actual en la columna de hoy. Al abrir la semana se traza de izquierda a derecha y su aro
+   late dos veces; después se queda quieta */
 .ts-now {
   position: absolute; left: -1px; right: 0; top: 0; z-index: 2; height: 0; pointer-events: none;
-  border-top: 2px solid var(--red-text);
+  border-top: 2px solid var(--red-text); transform-origin: 0 0;
 }
 .ts-now::before, .ts-now::after {
   content: ""; position: absolute; left: -5px; top: -6px; width: 10px; height: 10px; border-radius: 50%;
   background: var(--red-text);
 }
-.ts-now::after { animation: now-pulse 2.2s var(--ease-out) 3 both; }
+.ts-now::after { opacity: 0; }
+/* El trazo va en `scale`: `transform` ya lleva la línea a su hora (timesheet.html) */
+.ts-day.col-enter .ts-now { animation: now-draw 400ms var(--ease-out) calc(var(--col-delay, 0ms) + 250ms) both; }
+.ts-day.col-enter .ts-now::after { animation: now-pulse 2.2s var(--ease-out) calc(var(--col-delay, 0ms) + 650ms) 2 both; }
+@keyframes now-draw { from { scale: 0 1; } }
 @keyframes now-pulse { from { opacity: .55; transform: scale(1); } to { opacity: 0; transform: scale(3); } }
 /* El eje de horas se queda a la vista al desplazar la semana en horizontal (pantallas estrechas) */
 .ts-axis, .ts-week > .ts-head:first-child { position: sticky; left: 0; z-index: 3; background: var(--surface); }
@@ -1185,7 +1195,8 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   /* Actividad: el filete entero se aclara, sin barrido; las líneas de espera y el aro de la hora, quietos */
   body.is-busy .appbar::after { width: 100%; transform: none; animation: none; opacity: .6; }
   .writing i, .tab-panel:has(.regen.htmx-request) textarea, .weekly:has(.regen.htmx-request) textarea { animation: none; opacity: .6; }
-  .ts-now::after { animation: none; opacity: 0; }
+  .ts-day.col-enter, .ts-day.col-enter .ts-now { animation: none; }
+  .ts-day.col-enter .ts-now::after { animation: none; opacity: 0; }
   .is-popped { animation: none; }
   /* Copiar semana: fundido sin desenfoque ni trazo; las columnas copiadas se tiñen un instante */
   .btn-swap > span { transition: opacity 150ms ease; filter: none; }
