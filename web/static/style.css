@@ -736,9 +736,42 @@ main:focus { outline: none; }  /* destino del salto: no es interactivo, el foco 
 }
 .task-dialog[open] {
   opacity: 1; transform: scale(1);
-  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out), overlay 220ms allow-discrete, display 220ms allow-discrete;
+  transition: opacity 220ms var(--ease-out), transform 220ms var(--ease-out), overlay 220ms allow-discrete,
+              display 220ms allow-discrete, --dialog-line 200ms ease;
 }
 @starting-style { .task-dialog[open] { opacity: 0; transform: scale(0.96); } }
+/* Abierto con el puntero desde un bloque del parte (clase has-origin; timesheet.html mide el bloque y deja
+   --from-*): el formulario sale del bloque, creciendo hasta el centro, y al cerrarse vuelve a él. Aparece al
+   instante sobre el bloque (opacidad) y su contenido se funde después, cuando ya tiene tamaño para leerse */
+.task-dialog.has-origin {
+  transform: translate(var(--from-x, 0px), var(--from-y, 0px)) scale(var(--from-sx, 0.96), var(--from-sy, 0.96));
+  transition: opacity 150ms ease, transform 180ms var(--ease-out), overlay 180ms allow-discrete, display 180ms allow-discrete;
+}
+.task-dialog.has-origin[open] {
+  transform: none;
+  transition: opacity 120ms ease, transform 380ms var(--ease-in-out), overlay 380ms allow-discrete,
+              display 380ms allow-discrete, --dialog-line 200ms ease;
+}
+@starting-style {
+  .task-dialog.has-origin[open] {
+    opacity: 0;
+    transform: translate(var(--from-x, 0px), var(--from-y, 0px)) scale(var(--from-sx, 0.96), var(--from-sy, 0.96));
+  }
+}
+.task-dialog.has-origin .dialog-body > * { opacity: 0; transition: opacity 90ms ease; }
+.task-dialog.has-origin[open] .dialog-body > * { opacity: 1; transition: opacity 220ms ease 150ms; }
+@starting-style { .task-dialog.has-origin[open] .dialog-body > * { opacity: 0; } }
+/* La línea de color (la categoría de la tarea) cambia de tono con una transición: el color es una propiedad
+   registrada, así el navegador sabe interpolarla */
+@property --dialog-line { syntax: "<color>"; inherits: true; initial-value: #CD3434; }
+/* El formulario no acepta lo escrito (aparece #task-error): niega con la cabeza */
+.task-dialog.is-shaking { animation: dialog-shake 300ms var(--ease-in-out); }
+@keyframes dialog-shake {
+  20% { translate: -7px 0; }
+  40% { translate: 6px 0; }
+  60% { translate: -4px 0; }
+  80% { translate: 2px 0; }
+}
 .task-dialog::backdrop { background: rgb(0 0 0 / 0); transition: background-color 220ms ease, overlay 220ms allow-discrete, display 220ms allow-discrete; }
 .task-dialog[open]::backdrop { background: rgb(0 0 0 / .45); }
 @starting-style { .task-dialog[open]::backdrop { background: rgb(0 0 0 / 0); } }
@@ -1133,6 +1166,7 @@ mark { background: color-mix(in srgb, var(--meet-line) 35%, transparent); color:
   .theme-system .icon-check path { transition: none; }
   .date-picker, .date-picker.is-open { transform: translateX(-50%); }
   .task-dialog, .task-dialog[open] { transform: none; }
+  .task-dialog.is-shaking { animation: none; }
   .btn.htmx-request::before { animation-duration: 1.5s; }
   .btn.is-copied .i-check { animation: none; }
   ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 150ms; }

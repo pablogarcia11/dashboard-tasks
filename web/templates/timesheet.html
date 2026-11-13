@@ -299,6 +299,7 @@
     const box = document.getElementById("task-error");
     box.textContent = text;
     box.hidden = !text;
+    if (text) motion("replay", dialog, "is-shaking", 320);   // el formulario niega con la cabeza
   }
   function paintTask() {   // duración y color de la categoría, al día mientras se edita
     const start = toMinutes(field.start.value || "0:0"), end = toMinutes(field.end.value || "0:0");
@@ -308,7 +309,25 @@
   }
   form.addEventListener("input", paintTask);
 
-  function openTask(dayEl, task, isNew) {
+  // El formulario sale del elemento pulsado (un bloque, «Añadir tarea») y vuelve a él al cerrarse: se le dice
+  // al CSS dónde está y cuánto ocupa respecto al formulario centrado (clase has-origin, style.css). Sin origen
+  // (abierto con el teclado, tarea borrada) o con «reducir movimiento», el fundido de siempre
+  function setDialogOrigin(el) {
+    const on = !!el && !!el.offsetParent && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+    dialog.classList.toggle("has-origin", on);
+    if (!on) return;
+    // Dónde queda el elemento en la página, no dónde se ve ahora: el bloque recién guardado aún va de camino
+    const box = el.offsetParent.getBoundingClientRect(), parent = el.offsetParent;
+    const x = box.left + parent.clientLeft + el.offsetLeft + el.offsetWidth / 2;
+    const y = box.top + parent.clientTop + el.offsetTop + el.offsetHeight / 2;
+    const width = Math.min(440, innerWidth - 32), height = dialog._height || 470;
+    dialog.style.setProperty("--from-x", `${x - innerWidth / 2}px`);
+    dialog.style.setProperty("--from-y", `${y - innerHeight / 2}px`);
+    dialog.style.setProperty("--from-sx", Math.max(0.12, Math.min(1, el.offsetWidth / width)));
+    dialog.style.setProperty("--from-sy", Math.max(0.06, Math.min(1, el.offsetHeight / height)));
+  }
+
+  function openTask(dayEl, task, isNew, origin) {
     editing = { dayEl, el: isNew ? null : task.el, origin: task.el || null };   // origin: también el hueco que se rellena
     document.getElementById("task-dialog-title").textContent = isNew ? "Nueva tarea" : "Editar tarea";
     field.title.value = task.title;
@@ -324,7 +343,9 @@
     setSaving(false);
     showTaskError("");
     paintTask();
+    setDialogOrigin(origin);
     dialog.showModal();
+    dialog._height = dialog.offsetHeight;   // para la próxima vez (cerrado no mide nada)
   }
 
   // Mientras se guarda, el formulario sigue abierto con lo escrito y sus botones desactivados.
@@ -337,10 +358,15 @@
     setSaving(true);
     showTaskError("");
     showSaveError("");
+    if (window.Motion) Motion.touched = null;
     saveDay(editing.dayEl, blocks, hint).then(error => {
       setSaving(false);
       if (error === null) return;   // no se ha guardado a propósito: el formulario sigue abierto con lo escrito
-      if (!error) return dialog.close();
+      if (!error) {
+        // Vuelve al bloque guardado, esté donde esté ahora (si se ha borrado, se cierra sin más)
+        if (dialog.classList.contains("has-origin")) setDialogOrigin(window.Motion && Motion.touched);
+        return dialog.close();
+      }
       if (!dialog.open) return showSaveError(`No se ha guardado el cambio: ${error}`);   // se cerró con Esc mientras tanto
       // La columna se ha vuelto a pintar: la tarea abierta es otro elemento, con las mismas horas
       editing.dayEl = document.getElementById(editing.dayEl.id);
@@ -381,13 +407,14 @@
       const dayEl = add.closest(".ts-day"), last = Math.max(0, ...dayBlocks(dayEl).map(b => b.end));
       const start = last && last + STEP <= GRID_END ? last : 9 * 60;
       return openTask(dayEl, { start, end: Math.min(start + 60, GRID_END), title: "", project: "",
-                               category: {{ categories[0] | tojson }} }, true);
+                               category: {{ categories[0] | tojson }} }, true, event.detail ? add : null);
     }
     const block = event.target.closest(".ts-day .ts-block[data-title]");
     if (block) {
       const d = block.dataset, empty = d.title === "Por definir";   // un hueco «Por definir» se rellena como tarea nueva
       return openTask(block.closest(".ts-day"), { el: block, start: Number(d.start), end: Number(d.end),
-                      title: empty ? "" : d.title, project: d.project, category: d.category }, empty);
+                      title: empty ? "" : d.title, project: d.project, category: d.category }, empty,
+                      event.detail ? block : null);   // detail 0: abierto con el teclado, sin viaje
     }
     // Cerrar con la ×, Cancelar, o pulsando fuera (el propio <dialog> es el fondo)
     if (event.target === dialog || event.target.closest("#task-dialog [data-close]")) dialog.close();
