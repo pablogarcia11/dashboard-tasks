@@ -80,6 +80,7 @@ templates.env.filters["long_date"] = lambda d: f"{WEEKDAYS[d.weekday()]} {d.day}
 templates.env.filters["title_date"] = lambda d: f"{WEEKDAYS[d.weekday()].capitalize()} {d.day} de {MONTHS[d.month - 1]} {d.year}"
 templates.env.filters["hhmm"] = lambda ts: ts[11:16]
 templates.env.globals["highlight"] = highlight
+templates.env.globals["days_off"] = lambda: list(holidays())   # el calendario de la vista Día no deja elegirlos
 templates.env.filters["short_date"] = lambda d: f"{d.day} {MONTHS[d.month - 1][:3]}"
 # Qué hacer cuando falla cada fuente (se muestra junto al error)
 templates.env.globals["sync_hints"] = {

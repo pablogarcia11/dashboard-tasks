@@ -214,8 +214,9 @@
       });
       clearTimeout(btn._reset);
       btn._reset = setTimeout(() => btn.classList.remove("is-copied"), 1800);
-    });
+    }).catch(() => showSaveError(COPY_FAILED));   // el navegador no deja usar el portapapeles (permiso, pestaña sin foco)
   }
+  const COPY_FAILED = "No se pudo copiar: el navegador no ha dejado usar el portapapeles. Vuelve a intentarlo con esta pestaña en primer plano.";
 
   function generateWeek(btn) {
     htmx.trigger(document.body, "generate-week");
