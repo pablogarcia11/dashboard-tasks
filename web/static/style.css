@@ -647,6 +647,10 @@ textarea:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--red-text) 22%, t
   animation: spin 600ms linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* En la cabecera las acciones van justas: ahí el spinner ocupa el centro y el texto se oculta sin soltar su hueco,
+   así el botón no cambia de ancho ni empuja a los demás a otra línea (lectores de pantalla siguen leyendo el texto) */
+.top .btn.htmx-request { position: relative; -webkit-text-fill-color: transparent; }
+.top .btn.htmx-request::before { position: absolute; inset: 0; margin: auto; }
 
 /* Contenido que llega por HTMX: aparece con un fundido corto */
 .ts-day, .col > .card, .tab-panel { transition: opacity 200ms var(--ease-out); }
