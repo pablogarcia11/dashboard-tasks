@@ -67,7 +67,7 @@ Fuera de alcance: el dashboard **no escribe** en ningún servicio (Notion, Slack
 |---|---|
 | Lenguaje | Python ≥ 3.11, entorno en `.venv` (con `uv` si está disponible) |
 | Backend | FastAPI + Uvicorn |
-| Frontend | Plantillas Jinja2 + HTMX 1.9.12 servido en local (`web/static/vendor/`) + CSS propio, sin paso de build |
+| Frontend | Plantillas Jinja2 + HTMX 1.9.12 + CSS propio, sin paso de build. Para el movimiento, GSAP 3.15.1 con su plugin Flip (licencia estándar de GSAP, sin coste). Las librerías se sirven en local (`web/static/vendor/`) |
 | Base de datos | SQLite (`db/dashboard.db`, fuera de git) |
 | Git | `git -C <repo> …` por `subprocess` |
 | Notion | API REST con `httpx` y OAuth público de Notion (`Notion-Version: 2022-06-28`) |
@@ -114,7 +114,7 @@ dashboard-tasks/
 ├─ web/
 │  ├─ app.py              # rutas FastAPI
 │  ├─ templates/          # base, day, timesheet, settings y parciales (_*.html)
-│  └─ static/             # style.css, vendor/htmx, logo.png opcional
+│  └─ static/             # style.css, motion.js, vendor/ (htmx, gsap), logo.png opcional
 ├─ db/schema.sql          # esquema (la .db y avatar.img, fuera de git)
 └─ tests/
 ```
@@ -387,17 +387,27 @@ Se calcula al arrancar y se recalcula al conectar o desconectar Notion.
   - las categorías del parte tienen colores propios por tema (tokens `--dev-*`, `--doc-*`, `--meet-*`, `--admin-*`, `--learn-*`).
 - **Tokens** (`web/static/style.css`):
   - radios `--r-sm` 4 px, `--r-md` 8 px, `--r-lg` 12 px y `--r-pill`;
-  - curvas `--ease-out` y `--ease-in-out`, y duraciones `--press` y `--fast`.
-- **Movimiento:** cada animación responde a una acción o señala un cambio; nada se anima al cargar la página ni de fondo. Solo se animan `transform`, `opacity`, `clip-path` y colores.
+  - curvas `--ease-out` (lo que entra o sale), `--ease-in-out` (lo que se mueve por la pantalla), `--ease-back` (con rebote) y `--ease-spring` (muelle escrito con `linear()`), y duraciones `--press`, `--fast` y `--slow`.
+- **Movimiento:** cada animación responde a una acción o señala un cambio; nada se anima de fondo. Lo que se hace a cada momento es rápido y discreto; lo poco frecuente (generar el parte, completar un día, abrir una tarea) es más vistoso, con rebote, escalonados y duraciones de 350 a 900 ms. Solo se animan `transform` (y sus propiedades sueltas `translate`, `rotate` y `scale`), `opacity`, `clip-path` y colores, más el trazo de las marcas de verificación.
+  - **Reparto:** el CSS (`style.css`) lleva hover, pulsación y estados, y casi todas las animaciones, que se lanzan poniendo una clase. `web/static/motion.js` hace lo que el CSS no puede: FLIP, secuencias y contadores, con GSAP y Flip. Las plantillas lo usan a través de `window.Motion` y funcionan igual si no ha cargado. Equivalencias de curvas en GSAP: `--ease-out` ≈ `power4.out`, `--ease-in-out` ≈ `power3.inOut`.
+  - **Convivencia con HTMX y GSAP:** HTMX repone las clases y el `style` del servidor en el elemento raíz que sustituye, 20 ms después de insertarlo, así que lo que se le pone al llegar (`just-generated`, `col-enter`, variables de retardo) se vuelve a poner en `htmx:afterSettle`. Mientras GSAP mueve un elemento se le quita su transición CSS, y al acabar se le limpian los estilos en línea para que las clases de estado sigan mandando. Las animaciones de los nodos que se van se cortan en `htmx:beforeSwap`.
   - **Microinteracciones:** escala al pulsar, spinner en botones con petición en curso, fundido del contenido que llega por HTMX, modal con `<dialog>`, barras de navegación, de pestañas y de la tira semanal que se deslizan, y plegables que animan su altura.
   - **Cambio de día o de semana:** el contenido sale y entra hacia el lado al que se navega (View Transitions entre documentos con los tipos `forward` y `back`, que `base.html` añade en `pageswap` y `pagereveal` comparando las fechas de las dos URL). La barra superior y los controles de fecha tienen `view-transition-name` propio y no se mueven.
   - **Actividad:** el filete rojo de la barra superior es el indicador global. Mientras hay peticiones de HTMX en curso (`body.is-busy`), lo recorre un destello.
-  - **Textos de Claude:** durante la espera, unas líneas marcan dónde caerá el texto. Al llegar, el texto se descubre de arriba abajo y los bloques del parte se colocan uno tras otro (clase `just-generated`, que `base.html` pone tras un `POST` de generación que no ha fallado; guardar bloques editados no cuenta).
+  - **Textos de Claude:** durante la espera, unas líneas marcan dónde caerá el texto. Al llegar, el texto se descubre de arriba abajo y los bloques del parte caen en su sitio en oleada, columna tras columna (clase `just-generated`, que `base.html` pone tras un `POST` de generación que no ha fallado; guardar bloques editados no cuenta).
+  - **Parte de horas:**
+    - *bloques que cambian:* al guardar un cambio la columna llega nueva del servidor. Cada bloque lleva un `data-flip-id` (título y número de aparición) y Flip lo lleva de donde estaba a su sitio nuevo; el que no estaba entra con rebote y el que se borra se encoge antes de enviar el cambio. Si el servidor lo rechaza, la columna guardada vuelve del mismo modo;
+    - *arrastre:* el bloque se levanta (crece un poco, se ladea y proyecta sombra), deja un hueco punteado en su origen, salta de tramo en tramo con un muelle y se posa al soltarlo. Si pisa a otra tarea lleva un aro rojo y, al soltarlo ahí, vuelve a su sitio negando con la cabeza;
+    - *totales:* los de la semana, el día y cada categoría ruedan hasta su valor nuevo en pasos de 15 min y dan un pequeño salto al llegar; tras «Generar» esperan a que aterricen los bloques;
+    - *jornada completa:* el día que llega a las horas mínimas del horario se marca en verde junto a su número. Al completarse, el número salta, se abre un aro y se dibuja la marca. Con toda la semana completa (los días libres no cuentan) sale confeti del total, una vez por semana (`localStorage`);
+    - *«Copiar semana»:* el botón pasa a una marca dibujada con el número de días y un destello baja por cada columna copiada;
+    - *formulario de tarea:* abierto con el puntero, sale del bloque pulsado y vuelve a él al cerrarse (variables `--from-*` que mide `timesheet.html`); su línea de color cambia de tono con la categoría y, si rechaza lo escrito, niega con la cabeza;
+    - *al abrir la semana:* las columnas entran una tras otra y la línea de la hora actual se traza de izquierda a derecha.
   - **Filas nuevas:** al actualizar una tarjeta con ↻, las filas que no estaban antes se señalan con un fondo que se desvanece (clase `is-new`), y el foco vuelve a donde estaba.
   - **Recogida automática** (`X-Auto-Refresh`): si la lectura no trae nada distinto, la tarjeta no se sustituye (sin fundido, foco ni aviso); si solo cambia «Para no perder», se sustituye solo eso. «Actualizado hace…» solo se reinicia si la fuente se ha leído bien. Pasada la medianoche, la página vuelve a hoy.
   - **Tema:** al pulsar el interruptor, el tema nuevo se abre en círculo desde el punto pulsado. El cambio que viene del sistema o del teclado es un fundido.
-  - **Lo que no se anima:** la navegación con atajos de teclado (se salta la transición) y la carga inicial de las páginas.
-  - **`prefers-reduced-motion`:** se quitan desplazamientos, escalas, el círculo del tema y los bucles; quedan fundidos breves y los indicadores de carga, quietos.
+  - **Lo que no se anima:** la navegación con atajos de teclado (se salta la transición y la página llega sin entrada, contadores ni celebraciones) y lo que no cambia (una recogida automática sin novedades). Nada bloquea los clics ni persigue al puntero con retraso, y ningún bucle pasa de 5 s.
+  - **`prefers-reduced-motion`:** se quitan desplazamientos, escalas, rebotes, el círculo del tema, el confeti y los bucles; quedan fundidos de hasta 150–200 ms y los indicadores de carga, quietos. En `motion.js` lo decide un único `gsap.matchMedia()`: los bloques se funden en vez de deslizarse y los totales saltan a su valor.
 - **Componentes:**
   - buscador (`/search`, `core/search.py`): busca en commits, notas, pendientes y reuniones guardados, sin distinguir tildes ni mayúsculas, con todas las palabras; resultados por día con enlace a cada uno y lo encontrado resaltado. Respeta lo oculto en Ajustes. Se abre desde la lupa de la barra o con `/`;
   - pull requests en «Qué toca hoy» (si hay token de GitHub): las que piden tu revisión y las tuyas abiertas, con enlace;
